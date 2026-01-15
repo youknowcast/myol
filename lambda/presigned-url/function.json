@@ -1,7 +1,7 @@
 {
 	"FunctionName": "myol-presigned-url",
 	"Runtime": "nodejs22.x",
-	"Handler": "index.handler",
+	"Handler": "dist/index.handler",
 	"MemorySize": 128,
 	"Timeout": 10,
 	"Architectures": [

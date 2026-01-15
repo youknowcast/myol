@@ -19,24 +19,13 @@ interface SongMeta {
 	size?: number
 }
 
-// CORS headers
-const corsHeaders = {
-	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'POST, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type',
+// Note: CORS headers are handled by Lambda Function URL configuration
+// Do NOT add CORS headers here to avoid duplication
+const responseHeaders = {
 	'Content-Type': 'application/json'
 }
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-	// Handle CORS preflight
-	if (event.httpMethod === 'OPTIONS') {
-		return {
-			statusCode: 200,
-			headers: corsHeaders,
-			body: ''
-		}
-	}
-
 	try {
 		const body: RequestBody = JSON.parse(event.body || '{}')
 
@@ -95,7 +84,7 @@ async function listSongs(): Promise<APIGatewayProxyResult> {
 
 	return {
 		statusCode: 200,
-		headers: corsHeaders,
+		headers: responseHeaders,
 		body: JSON.stringify({ songs })
 	}
 }
@@ -126,7 +115,7 @@ async function getPresignedUrl(
 
 	return {
 		statusCode: 200,
-		headers: corsHeaders,
+		headers: responseHeaders,
 		body: JSON.stringify({
 			url,
 			key: fullKey,
@@ -147,7 +136,7 @@ async function deleteSong(key: string): Promise<APIGatewayProxyResult> {
 
 	return {
 		statusCode: 200,
-		headers: corsHeaders,
+		headers: responseHeaders,
 		body: JSON.stringify({ success: true, key: fullKey })
 	}
 }
@@ -155,7 +144,7 @@ async function deleteSong(key: string): Promise<APIGatewayProxyResult> {
 function errorResponse(statusCode: number, message: string): APIGatewayProxyResult {
 	return {
 		statusCode,
-		headers: corsHeaders,
+		headers: responseHeaders,
 		body: JSON.stringify({ error: message })
 	}
 }
