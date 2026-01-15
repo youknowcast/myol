@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Song, SongMeta } from '@/lib/chordpro/types'
+import { parseChordPro } from '@/lib/chordpro/parser'
+import * as s3Api from '@/lib/s3/client'
 
 export const useSongsStore = defineStore('songs', () => {
 	const songs = ref<SongMeta[]>([])
@@ -12,23 +14,7 @@ export const useSongsStore = defineStore('songs', () => {
 		return [...songs.value].sort((a, b) => a.title.localeCompare(b.title, 'ja'))
 	})
 
-	async function fetchSongs() {
-		loading.value = true
-		error.value = null
-		try {
-			// TODO: S3 から曲リストを取得
-			// 仮データ
-			songs.value = [
-				{ id: 'amazing-grace', title: 'Amazing Grace', artist: 'Traditional', key: 'G' }
-			]
-		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
-		} finally {
-			loading.value = false
-		}
-	}
-
-	// サンプル曲データ (パブリックドメインのみ)
+	// サンプル曲データ (API未設定時のフォールバック)
 	const sampleSongs: Record<string, Song> = {
 		'amazing-grace': {
 			id: 'amazing-grace',
@@ -90,15 +76,84 @@ Than [G]when we'd [D]first be[G]gun
 		}
 	}
 
+	async function fetchSongs() {
+		loading.value = true
+		error.value = null
+		try {
+			if (s3Api.isApiConfigured()) {
+				// S3 から曲リストを取得
+				const s3Songs = await s3Api.listSongs()
+				songs.value = await Promise.all(
+					s3Songs.map(async (s) => {
+						try {
+							// 各曲のメタデータを取得するため内容を読み込む
+							const content = await s3Api.getSongContent(s.key)
+							const parsed = parseChordPro(content)
+							return {
+								id: s.id,
+								title: parsed.title || s.id,
+								artist: parsed.artist || '',
+								key: parsed.key
+							}
+						} catch {
+							// メタデータ取得失敗時は ID だけ使用
+							return {
+								id: s.id,
+								title: s.id,
+								artist: ''
+							}
+						}
+					})
+				)
+			} else {
+				// API 未設定時はサンプルデータを使用
+				songs.value = Object.values(sampleSongs).map(s => ({
+					id: s.id,
+					title: s.title,
+					artist: s.artist,
+					key: s.key
+				}))
+			}
+		} catch (e) {
+			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
+			// エラー時もサンプルデータを表示
+			songs.value = Object.values(sampleSongs).map(s => ({
+				id: s.id,
+				title: s.title,
+				artist: s.artist,
+				key: s.key
+			}))
+		} finally {
+			loading.value = false
+		}
+	}
+
 	async function fetchSong(id: string) {
 		loading.value = true
 		error.value = null
 		try {
-			// TODO: S3 から曲データを取得
-			// 仮データ
-			currentSong.value = sampleSongs[id] ?? sampleSongs['amazing-grace'] ?? null
+			if (s3Api.isApiConfigured()) {
+				// S3 から曲データを取得
+				const content = await s3Api.getSongContent(id)
+				const parsed = parseChordPro(content)
+				currentSong.value = {
+					id,
+					title: parsed.title || id,
+					artist: parsed.artist || '',
+					key: parsed.key,
+					capo: parsed.capo,
+					tempo: parsed.tempo,
+					time: parsed.time,
+					content
+				}
+			} else {
+				// API 未設定時はサンプルデータを使用
+				currentSong.value = sampleSongs[id] ?? sampleSongs['amazing-grace'] ?? null
+			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
+			// エラー時はサンプルデータを試す
+			currentSong.value = sampleSongs[id] ?? null
 		} finally {
 			loading.value = false
 		}
@@ -108,10 +163,32 @@ Than [G]when we'd [D]first be[G]gun
 		loading.value = true
 		error.value = null
 		try {
-			// TODO: S3 に保存
-			console.log('Saving song:', song)
+			if (s3Api.isApiConfigured()) {
+				// S3 に保存
+				await s3Api.saveSongContent(song.id, song.content)
+			} else {
+				// API 未設定時はコンソールログ
+				console.log('Saving song (mock):', song)
+			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
+			throw e
+		} finally {
+			loading.value = false
+		}
+	}
+
+	async function removeSong(id: string) {
+		loading.value = true
+		error.value = null
+		try {
+			if (s3Api.isApiConfigured()) {
+				await s3Api.deleteSong(id)
+				songs.value = songs.value.filter(s => s.id !== id)
+			}
+		} catch (e) {
+			error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
+			throw e
 		} finally {
 			loading.value = false
 		}
@@ -125,6 +202,7 @@ Than [G]when we'd [D]first be[G]gun
 		sortedSongs,
 		fetchSongs,
 		fetchSong,
-		saveSong
+		saveSong,
+		removeSong
 	}
 })
