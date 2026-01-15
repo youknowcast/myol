@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
+import { parseChordPro, autoAssignMeasures, generateChordPro } from '@/lib/chordpro/parser'
 
 const route = useRoute()
 const router = useRouter()
@@ -82,6 +83,25 @@ function goBack() {
   } else {
     router.push({ name: 'song-detail', params: { id: songId.value } })
   }
+}
+
+// Parse time signature to get beats per measure
+function getBeatsPerMeasure(): number {
+  const parts = time.value.split('/')
+  return parseInt(parts[0] || '4', 10) || 4
+}
+
+// Auto-assign measures to chord-only content
+function autoAssignMeasuresToContent() {
+  // Parse current content
+  const parsed = parseChordPro(content.value)
+
+  // Apply auto-assign measures
+  const beatsPerMeasure = getBeatsPerMeasure()
+  const processed = autoAssignMeasures(parsed, beatsPerMeasure)
+
+  // Update content with new ChordPro
+  content.value = generateChordPro(processed)
 }
 </script>
 
@@ -174,7 +194,17 @@ function goBack() {
         </div>
 
         <div class="form-group form-group-full">
-          <label for="content">ChordPro</label>
+          <div class="form-label-row">
+            <label for="content">ChordPro</label>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="autoAssignMeasuresToContent"
+              title="コードのみの行を検出し、拍子に基づいて小節を自動割り振りします"
+            >
+              🎵 小節を自動割り振り
+            </button>
+          </div>
           <textarea
             id="content"
             v-model="content"
@@ -270,6 +300,30 @@ function goBack() {
 .form-textarea:focus {
   outline: none;
   border-color: var(--color-primary);
+}
+
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.btn-secondary {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background: var(--color-bg-card);
+  border-color: var(--color-primary);
+}
+
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
 }
 
 @media (min-width: 768px) {

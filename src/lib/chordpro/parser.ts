@@ -296,6 +296,145 @@ export function parseGridRow(line: string): GridRow {
 }
 
 /**
+ * Auto-assign measure bar lines to a Grid section based on time signature.
+ * This function takes chord-only content and inserts bar lines at regular intervals.
+ *
+ * @param chords - Array of chord strings (e.g., ['C', 'Am', 'F', 'G'])
+ * @param beatsPerMeasure - Number of beats per measure (e.g., 4 for 4/4 time)
+ * @param chordsPerBeat - Number of chords per beat (default: 1)
+ * @returns GridRow with chords and bar lines
+ */
+export function autoAssignMeasuresToGrid(
+	chords: string[],
+	beatsPerMeasure: number = 4,
+	chordsPerBeat: number = 1
+): GridRow {
+	const cells: GridCell[] = []
+	const chordsPerMeasure = beatsPerMeasure * chordsPerBeat
+
+	// Start with opening bar
+	cells.push({ type: 'barDouble' })
+
+	for (let i = 0; i < chords.length; i++) {
+		cells.push({ type: 'chord', value: chords[i] })
+
+		// Insert bar line after every measure (except at the very end)
+		if ((i + 1) % chordsPerMeasure === 0 && i < chords.length - 1) {
+			cells.push({ type: 'bar' })
+		}
+	}
+
+	// End with closing bar
+	cells.push({ type: 'barDouble' })
+
+	return { cells }
+}
+
+/**
+ * Convert a chord-only lyrics line to a Grid row with auto-assigned measures.
+ * Detects lines that have only chords (no lyrics text).
+ *
+ * @param line - A LyricsLine to check and convert
+ * @param beatsPerMeasure - Number of beats per measure
+ * @returns GridRow if line is chord-only, null otherwise
+ */
+export function lyricsLineToGridRow(
+	line: LyricsLine,
+	beatsPerMeasure: number = 4
+): GridRow | null {
+	// Check if this line has only chords (all text segments are empty or whitespace)
+	const isChordOnly = line.segments.every(
+		seg => seg.chord !== null && seg.text.trim() === ''
+	)
+
+	if (!isChordOnly) {
+		return null
+	}
+
+	// Extract chords
+	const chords = line.segments
+		.filter(seg => seg.chord !== null)
+		.map(seg => seg.chord as string)
+
+	if (chords.length === 0) {
+		return null
+	}
+
+	return autoAssignMeasuresToGrid(chords, beatsPerMeasure)
+}
+
+/**
+ * Auto-assign measures to all chord-only content in a ParsedSong.
+ * Converts chord-only lyrics lines to grid sections with proper bar lines.
+ *
+ * @param song - The parsed song to process
+ * @param beatsPerMeasure - Number of beats per measure (default: 4)
+ * @returns A new ParsedSong with measures assigned
+ */
+export function autoAssignMeasures(
+	song: ParsedSong,
+	beatsPerMeasure: number = 4
+): ParsedSong {
+	const newSections: Section[] = []
+
+	for (const section of song.sections) {
+		if (section.content.kind === 'lyrics') {
+			const lyricsContent = section.content as LyricsSection
+			const gridRows: GridRow[] = []
+			const remainingLyricsLines: LyricsLine[] = []
+			let hasChordOnlyLines = false
+
+			for (const line of lyricsContent.lines) {
+				const gridRow = lyricsLineToGridRow(line, beatsPerMeasure)
+				if (gridRow) {
+					// This is a chord-only line, convert to grid
+					hasChordOnlyLines = true
+					gridRows.push(gridRow)
+				} else {
+					// Keep as lyrics
+					remainingLyricsLines.push(line)
+				}
+			}
+
+			// If we found chord-only lines, create a new grid section for them
+			if (hasChordOnlyLines && gridRows.length > 0) {
+				// Add grid section with converted chord-only lines
+				newSections.push({
+					type: 'grid',
+					label: section.label ? `${section.label} (Grid)` : 'Chord Progression',
+					content: {
+						kind: 'grid',
+						rows: gridRows
+					} as GridSection
+				})
+			}
+
+			// Keep remaining lyrics lines if any
+			if (remainingLyricsLines.length > 0) {
+				newSections.push({
+					...section,
+					content: {
+						kind: 'lyrics',
+						lines: remainingLyricsLines
+					} as LyricsSection
+				})
+			} else if (!hasChordOnlyLines) {
+				// No chord-only lines found, keep original section
+				newSections.push(section)
+			}
+		} else {
+			// Keep grid and tab sections as-is
+			newSections.push(section)
+		}
+	}
+
+	return {
+		...song,
+		sections: newSections
+	}
+}
+
+/**
  * Generate ChordPro content from a ParsedSong
  */
 export function generateChordPro(song: ParsedSong): string {
