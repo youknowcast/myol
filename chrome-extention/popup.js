@@ -44,8 +44,12 @@ button.addEventListener('click', async () => {
       ? `${headerLines.join('\n')}${response.text ? `\n${response.text}` : ''}`
       : response.text
 
-    const title = response.title ? response.title.replace(/[^a-zA-Z0-9_-]+/g, '_') : 'chordpro'
-    const filename = `${title}.cho`
+    const rawTitle = response.title || 'chordpro'
+    const rawArtist = response.artist || ''
+    const safeTitle = rawTitle.replace(/[\\/:*?"<>|]+/g, '_').trim()
+    const safeArtist = rawArtist.replace(/[\\/:*?"<>|]+/g, '_').trim()
+    const baseName = [safeArtist, safeTitle].filter(Boolean).join('_') || 'chordpro'
+    const filename = `${baseName}.cho`
     downloadText(filename, chordProText)
     setStatus('Downloaded.')
   })
