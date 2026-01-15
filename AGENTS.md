@@ -35,6 +35,7 @@ lambda/
 └── presigned-url/      # Lambda 関数 (S3 presigned URL 発行)
 
 infra/                  # AWS インフラ設定
+scripts/                # ユーティリティスクリプト
 ```
 
 ## 主要機能
@@ -76,7 +77,82 @@ export LAMBDA_ROLE_ARN=$(aws iam get-role --role-name myol-lambda-role --query '
 cd lambda/presigned-url && npm run deploy
 ```
 
-## 注意事項
+---
+
+## Lambda 関数 URL の注意点
+
+### パーミッション設定
+
+Lambda 関数 URL を公開する場合、**2つのパーミッション**が必要:
+
+```json
+[
+  {
+    "Sid": "FunctionURLAllowPublicAccess",
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "lambda:InvokeFunctionUrl",
+    "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:FUNCTION_NAME",
+    "Condition": {
+      "StringEquals": {
+        "lambda:FunctionUrlAuthType": "NONE"
+      }
+    }
+  },
+  {
+    "Sid": "FunctionURLAllowInvokeAction",
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "lambda:InvokeFunction",
+    "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:FUNCTION_NAME",
+    "Condition": {
+      "Bool": {
+        "lambda:InvokedViaFunctionUrl": "true"
+      }
+    }
+  }
+]
+```
+
+> ⚠️ `lambda:InvokeFunctionUrl` だけでは不十分。`lambda:InvokeFunction` も追加が必要。
+
+### CORS 設定
+
+- **関数 URL 側で CORS を設定**する (AWS Console または CLI)
+- **Lambda コード内では CORS ヘッダーを追加しない** (重複するとエラー)
+
+```typescript
+// ❌ NG: Lambda コードで CORS ヘッダーを設定
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  // ...
+}
+
+// ✅ OK: Content-Type のみ設定
+const responseHeaders = {
+  'Content-Type': 'application/json'
+}
+```
+
+### Handler パス
+
+lambroll + esbuild 使用時、出力が `dist/index.js` の場合:
+
+```json
+{
+  "Handler": "dist/index.handler"
+}
+```
+
+### 関数 URL 再作成時
+
+関数 URL を削除・再作成すると **URL が変わる**。再作成後:
+1. パーミッションを再追加
+2. `.env` の `VITE_API_ENDPOINT` を更新
+
+---
+
+## 一般的な注意事項
 
 - 認証はビルド時埋め込み (本番環境では強化を検討)
 - S3 バケットは us-west-2 リージョン
