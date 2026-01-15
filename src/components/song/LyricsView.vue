@@ -1,13 +1,26 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Section, LyricsSection } from '@/lib/chordpro/types'
 
 interface Props {
   section: Section
+  currentMeasure?: number
+  isPlaying?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  currentMeasure: 0,
+  isPlaying: false
+})
 
 const lyricsContent = props.section.content as LyricsSection
+
+// Track which line corresponds to current measure
+const currentLineIndex = computed(() => {
+  if (!props.isPlaying) return -1
+  // Simple mapping: each line ≈ 1 measure
+  return props.currentMeasure % lyricsContent.lines.length
+})
 </script>
 
 <template>
@@ -19,6 +32,7 @@ const lyricsContent = props.section.content as LyricsSection
         v-for="(line, lineIndex) in lyricsContent.lines"
         :key="lineIndex"
         class="lyrics-line"
+        :class="{ 'current-line': isPlaying && lineIndex === currentLineIndex }"
       >
         <!-- Chord row -->
         <div class="lyrics-chord-row">
@@ -61,6 +75,14 @@ const lyricsContent = props.section.content as LyricsSection
 
 .lyrics-line {
   margin-bottom: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.lyrics-line.current-line {
+  background: rgba(99, 102, 241, 0.15);
+  border-left: 3px solid var(--color-primary);
 }
 
 .lyrics-chord-row {
@@ -77,6 +99,10 @@ const lyricsContent = props.section.content as LyricsSection
   position: relative;
 }
 
+.current-line .chord {
+  color: var(--color-primary);
+}
+
 .chord-space {
   visibility: hidden;
 }
@@ -88,6 +114,10 @@ const lyricsContent = props.section.content as LyricsSection
 .lyrics-text-row {
   font-size: 1.1rem;
   color: var(--color-text);
+}
+
+.current-line .lyrics-text-row {
+  font-weight: 500;
 }
 
 @media (min-width: 768px) {

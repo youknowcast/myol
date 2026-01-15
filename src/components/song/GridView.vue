@@ -1,35 +1,88 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
   section: Section
+  currentMeasure?: number
+  isPlaying?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  currentMeasure: 0,
+  isPlaying: false
+})
 
 const gridContent = props.section.content as GridSection
 
-function getCellClass(type: string): string {
-  switch (type) {
+// Track measure index for each cell
+interface CellWithMeasure {
+  type: string
+  value?: string
+  measureIndex: number
+  isCurrentMeasure: boolean
+}
+
+const cellsWithMeasures = computed(() => {
+  let measureIndex = 0
+  const result: CellWithMeasure[][] = []
+
+  for (const row of gridContent.rows) {
+    const rowCells: CellWithMeasure[] = []
+
+    for (const cell of row.cells) {
+      const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
+                    cell.type === 'barEnd' || cell.type === 'repeatStart' ||
+                    cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
+
+      if (isBar) {
+        measureIndex++
+      }
+
+      rowCells.push({
+        ...cell,
+        measureIndex: measureIndex,
+        isCurrentMeasure: props.isPlaying && measureIndex === props.currentMeasure
+      })
+    }
+
+    result.push(rowCells)
+  }
+
+  return result
+})
+
+function getCellClass(cell: CellWithMeasure): string[] {
+  const classes: string[] = []
+
+  switch (cell.type) {
     case 'bar':
     case 'barDouble':
     case 'barEnd':
     case 'repeatStart':
     case 'repeatEnd':
     case 'repeatBoth':
-      return 'grid-bar'
+      classes.push('grid-bar')
+      break
     case 'chord':
-      return 'grid-chord'
+      classes.push('grid-chord')
+      break
     case 'empty':
-      return 'grid-empty'
+      classes.push('grid-empty')
+      break
     case 'repeat':
-      return 'grid-repeat'
-    default:
-      return ''
+      classes.push('grid-repeat')
+      break
   }
+
+  if (cell.isCurrentMeasure && cell.type === 'chord') {
+    classes.push('current-measure')
+  }
+
+  return classes
 }
 
-function getCellDisplay(cell: { type: string; value?: string }): string {
+function getCellDisplay(cell: CellWithMeasure): string {
   switch (cell.type) {
     case 'bar': return '│'
     case 'barDouble': return '║'
@@ -51,15 +104,15 @@ function getCellDisplay(cell: { type: string; value?: string }): string {
 
     <div class="chord-grid">
       <div
-        v-for="(row, rowIndex) in gridContent.rows"
+        v-for="(row, rowIndex) in cellsWithMeasures"
         :key="rowIndex"
         class="grid-row"
       >
         <span
-          v-for="(cell, cellIndex) in row.cells"
+          v-for="(cell, cellIndex) in row"
           :key="cellIndex"
           class="grid-cell"
-          :class="getCellClass(cell.type)"
+          :class="getCellClass(cell)"
         >
           {{ getCellDisplay(cell) }}
         </span>
@@ -100,6 +153,8 @@ function getCellDisplay(cell: { type: string; value?: string }): string {
   padding: var(--spacing-xs) var(--spacing-sm);
   text-align: center;
   min-width: 2.5rem;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
 }
 
 .grid-bar {
@@ -121,6 +176,13 @@ function getCellDisplay(cell: { type: string; value?: string }): string {
 .grid-repeat {
   color: var(--color-accent);
   font-weight: 600;
+}
+
+.current-measure {
+  background: var(--color-primary);
+  color: white !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+  transform: scale(1.1);
 }
 
 @media (min-width: 768px) {

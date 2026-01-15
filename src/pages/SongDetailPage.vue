@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { parseChordPro } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
+import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
@@ -27,16 +28,40 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
+// Count total measures in the song
+const totalMeasures = computed(() => {
+  if (!parsedSong.value) return 0
+  let count = 0
+  for (const section of parsedSong.value.sections) {
+    if (section.content.kind === 'grid') {
+      const grid = section.content as GridSection
+      for (const row of grid.rows) {
+        // Count bar lines to estimate measures
+        for (const cell of row.cells) {
+          if (cell.type === 'bar' || cell.type === 'barDouble' || cell.type === 'barEnd' ||
+              cell.type === 'repeatStart' || cell.type === 'repeatEnd' || cell.type === 'repeatBoth') {
+            count++
+          }
+        }
+      }
+    } else if (section.content.kind === 'lyrics') {
+      // Estimate: each lyrics line ≈ 1-2 measures
+      count += section.content.lines.length
+    }
+  }
+  return Math.max(count, 1)
+})
+
 // View mode
 type ViewMode = 'lyrics' | 'grid' | 'mixed'
 const viewMode = ref<ViewMode>('lyrics')
 
-// Auto-scroll
+// Playback state
 const isPlaying = ref(false)
 const speedMultiplier = ref(1)
-const scrollProgress = ref(0)
+const currentTime = ref(0) // in seconds
 const contentRef = ref<HTMLElement | null>(null)
-let scrollInterval: ReturnType<typeof setInterval> | null = null
+let playbackInterval: ReturnType<typeof setInterval> | null = null
 
 const tempo = computed(() => parsedSong.value?.tempo || 80)
 const timeSignature = computed(() => {
@@ -45,14 +70,37 @@ const timeSignature = computed(() => {
   return { beats: parseInt(parts[0] ?? '4', 10) || 4, noteValue: parseInt(parts[1] ?? '4', 10) || 4 }
 })
 
-// Calculate scroll speed based on tempo
-const scrollSpeedPx = computed(() => {
-  // Base: 1 measure = visible height / 8 measures (show 8 measures at a time)
-  // Time per measure = (60 / tempo) * beats
-  const msPerMeasure = (60 / tempo.value) * timeSignature.value.beats * 1000
-  const pxPerMeasure = 60 // approximate pixels per measure line
-  return (pxPerMeasure / msPerMeasure) * speedMultiplier.value * 16 // 16ms per frame
+// Time per measure in seconds
+const secondsPerMeasure = computed(() => {
+  return (60 / tempo.value) * timeSignature.value.beats
 })
+
+// Total duration in seconds
+const totalDuration = computed(() => {
+  return totalMeasures.value * secondsPerMeasure.value
+})
+
+// Current measure (0-indexed)
+const currentMeasure = computed(() => {
+  return Math.floor(currentTime.value / secondsPerMeasure.value)
+})
+
+// Progress (0-1)
+const progress = computed(() => {
+  if (totalDuration.value <= 0) return 0
+  return Math.min(currentTime.value / totalDuration.value, 1)
+})
+
+// Provide current measure to child components
+provide('currentMeasure', currentMeasure)
+provide('isPlaying', isPlaying)
+
+// Format time as MM:SS
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 function togglePlay() {
   isPlaying.value = !isPlaying.value
@@ -62,48 +110,69 @@ function handleSpeedChange(speed: number) {
   speedMultiplier.value = speed
 }
 
-function startAutoScroll() {
-  if (scrollInterval) return
+function startPlayback() {
+  if (playbackInterval) return
 
-  scrollInterval = setInterval(() => {
-    if (!contentRef.value) return
+  playbackInterval = setInterval(() => {
+    currentTime.value += (16 / 1000) * speedMultiplier.value
 
-    const scrollable = contentRef.value
-    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
+    // Auto-scroll based on time
+    if (contentRef.value) {
+      const scrollable = contentRef.value
+      const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
+      if (maxScroll > 0) {
+        const targetScroll = progress.value * maxScroll
+        scrollable.scrollTop = targetScroll
+      }
+    }
 
-    if (maxScroll <= 0) return
-
-    const newScroll = scrollable.scrollTop + scrollSpeedPx.value
-    scrollable.scrollTop = newScroll
-    scrollProgress.value = Math.min(newScroll / maxScroll, 1)
-
-    if (newScroll >= maxScroll) {
+    if (currentTime.value >= totalDuration.value) {
+      currentTime.value = totalDuration.value
       isPlaying.value = false
     }
   }, 16)
 }
 
-function stopAutoScroll() {
-  if (scrollInterval) {
-    clearInterval(scrollInterval)
-    scrollInterval = null
+function stopPlayback() {
+  if (playbackInterval) {
+    clearInterval(playbackInterval)
+    playbackInterval = null
   }
 }
 
 watch(isPlaying, (playing) => {
   if (playing) {
-    startAutoScroll()
+    startPlayback()
   } else {
-    stopAutoScroll()
+    stopPlayback()
   }
 })
+
+// Seek to position
+function handleSeek(event: MouseEvent | TouchEvent) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const clientX = 'touches' in event ? event.touches[0]!.clientX : event.clientX
+  const x = clientX - rect.left
+  const percentage = Math.max(0, Math.min(1, x / rect.width))
+
+  currentTime.value = percentage * totalDuration.value
+
+  // Also scroll to position
+  if (contentRef.value) {
+    const scrollable = contentRef.value
+    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
+    scrollable.scrollTop = percentage * maxScroll
+  }
+}
 
 function handleScroll() {
   if (!contentRef.value || isPlaying.value) return
   const scrollable = contentRef.value
   const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
   if (maxScroll > 0) {
-    scrollProgress.value = scrollable.scrollTop / maxScroll
+    const scrollProgress = scrollable.scrollTop / maxScroll
+    currentTime.value = scrollProgress * totalDuration.value
   }
 }
 
@@ -120,7 +189,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopAutoScroll()
+  stopPlayback()
 })
 </script>
 
@@ -222,12 +291,16 @@ onUnmounted(() => {
               <GridView
                 v-if="section.content.kind === 'grid' && (viewMode === 'grid' || viewMode === 'mixed')"
                 :section="section"
+                :currentMeasure="currentMeasure"
+                :isPlaying="isPlaying"
               />
 
               <!-- Lyrics sections -->
               <LyricsView
                 v-if="section.content.kind === 'lyrics' && (viewMode === 'lyrics' || viewMode === 'mixed')"
                 :section="section"
+                :currentMeasure="currentMeasure"
+                :isPlaying="isPlaying"
               />
 
               <!-- Tab sections -->
@@ -257,9 +330,28 @@ onUnmounted(() => {
 
       <!-- Player controls -->
       <footer class="player-bar">
-        <div class="progress-bar">
-          <div class="progress-bar-fill" :style="{ width: `${scrollProgress * 100}%` }"></div>
+        <!-- Time display and seek bar -->
+        <div class="time-bar">
+          <span class="time-display">{{ formatTime(currentTime) }}</span>
+          <div
+            class="seek-bar"
+            @click="handleSeek"
+            @touchstart.prevent="handleSeek"
+          >
+            <div class="seek-bar-fill" :style="{ width: `${progress * 100}%` }"></div>
+            <div class="seek-bar-thumb" :style="{ left: `${progress * 100}%` }"></div>
+          </div>
+          <span class="time-display">{{ formatTime(totalDuration) }}</span>
         </div>
+
+        <!-- Measure indicator -->
+        <div class="measure-indicator">
+          <span class="measure-label">小節:</span>
+          <span class="measure-current">{{ currentMeasure + 1 }}</span>
+          <span class="measure-separator">/</span>
+          <span class="measure-total">{{ totalMeasures }}</span>
+        </div>
+
         <SpeedControl
           :speed="speedMultiplier"
           :is-playing="isPlaying"
@@ -402,10 +494,80 @@ onUnmounted(() => {
 .player-bar {
   background: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border);
-  padding: var(--spacing-xs) var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 
-.player-bar .progress-bar {
+.time-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-sm);
+}
+
+.time-display {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  min-width: 3rem;
+}
+
+.time-display:last-child {
+  text-align: right;
+}
+
+.seek-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-full);
+  position: relative;
+  cursor: pointer;
+}
+
+.seek-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.1s linear;
+}
+
+.seek-bar-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.measure-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.measure-label {
+  color: var(--color-text-muted);
+}
+
+.measure-current {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-accent);
+  font-size: 0.875rem;
+}
+
+.measure-separator {
+  color: var(--color-text-muted);
+}
+
+.measure-total {
+  font-family: var(--font-mono);
 }
 </style>

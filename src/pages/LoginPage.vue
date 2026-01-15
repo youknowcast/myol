@@ -64,8 +64,7 @@ function setInputRef(el: HTMLInputElement | null, index: number) {
   <div class="login-page">
     <div class="login-container">
       <div class="logo">
-        <span class="logo-icon">🎸</span>
-        <h1 class="logo-text">myol</h1>
+        <img src="/icon-192.png" alt="myol" class="logo-icon" />
       </div>
 
       <p class="login-subtitle">パスワードを入力</p>
@@ -114,9 +113,9 @@ function setInputRef(el: HTMLInputElement | null, index: number) {
 }
 
 .logo-icon {
-  font-size: 4rem;
-  display: block;
-  margin-bottom: var(--spacing-sm);
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-lg);
 }
 
 .logo-text {
