@@ -11,5 +11,6 @@
 		"Variables": {
 			"S3_BUCKET": "myol.daycrift.net-data"
 		}
-	}
+	},
+	"Role": "{{ must_env `LAMBDA_ROLE_ARN` }}"
 }
