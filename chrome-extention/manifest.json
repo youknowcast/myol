@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "myol ChordPro Extractor",
+  "version": "0.1.0",
+  "description": "Extract chord sheets into ChordPro for myol.",
+  "permissions": ["activeTab", "downloads"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Extract ChordPro",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
