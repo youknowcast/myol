@@ -363,23 +363,32 @@ export function autoAssignMeasuresToGrid(
 }
 
 /**
- * Convert a chord-only lyrics line to a Grid row with auto-assigned measures.
- * Detects lines that have only chords (no lyrics text).
+ * Convert a lyrics line to a Grid row with auto-assigned measures.
+ * Also extracts lyrics text as a hint for display.
  *
- * @param line - A LyricsLine to check and convert
+ * @param line - A LyricsLine to convert
  * @param beatsPerMeasure - Number of beats per measure
- * @returns GridRow if line is chord-only, null otherwise
+ * @param includeWithLyrics - If true, also convert lines with lyrics (default: false for backward compat)
+ * @returns Object with gridRow and lyricsHint, or null if not convertible
  */
 export function lyricsLineToGridRow(
 	line: LyricsLine,
-	beatsPerMeasure: number = 4
-): GridRow | null {
-	// Check if this line has only chords (all text segments are empty or whitespace)
+	beatsPerMeasure: number = 4,
+	includeWithLyrics: boolean = false
+): { row: GridRow; lyrics: string } | null {
+	// Check if this line has any chords
+	const hasChords = line.segments.some(seg => seg.chord !== null)
+	if (!hasChords) {
+		return null
+	}
+
+	// Check if this line has only chords (no lyrics text)
 	const isChordOnly = line.segments.every(
 		seg => seg.chord !== null && seg.text.trim() === ''
 	)
 
-	if (!isChordOnly) {
+	// If line has lyrics and we're not including them, skip
+	if (!isChordOnly && !includeWithLyrics) {
 		return null
 	}
 
@@ -392,7 +401,16 @@ export function lyricsLineToGridRow(
 		return null
 	}
 
-	return autoAssignMeasuresToGrid(chords, beatsPerMeasure)
+	// Extract lyrics text (concatenate all text segments)
+	const lyrics = line.segments
+		.map(seg => seg.text)
+		.join('')
+		.trim()
+
+	return {
+		row: autoAssignMeasuresToGrid(chords, beatsPerMeasure),
+		lyrics
+	}
 }
 
 /**
@@ -413,35 +431,41 @@ export function autoAssignMeasures(
 		if (section.content.kind === 'lyrics') {
 			const lyricsContent = section.content as LyricsSection
 			const gridRows: GridRow[] = []
+			const lyricsHints: string[] = []
 			const remainingLyricsLines: LyricsLine[] = []
-			let hasChordOnlyLines = false
+			let hasConvertedLines = false
 
 			for (const line of lyricsContent.lines) {
-				const gridRow = lyricsLineToGridRow(line, beatsPerMeasure)
-				if (gridRow) {
-					// This is a chord-only line, convert to grid
-					hasChordOnlyLines = true
-					gridRows.push(gridRow)
+				// Try to convert with lyrics included
+				const result = lyricsLineToGridRow(line, beatsPerMeasure, true)
+				if (result) {
+					// This line has chords, convert to grid
+					hasConvertedLines = true
+					gridRows.push(result.row)
+					if (result.lyrics) {
+						lyricsHints.push(result.lyrics)
+					}
 				} else {
-					// Keep as lyrics
+					// No chords, keep as lyrics (text-only lines)
 					remainingLyricsLines.push(line)
 				}
 			}
 
-			// If we found chord-only lines, create a new grid section for them
-			if (hasChordOnlyLines && gridRows.length > 0) {
-				// Add grid section with converted chord-only lines
+			// If we found convertible lines, create a new grid section for them
+			if (hasConvertedLines && gridRows.length > 0) {
+				// Add grid section with converted lines
 				newSections.push({
 					type: 'grid',
 					label: section.label ? `${section.label} (Grid)` : 'Chord Progression',
 					content: {
 						kind: 'grid',
-						rows: gridRows
+						rows: gridRows,
+						lyricsHints: lyricsHints.length > 0 ? lyricsHints : undefined
 					} as GridSection
 				})
 			}
 
-			// Keep remaining lyrics lines if any
+			// Keep remaining lyrics lines if any (text-only lines without chords)
 			if (remainingLyricsLines.length > 0) {
 				newSections.push({
 					...section,
@@ -450,8 +474,8 @@ export function autoAssignMeasures(
 						lines: remainingLyricsLines
 					} as LyricsSection
 				})
-			} else if (!hasChordOnlyLines) {
-				// No chord-only lines found, keep original section
+			} else if (!hasConvertedLines) {
+				// No convertible lines found, keep original section
 				newSections.push(section)
 			}
 		} else {

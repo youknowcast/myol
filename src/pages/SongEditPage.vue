@@ -261,6 +261,7 @@ function updateGridSection(sectionIndex: number, newGrid: GridSection) {
               <GridEditor
                 :model-value="section.content as GridSection"
                 :beats-per-measure="getBeatsPerMeasure()"
+                :lyrics-hints="(section.content as GridSection).lyricsHints"
                 @update:model-value="(newGrid) => updateGridSection(index, newGrid)"
               />
             </div>

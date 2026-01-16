@@ -53,6 +53,7 @@ export interface GridSection {
 	shape?: string
 	parts?: GridPart[]  // パートグループ (Aメロ, Bメロ etc.)
 	rows: GridRow[]     // parts がない場合のフォールバック
+	lyricsHints?: string[]  // 各小節に対応する歌詞ヒント（表示用）
 }
 
 export interface GridPart {
