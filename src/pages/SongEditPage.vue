@@ -59,17 +59,27 @@ onMounted(async () => {
   }
 })
 
-// Sync content changes to editor store
+// Flag to prevent infinite loop in bidirectional sync
+let isSyncingFromStore = false
+let isSyncingToStore = false
+
+// Sync content changes to editor store (only if not syncing from store)
 watch(content, (newContent) => {
+  if (isSyncingFromStore) return
+  isSyncingToStore = true
   editorStore.loadDocument(newContent)
+  isSyncingToStore = false
 })
 
-// Sync editor store changes back to content
+// Sync editor store changes back to content (only if not syncing to store)
 watch(() => editorStore.document, () => {
+  if (isSyncingToStore) return
   if (editorStore.document) {
     const serialized = editorStore.serialize()
     if (serialized !== content.value) {
+      isSyncingFromStore = true
       content.value = serialized
+      isSyncingFromStore = false
     }
   }
 }, { deep: true })

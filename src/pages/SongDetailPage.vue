@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
-import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { parseChordPro } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
@@ -15,7 +14,6 @@ import SpeedControl from '@/components/player/SpeedControl.vue'
 const route = useRoute()
 const router = useRouter()
 const songsStore = useSongsStore()
-const editorStore = useChordProEditorStore()
 
 const songId = computed(() => route.params.id as string)
 const song = computed(() => songsStore.currentSong)
@@ -31,15 +29,42 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
-// Load song content into editor store and get totalMeasures from there
-watch(song, (newSong) => {
-  if (newSong) {
-    editorStore.loadDocument(newSong.content)
-  }
-}, { immediate: true })
+// Bar types for measure counting
+const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth']
 
-// Total measures from store (centralized logic)
-const totalMeasures = computed(() => editorStore.totalMeasures)
+// Count total measures directly (not using editorStore to avoid conflicts)
+const totalMeasures = computed(() => {
+  if (!parsedSong.value) return 1
+  let count = 0
+
+  for (const section of parsedSong.value.sections) {
+    if (section.content.kind === 'grid') {
+      const grid = section.content as GridSection
+      let hasSeenFirstBar = false
+      let hasSeenNonBarSinceLastBar = false
+
+      for (const row of grid.rows) {
+        for (const cell of row.cells) {
+          const isBar = BAR_TYPES.includes(cell.type)
+
+          if (isBar) {
+            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+              count++
+            }
+            hasSeenFirstBar = true
+            hasSeenNonBarSinceLastBar = false
+          } else {
+            hasSeenNonBarSinceLastBar = true
+          }
+        }
+      }
+      if (hasSeenFirstBar) {
+        count++
+      }
+    }
+  }
+  return Math.max(count, 1)
+})
 
 // View mode
 type ViewMode = 'lyrics' | 'grid' | 'mixed'
