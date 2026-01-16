@@ -124,6 +124,11 @@ function getCellDisplay(cell: CellWithMeasure): string {
     default: return ''
   }
 }
+
+// Check if any cell in this row is the current measure
+function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
+  return row.some(cell => cell.isCurrentMeasure)
+}
 </script>
 
 <template>
@@ -131,30 +136,32 @@ function getCellDisplay(cell: CellWithMeasure): string {
     <div v-if="section.label" class="section-label">{{ section.label }}</div>
 
     <div class="chord-grid">
+      <!-- Each row contains chords and optional lyrics underneath -->
       <div
         v-for="(row, rowIndex) in cellsWithMeasures"
         :key="rowIndex"
-        class="grid-row"
+        class="grid-row-group"
       >
-        <span
-          v-for="(cell, cellIndex) in row"
-          :key="cellIndex"
-          class="grid-cell"
-          :class="getCellClass(cell)"
-        >
-          {{ getCellDisplay(cell) }}
-        </span>
-      </div>
-    </div>
+        <!-- Chord row -->
+        <div class="grid-row">
+          <span
+            v-for="(cell, cellIndex) in row"
+            :key="cellIndex"
+            class="grid-cell"
+            :class="getCellClass(cell)"
+          >
+            {{ getCellDisplay(cell) }}
+          </span>
+        </div>
 
-    <!-- Lyrics hints (non-editable) -->
-    <div v-if="gridContent.lyricsHints && gridContent.lyricsHints.length > 0" class="lyrics-hints">
-      <div
-        v-for="(hint, hintIndex) in gridContent.lyricsHints"
-        :key="hintIndex"
-        class="lyrics-hint"
-      >
-        {{ hint }}
+        <!-- Lyrics row (if available for this row) -->
+        <div
+          v-if="gridContent.lyricsHints && gridContent.lyricsHints[rowIndex]"
+          class="grid-lyrics-row"
+          :class="{ 'has-current': rowHasCurrentMeasure(row) }"
+        >
+          {{ gridContent.lyricsHints[rowIndex] }}
+        </div>
       </div>
     </div>
   </div>
@@ -174,24 +181,53 @@ function getCellDisplay(cell: CellWithMeasure): string {
 }
 
 .chord-grid {
-  font-family: var(--font-mono);
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
   overflow-x: auto;
+}
+
+.grid-row-group {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  transition: all var(--transition-fast);
 }
 
 .grid-row {
   display: flex;
-  align-items: center;
-  min-height: 2rem;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  font-family: var(--font-mono);
+}
+
+.grid-lyrics-row {
+  margin-top: 2px;
+  padding-left: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid-row-group:has(.current-measure),
+.grid-row-group.has-current {
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.grid-row-group.has-current .grid-lyrics-row {
+  color: var(--color-primary);
+  font-weight: 500;
 }
 
 .grid-cell {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  text-align: center;
-  min-width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  height: 2.5rem;
+  padding: var(--spacing-xs) 2px;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
 }
@@ -221,7 +257,7 @@ function getCellDisplay(cell: CellWithMeasure): string {
   background: var(--color-primary);
   color: white !important;
   box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 @media (min-width: 768px) {
@@ -229,29 +265,14 @@ function getCellDisplay(cell: CellWithMeasure): string {
     min-width: 3.5rem;
     font-size: 1rem;
   }
+  .grid-lyrics-row {
+    font-size: 0.95rem;
+  }
 }
 
 @media (min-width: 1024px) {
   .grid-cell {
     min-width: 4rem;
   }
-}
-
-.lyrics-hints {
-  margin-top: var(--spacing-md);
-  padding: var(--spacing-sm);
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-}
-
-.lyrics-hint {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  padding: var(--spacing-xs) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.lyrics-hint:last-child {
-  border-bottom: none;
 }
 </style>
