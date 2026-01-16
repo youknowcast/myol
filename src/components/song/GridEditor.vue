@@ -101,10 +101,20 @@ function handleCopyMeasure() {
   emitUpdate(result)
 }
 
-// Delete measure
+// Delete measure (prevent if has lyrics)
 function handleDeleteMeasure() {
   if (selectedMeasureIndex.value === null) return
   if (measures.value.length <= 1) return
+
+  // Check if this measure has lyrics attached
+  const lyricsHint = props.lyricsHints?.[selectedMeasureIndex.value]
+  const hasLyrics = lyricsHint !== undefined && lyricsHint.trim() !== ''
+
+  if (hasLyrics) {
+    alert('歌詞が付いている小節は削除できません')
+    return
+  }
+
   const result = deleteMeasureOp(flatCells.value, selectedMeasureIndex.value)
   selectedMeasureIndex.value = null
   emitUpdate(result)
@@ -148,19 +158,30 @@ function handleReorder(measureIndex: number, orderedCellIds: string[]) {
 }
 
 // Initialize SortableJS for drag & drop
+let sortableInstances: Sortable[] = []
+
 function initSortable() {
+  // Destroy existing instances first
+  sortableInstances.forEach(s => s.destroy())
+  sortableInstances = []
+
   if (!containerRef.value) return
 
   const measureContainers = containerRef.value.querySelectorAll('.measure-cells')
 
-  measureContainers.forEach((container, measureIndex) => {
-    Sortable.create(container as HTMLElement, {
+  measureContainers.forEach((container) => {
+    const instance = Sortable.create(container as HTMLElement, {
       animation: 150,
       ghostClass: 'cell-ghost',
       chosenClass: 'cell-chosen',
       dragClass: 'cell-drag',
       group: 'cells',
       onEnd: (evt) => {
+        // Get measure index from data attribute
+        const measureIndexStr = evt.to.getAttribute('data-measure-index')
+        if (measureIndexStr === null) return
+        const measureIndex = parseInt(measureIndexStr, 10)
+
         const items = Array.from(evt.to.querySelectorAll('[data-id]'))
           .map(el => el.getAttribute('data-id'))
           .filter((id): id is string => id !== null)
@@ -168,6 +189,7 @@ function initSortable() {
         handleReorder(measureIndex, items)
       }
     })
+    sortableInstances.push(instance)
   })
 }
 
@@ -262,7 +284,11 @@ onUnmounted(() => {
           @click.self="selectMeasure(measureIndex)"
         >
           <!-- Measure cells (sortable) -->
-          <div class="measure-cells" @click="selectMeasure(measureIndex)">
+          <div
+            class="measure-cells"
+            :data-measure-index="measureIndex"
+            @click="selectMeasure(measureIndex)"
+          >
             <div
               v-for="cell in measure.cells"
               :key="cell.id"
