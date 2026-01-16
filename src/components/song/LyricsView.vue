@@ -17,7 +17,7 @@ const lyricsContent = props.section.content as LyricsSection
 
 // Track which line corresponds to current measure
 const currentLineIndex = computed(() => {
-  if (!props.isPlaying) return -1
+  if (lyricsContent.lines.length === 0) return -1
   // Simple mapping: each line ≈ 1 measure
   return props.currentMeasure % lyricsContent.lines.length
 })
@@ -32,7 +32,7 @@ const currentLineIndex = computed(() => {
         v-for="(line, lineIndex) in lyricsContent.lines"
         :key="lineIndex"
         class="lyrics-line"
-        :class="{ 'current-line': isPlaying && lineIndex === currentLineIndex }"
+        :class="{ 'current-line': lineIndex === currentLineIndex }"
       >
         <!-- Chord row -->
         <div class="lyrics-chord-row">

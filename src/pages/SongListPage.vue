@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import SongCard from '@/components/song/SongCard.vue'
@@ -9,6 +9,7 @@ const songsStore = useSongsStore()
 
 const songs = computed(() => songsStore.sortedSongs)
 const loading = computed(() => songsStore.loading)
+const deleting = ref(false)
 
 onMounted(() => {
   songsStore.fetchSongs()
@@ -20,6 +21,23 @@ function goToNewSong() {
 
 function goToSong(id: string) {
   router.push({ name: 'song-detail', params: { id } })
+}
+
+async function handleDelete(id: string) {
+  const song = songs.value.find(s => s.id === id)
+  if (!song) return
+
+  const confirmed = window.confirm(`「${song.title}」を削除しますか？\nこの操作は取り消せません。`)
+  if (!confirmed) return
+
+  try {
+    deleting.value = true
+    await songsStore.removeSong(id)
+  } catch (e) {
+    alert('削除に失敗しました: ' + (e instanceof Error ? e.message : '不明なエラー'))
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -57,6 +75,7 @@ function goToSong(id: string) {
           :key="song.id"
           :song="song"
           @click="goToSong(song.id)"
+          @delete="handleDelete"
         />
       </div>
     </main>

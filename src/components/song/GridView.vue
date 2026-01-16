@@ -36,14 +36,21 @@ const cellsWithMeasures = computed(() => {
                     cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
 
       if (isBar) {
+        // Bar itself belongs to current measure
+        rowCells.push({
+          ...cell,
+          measureIndex: measureIndex,
+          isCurrentMeasure: measureIndex === props.currentMeasure
+        })
+        // Next non-bar cell starts a new measure
         measureIndex++
+      } else {
+        rowCells.push({
+          ...cell,
+          measureIndex: measureIndex,
+          isCurrentMeasure: measureIndex === props.currentMeasure
+        })
       }
-
-      rowCells.push({
-        ...cell,
-        measureIndex: measureIndex,
-        isCurrentMeasure: props.isPlaying && measureIndex === props.currentMeasure
-      })
     }
 
     result.push(rowCells)

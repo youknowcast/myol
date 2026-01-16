@@ -6,11 +6,22 @@ interface Props {
 }
 
 defineProps<Props>()
+defineEmits<{ (e: 'delete', id: string): void }>()
 </script>
 
 <template>
   <article class="song-card" tabindex="0" role="button">
-    <h2 class="song-title">{{ song.title }}</h2>
+    <div class="song-header">
+      <h2 class="song-title">{{ song.title }}</h2>
+      <button
+        class="delete-btn"
+        @click.stop="$emit('delete', song.id)"
+        title="削除"
+        aria-label="削除"
+      >
+        🗑
+      </button>
+    </div>
     <div class="song-info">
       <span class="song-artist">{{ song.artist }}</span>
       <span v-if="song.key" class="song-key">Key: {{ song.key }}</span>
@@ -39,11 +50,33 @@ defineProps<Props>()
   outline: none;
 }
 
+.song-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
 .song-title {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: var(--spacing-sm);
   color: var(--color-text);
+  flex: 1;
+}
+
+.delete-btn {
+  padding: var(--spacing-xs);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+  font-size: 0.875rem;
+}
+
+.delete-btn:hover {
+  opacity: 1;
 }
 
 .song-info {
