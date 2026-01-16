@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
-import { parseChordPro, autoAssignMeasures, generateChordPro } from '@/lib/chordpro/parser'
+import { useChordProEditorStore } from '@/stores/chordproEditor'
+import { autoAssignMeasures, generateChordPro, parseChordPro } from '@/lib/chordpro/parser'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
 const songsStore = useSongsStore()
+const editorStore = useChordProEditorStore()
 
 const isNew = computed(() => route.name === 'song-new')
 const songId = computed(() => route.params.id as string | undefined)
@@ -34,6 +36,8 @@ onMounted(async () => {
       tempo.value = songsStore.currentSong.tempo || 120
       time.value = songsStore.currentSong.time || '4/4'
       content.value = songsStore.currentSong.content
+      // Load into editor store
+      editorStore.loadDocument(content.value)
     }
   } else {
     // Default template for new song
@@ -51,8 +55,24 @@ onMounted(async () => {
 || C . . . | G . . . | Am . . . | F . . . ||
 {end_of_grid}
 `
+    editorStore.loadDocument(content.value)
   }
 })
+
+// Sync content changes to editor store
+watch(content, (newContent) => {
+  editorStore.loadDocument(newContent)
+})
+
+// Sync editor store changes back to content
+watch(() => editorStore.document, () => {
+  if (editorStore.document) {
+    const serialized = editorStore.serialize()
+    if (serialized !== content.value) {
+      content.value = serialized
+    }
+  }
+}, { deep: true })
 
 async function save() {
   saving.value = true
@@ -69,6 +89,7 @@ async function save() {
     }
 
     await songsStore.saveSong(song)
+    editorStore.markAsSaved()
     router.push({ name: 'song-detail', params: { id: song.id } })
   } finally {
     saving.value = false
@@ -110,25 +131,12 @@ function autoAssignMeasuresToContent() {
 type EditMode = 'text' | 'visual'
 const editMode = ref<EditMode>('text')
 
-// Parse content to get grid sections for visual editor
-const parsedContent = computed(() => {
-  return parseChordPro(content.value)
-})
+// Use editor store for grid sections
+const gridSections = computed(() => editorStore.gridSections)
 
-const gridSections = computed(() => {
-  return parsedContent.value.sections
-    .map((section, index) => ({ section, index }))
-    .filter(({ section }) => section.content.kind === 'grid')
-})
-
-// Update a specific grid section and regenerate ChordPro
-function updateGridSection(sectionIndex: number, newGrid: GridSection) {
-  const parsed = parseChordPro(content.value)
-  const section = parsed.sections[sectionIndex]
-  if (section && section.content.kind === 'grid') {
-    section.content = newGrid
-    content.value = generateChordPro(parsed)
-  }
+// Update grid section through store
+function updateGridSection(sectionIndex: number) {
+  editorStore.selectSection(sectionIndex)
 }
 </script>
 
@@ -259,10 +267,10 @@ function updateGridSection(sectionIndex: number, newGrid: GridSection) {
             <div v-for="{ section, index } in gridSections" :key="index" class="grid-editor-wrapper">
               <div class="grid-section-label">{{ section.label || 'Grid ' + (index + 1) }}</div>
               <GridEditor
-                :model-value="section.content as GridSection"
+                :model-value="(section.content as GridSection)"
                 :beats-per-measure="getBeatsPerMeasure()"
                 :lyrics-hints="(section.content as GridSection).lyricsHints"
-                @update:model-value="(newGrid) => updateGridSection(index, newGrid)"
+                @update:model-value="() => updateGridSection(index)"
               />
             </div>
           </div>
