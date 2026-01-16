@@ -307,8 +307,52 @@ export function flattenRows(rows: GridRow[]): GridCell[] {
 }
 
 /**
- * Convert flat cells back to a single row
+ * Convert flat cells back to rows, preserving row structure
+ * Splits into rows at bar lines, with a maximum of 4 measures per row
  */
-export function cellsToRows(cells: GridCell[]): GridRow[] {
-	return [{ cells }]
+export function cellsToRows(cells: GridCell[], measuresPerRow: number = 4): GridRow[] {
+	if (cells.length === 0) return []
+
+	const rows: GridRow[] = []
+	let currentRowCells: GridCell[] = []
+	let measureCount = 0
+	let hasSeenNonBarSinceLastBar = false
+	let hasSeenFirstBar = false
+
+	for (let i = 0; i < cells.length; i++) {
+		const cell = cells[i]
+		if (!cell) continue
+
+		const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
+			cell.type === 'barEnd' || cell.type === 'repeatStart' ||
+			cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
+
+		if (isBar) {
+			if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+				measureCount++
+			}
+			hasSeenFirstBar = true
+			hasSeenNonBarSinceLastBar = false
+
+			currentRowCells.push(cell)
+
+			// If we've reached measuresPerRow, start a new row
+			if (measureCount >= measuresPerRow && measureCount > 0) {
+				rows.push({ cells: currentRowCells })
+				currentRowCells = []
+				measureCount = 0
+				hasSeenFirstBar = false  // Reset for new row
+			}
+		} else {
+			hasSeenNonBarSinceLastBar = true
+			currentRowCells.push(cell)
+		}
+	}
+
+	// Add remaining cells as last row
+	if (currentRowCells.length > 0) {
+		rows.push({ cells: currentRowCells })
+	}
+
+	return rows
 }
