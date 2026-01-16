@@ -6,6 +6,7 @@ import type {
 	LyricsSegment,
 	LyricsSection,
 	GridSection,
+	GridPart,
 	TabSection,
 	GridRow,
 	GridCell
@@ -30,6 +31,9 @@ export function parseChordPro(content: string): ParsedSong {
 	let inTab = false
 	let gridShape: string | undefined
 	let gridRows: GridRow[] = []
+	let gridParts: GridPart[] = []
+	let currentPartName: string | undefined
+	let currentPartRows: GridRow[] = []
 	let tabLines: string[] = []
 	let lyricsLines: LyricsLine[] = []
 	let currentLabel: string | undefined
@@ -90,6 +94,9 @@ export function parseChordPro(content: string): ParsedSong {
 					inGrid = true
 					gridShape = extractShape(val)
 					gridRows = []
+					gridParts = []
+					currentPartName = undefined
+					currentPartRows = []
 				} else if (sectionType === 'tab') {
 					inTab = true
 					tabLines = []
@@ -109,10 +116,16 @@ export function parseChordPro(content: string): ParsedSong {
 			if (dir.startsWith('end_of_') || dir.startsWith('eo')) {
 				if (currentSection) {
 					if (inGrid) {
+						// Flush any remaining part
+						if (currentPartName && currentPartRows.length > 0) {
+							gridParts.push({ name: currentPartName, rows: currentPartRows })
+						}
+
 						currentSection.content = {
 							kind: 'grid',
 							shape: gridShape,
-							rows: gridRows
+							parts: gridParts.length > 0 ? gridParts : undefined,
+							rows: gridParts.length > 0 ? [] : gridRows
 						} as GridSection
 						inGrid = false
 					} else if (inTab) {
@@ -133,6 +146,21 @@ export function parseChordPro(content: string): ParsedSong {
 				continue
 			}
 
+			// {part: ...} directive for grid section parts
+			if (dir === 'part' && inGrid) {
+				// Flush previous part if any
+				if (currentPartName && currentPartRows.length > 0) {
+					gridParts.push({ name: currentPartName, rows: currentPartRows })
+				} else if (!currentPartName && gridRows.length > 0) {
+					// Move any rows before the first {part} into a default part
+					gridParts.push({ name: 'Intro', rows: gridRows })
+					gridRows = []
+				}
+				currentPartName = val || 'Part'
+				currentPartRows = []
+				continue
+			}
+
 			// Other directives (comments, etc.) - skip for now
 			continue
 		}
@@ -141,7 +169,11 @@ export function parseChordPro(content: string): ParsedSong {
 		if (inGrid) {
 			const row = parseGridRow(trimmed)
 			if (row.cells.length > 0) {
-				gridRows.push(row)
+				if (currentPartName) {
+					currentPartRows.push(row)
+				} else {
+					gridRows.push(row)
+				}
 			}
 		} else if (inTab) {
 			tabLines.push(line)
@@ -457,8 +489,20 @@ export function generateChordPro(song: ParsedSong): string {
 		if (section.content.kind === 'grid') {
 			const shapePart = section.content.shape ? ` shape="${section.content.shape}"` : ''
 			lines.push(`{start_of_grid${labelPart}${shapePart}}`)
-			for (const row of section.content.rows) {
-				lines.push(row.cells.map(cellToString).join(' '))
+
+			// Output parts if available
+			if (section.content.parts && section.content.parts.length > 0) {
+				for (const part of section.content.parts) {
+					lines.push(`{part: ${part.name}}`)
+					for (const row of part.rows) {
+						lines.push(row.cells.map(cellToString).join(' '))
+					}
+				}
+			} else {
+				// Fallback to rows
+				for (const row of section.content.rows) {
+					lines.push(row.cells.map(cellToString).join(' '))
+				}
 			}
 			lines.push(`{end_of_grid}`)
 		} else if (section.content.kind === 'tab') {

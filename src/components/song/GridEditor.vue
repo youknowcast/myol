@@ -29,6 +29,28 @@ interface EditableCell {
 
 const containerRef = ref<HTMLElement | null>(null)
 
+// Selected measure index for operations
+const selectedMeasureIndex = ref<number | null>(null)
+
+// Check if using parts mode
+const hasParts = computed(() => {
+  return props.modelValue.parts && props.modelValue.parts.length > 0
+})
+
+// Get all rows (from parts or direct rows) - reserved for part editing feature
+const _allRows = computed(() => {
+  if (hasParts.value && props.modelValue.parts) {
+    return props.modelValue.parts.flatMap(p => p.rows)
+  }
+  return props.modelValue.rows
+})
+
+// Selected part index for operations - reserved for part editing feature
+const _selectedPartIndex = ref<number | null>(null)
+// Suppress unused warnings
+void _allRows
+void _selectedPartIndex
+
 // Create a flat array of editable cells (chords only, bars are visual separators)
 const editableCells = computed(() => {
   const cells: EditableCell[] = []
@@ -156,6 +178,188 @@ function rebuildGrid(measureIndex: number, newOrder: string[]) {
   })
 }
 
+// Select a measure
+function selectMeasure(index: number) {
+  selectedMeasureIndex.value = selectedMeasureIndex.value === index ? null : index
+}
+
+// Create empty measure cells based on beats per measure
+function createEmptyMeasure(): GridCell[] {
+  const cells: GridCell[] = []
+  for (let i = 0; i < props.beatsPerMeasure; i++) {
+    cells.push({ type: 'empty' })
+  }
+  return cells
+}
+
+// Get all cells as a flat array
+function getAllCells(): GridCell[] {
+  const allCells: GridCell[] = []
+  props.modelValue.rows.forEach(row => {
+    row.cells.forEach(cell => {
+      allCells.push({ ...cell })
+    })
+  })
+  return allCells
+}
+
+// Find cell indices for a measure
+function getMeasureCellRange(measureIndex: number): { start: number; end: number } | null {
+  const allCells = getAllCells()
+  let measureCount = 0
+  let start = 0
+
+  for (let i = 0; i < allCells.length; i++) {
+    const cell = allCells[i]!
+    const isBar = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'].includes(cell.type)
+
+    if (isBar) {
+      if (measureCount === measureIndex) {
+        return { start, end: i - 1 }
+      }
+      measureCount++
+      start = i + 1
+    }
+  }
+
+  // Last measure
+  if (measureCount === measureIndex) {
+    return { start, end: allCells.length - 1 }
+  }
+
+  return null
+}
+
+// Add a new measure at position
+function addMeasure(position: 'end' | 'before' | 'after') {
+  const allCells = getAllCells()
+  const newMeasureCells = createEmptyMeasure()
+  let insertIndex: number
+
+  if (position === 'end') {
+    // Find the last barDouble position and insert before it
+    const lastBarIndex = allCells.length - 1
+    insertIndex = lastBarIndex
+  } else if (selectedMeasureIndex.value !== null) {
+    const range = getMeasureCellRange(selectedMeasureIndex.value)
+    if (!range) return
+    insertIndex = position === 'before' ? range.start : range.end + 2 // +2 to skip the bar
+  } else {
+    // No selection, add at end
+    const lastBarIndex = allCells.length - 1
+    insertIndex = lastBarIndex
+  }
+
+  // Insert bar + new cells
+  const newCells = [
+    ...allCells.slice(0, insertIndex),
+    { type: 'bar' as const },
+    ...newMeasureCells,
+    ...allCells.slice(insertIndex)
+  ]
+
+  emit('update:modelValue', {
+    ...props.modelValue,
+    rows: [{ cells: newCells }]
+  })
+}
+
+// Copy selected measure
+function copyMeasure() {
+  if (selectedMeasureIndex.value === null) return
+
+  const range = getMeasureCellRange(selectedMeasureIndex.value)
+  if (!range) return
+
+  const allCells = getAllCells()
+  const measureCells = allCells.slice(range.start, range.end + 1).map(c => ({ ...c }))
+
+  // Find end position (before last barDouble)
+  const insertIndex = allCells.length - 1
+
+  const newCells = [
+    ...allCells.slice(0, insertIndex),
+    { type: 'bar' as const },
+    ...measureCells,
+    ...allCells.slice(insertIndex)
+  ]
+
+  emit('update:modelValue', {
+    ...props.modelValue,
+    rows: [{ cells: newCells }]
+  })
+}
+
+// Delete selected measure
+function deleteMeasure() {
+  if (selectedMeasureIndex.value === null) return
+  if (measures.value.length <= 1) return // Don't delete last measure
+
+  const range = getMeasureCellRange(selectedMeasureIndex.value)
+  if (!range) return
+
+  const allCells = getAllCells()
+
+  // Remove cells including the following bar
+  let endIndex = range.end + 1
+  if (endIndex < allCells.length && allCells[endIndex]?.type === 'bar') {
+    endIndex++
+  }
+
+  const newCells = [
+    ...allCells.slice(0, range.start),
+    ...allCells.slice(endIndex)
+  ]
+
+  // Reset selection
+  selectedMeasureIndex.value = null
+
+  emit('update:modelValue', {
+    ...props.modelValue,
+    rows: [{ cells: newCells }]
+  })
+}
+
+// Swap selected measure with adjacent
+function swapMeasure(direction: 'left' | 'right') {
+  if (selectedMeasureIndex.value === null) return
+
+  const currentIdx = selectedMeasureIndex.value
+  const targetIdx = direction === 'left' ? currentIdx - 1 : currentIdx + 1
+
+  if (targetIdx < 0 || targetIdx >= measures.value.length) return
+
+  const currentRange = getMeasureCellRange(currentIdx)
+  const targetRange = getMeasureCellRange(targetIdx)
+  if (!currentRange || !targetRange) return
+
+  const allCells = getAllCells()
+  const currentCells = allCells.slice(currentRange.start, currentRange.end + 1)
+  const targetCells = allCells.slice(targetRange.start, targetRange.end + 1)
+
+  // Swap cells in place
+  const newCells = [...allCells]
+
+  // Replace current with target
+  newCells.splice(currentRange.start, currentCells.length, ...targetCells)
+
+  // Adjust target range after first splice
+  const sizeDiff = targetCells.length - currentCells.length
+  const adjustedTargetStart = direction === 'left'
+    ? targetRange.start
+    : targetRange.start + sizeDiff
+
+  newCells.splice(adjustedTargetStart, targetCells.length, ...currentCells)
+
+  // Update selection to follow the swapped measure
+  selectedMeasureIndex.value = targetIdx
+
+  emit('update:modelValue', {
+    ...props.modelValue,
+    rows: [{ cells: newCells }]
+  })
+}
+
 function initSortable() {
   if (!containerRef.value) return
 
@@ -201,7 +405,62 @@ onUnmounted(() => {
   <div ref="containerRef" class="grid-editor">
     <div class="editor-header">
       <span class="editor-title">🎵 小節編集</span>
-      <span class="editor-hint">ドラッグで順序変更</span>
+      <div class="editor-toolbar">
+        <button
+          class="toolbar-btn"
+          @click="addMeasure('end')"
+          title="末尾に小節を追加"
+        >
+          ➕ 追加
+        </button>
+        <template v-if="selectedMeasureIndex !== null">
+          <button
+            class="toolbar-btn"
+            @click="addMeasure('before')"
+            title="前に挿入"
+          >
+            ⬅ 前に
+          </button>
+          <button
+            class="toolbar-btn"
+            @click="addMeasure('after')"
+            title="後に挿入"
+          >
+            後に ➡
+          </button>
+          <button
+            class="toolbar-btn"
+            @click="copyMeasure"
+            title="コピー"
+          >
+            📋 コピー
+          </button>
+          <button
+            class="toolbar-btn"
+            @click="swapMeasure('left')"
+            :disabled="selectedMeasureIndex === 0"
+            title="左へ移動"
+          >
+            ⬅
+          </button>
+          <button
+            class="toolbar-btn"
+            @click="swapMeasure('right')"
+            :disabled="selectedMeasureIndex === measures.length - 1"
+            title="右へ移動"
+          >
+            ➡
+          </button>
+          <button
+            class="toolbar-btn toolbar-btn-danger"
+            @click="deleteMeasure"
+            :disabled="measures.length <= 1"
+            title="削除"
+          >
+            🗑
+          </button>
+        </template>
+      </div>
     </div>
 
     <div class="measures-container">
@@ -209,22 +468,33 @@ onUnmounted(() => {
         <!-- Bar line (left) -->
         <div class="bar-line" v-if="measureIndex === 0">║</div>
 
-        <!-- Measure cells (sortable) -->
-        <div class="measure-cells">
-          <div
-            v-for="cell in measure.cells"
-            :key="cell.id"
-            :data-id="cell.id"
-            class="editable-cell"
-            :class="getCellClass(cell)"
-          >
-            {{ getCellDisplay(cell) }}
+        <!-- Measure wrapper (clickable for selection) -->
+        <div
+          class="measure-wrapper"
+          :class="{ selected: selectedMeasureIndex === measureIndex }"
+          @click.self="selectMeasure(measureIndex)"
+        >
+          <!-- Measure cells (sortable) -->
+          <div class="measure-cells" @click="selectMeasure(measureIndex)">
+            <div
+              v-for="cell in measure.cells"
+              :key="cell.id"
+              :data-id="cell.id"
+              class="editable-cell"
+              :class="getCellClass(cell)"
+            >
+              {{ getCellDisplay(cell) }}
+            </div>
           </div>
         </div>
 
         <!-- Bar line (right) -->
         <div class="bar-line">{{ measureIndex === measures.length - 1 ? '║' : '│' }}</div>
       </template>
+    </div>
+
+    <div class="editor-hint">
+      クリックで小節を選択 ・ ドラッグでコード並び替え
     </div>
   </div>
 </template>
@@ -267,6 +537,64 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 1.2rem;
   padding: 0 2px;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.toolbar-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn-danger:hover:not(:disabled) {
+  background: var(--color-error, #ef4444);
+  border-color: var(--color-error, #ef4444);
+}
+
+.measure-wrapper {
+  position: relative;
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  transition: all var(--transition-fast);
+}
+
+.measure-wrapper:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.measure-wrapper.selected {
+  background: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.editor-hint {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-sm);
+  text-align: center;
 }
 
 .measure-cells {
