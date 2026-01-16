@@ -16,6 +16,7 @@ import {
 interface Props {
   modelValue: GridSection
   beatsPerMeasure?: number
+  lyricsHints?: string[]  // 各小節に対応する歌詞（表示のみ）
 }
 
 interface Emits {
@@ -23,7 +24,8 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  beatsPerMeasure: 4
+  beatsPerMeasure: 4,
+  lyricsHints: () => []
 })
 
 const emit = defineEmits<Emits>()
@@ -271,6 +273,14 @@ onUnmounted(() => {
               {{ getCellDisplay(cell) }}
             </div>
           </div>
+          <!-- Lyrics hint (non-editable) -->
+          <div
+            v-if="lyricsHints && lyricsHints[measureIndex]"
+            class="lyrics-hint"
+            :title="lyricsHints[measureIndex]"
+          >
+            {{ lyricsHints[measureIndex] }}
+          </div>
         </div>
 
         <!-- Bar line (right) -->
@@ -440,5 +450,18 @@ onUnmounted(() => {
     min-width: 3.5rem;
     font-size: 1rem;
   }
+}
+
+.lyrics-hint {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 2px var(--spacing-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  opacity: 0.8;
+  margin-top: 2px;
 }
 </style>
