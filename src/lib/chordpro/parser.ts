@@ -32,6 +32,7 @@ export function parseChordPro(content: string): ParsedSong {
 	let gridShape: string | undefined
 	let gridRows: GridRow[] = []
 	let gridParts: GridPart[] = []
+	let gridLyricsHints: string[] = []
 	let currentPartName: string | undefined
 	let currentPartRows: GridRow[] = []
 	let tabLines: string[] = []
@@ -95,6 +96,7 @@ export function parseChordPro(content: string): ParsedSong {
 					gridShape = extractShape(val)
 					gridRows = []
 					gridParts = []
+					gridLyricsHints = []
 					currentPartName = undefined
 					currentPartRows = []
 				} else if (sectionType === 'tab') {
@@ -125,7 +127,8 @@ export function parseChordPro(content: string): ParsedSong {
 							kind: 'grid',
 							shape: gridShape,
 							parts: gridParts.length > 0 ? gridParts : undefined,
-							rows: gridParts.length > 0 ? [] : gridRows
+							rows: gridParts.length > 0 ? [] : gridRows,
+							lyricsHints: gridLyricsHints.length > 0 ? gridLyricsHints : undefined
 						} as GridSection
 						inGrid = false
 					} else if (inTab) {
@@ -158,6 +161,12 @@ export function parseChordPro(content: string): ParsedSong {
 				}
 				currentPartName = val || 'Part'
 				currentPartRows = []
+				continue
+			}
+
+			// {lyrics_hint: ...} directive for grid section lyrics
+			if (dir === 'lyrics_hint' && inGrid && val) {
+				gridLyricsHints.push(val)
 				continue
 			}
 
@@ -526,6 +535,12 @@ export function generateChordPro(song: ParsedSong): string {
 				// Fallback to rows
 				for (const row of section.content.rows) {
 					lines.push(row.cells.map(cellToString).join(' '))
+				}
+			}
+			// Output lyrics hints if available
+			if (section.content.lyricsHints && section.content.lyricsHints.length > 0) {
+				for (const hint of section.content.lyricsHints) {
+					lines.push(`{lyrics_hint: ${hint}}`)
 				}
 			}
 			lines.push(`{end_of_grid}`)
