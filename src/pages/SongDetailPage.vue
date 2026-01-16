@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
+import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { parseChordPro } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
@@ -14,6 +15,7 @@ import SpeedControl from '@/components/player/SpeedControl.vue'
 const route = useRoute()
 const router = useRouter()
 const songsStore = useSongsStore()
+const editorStore = useChordProEditorStore()
 
 const songId = computed(() => route.params.id as string)
 const song = computed(() => songsStore.currentSong)
@@ -29,43 +31,15 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
-// Count total measures in the song (Grid sections only, lyricsHints don't affect duration)
-// Uses same logic as GridView's measureIndex to stay in sync
-const totalMeasures = computed(() => {
-  if (!parsedSong.value) return 0
-  let count = 0
-  for (const section of parsedSong.value.sections) {
-    if (section.content.kind === 'grid') {
-      const grid = section.content as GridSection
-      let hasSeenFirstBar = false
-      let hasSeenNonBarSinceLastBar = false
-
-      for (const row of grid.rows) {
-        for (const cell of row.cells) {
-          const isBar = cell.type === 'bar' || cell.type === 'barDouble' || cell.type === 'barEnd' ||
-              cell.type === 'repeatStart' || cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
-
-          if (isBar) {
-            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-              count++
-            }
-            hasSeenFirstBar = true
-            hasSeenNonBarSinceLastBar = false
-          } else {
-            hasSeenNonBarSinceLastBar = true
-          }
-        }
-      }
-      // Count the last measure (after last bar but with content)
-      if (hasSeenFirstBar) {
-        count++
-      }
-    }
-    // Note: Lyrics sections are not counted for duration
-    // They should be converted to Grid sections via autoAssignMeasures
+// Load song content into editor store and get totalMeasures from there
+watch(song, (newSong) => {
+  if (newSong) {
+    editorStore.loadDocument(newSong.content)
   }
-  return Math.max(count, 1)
-})
+}, { immediate: true })
+
+// Total measures from store (centralized logic)
+const totalMeasures = computed(() => editorStore.totalMeasures)
 
 // View mode
 type ViewMode = 'lyrics' | 'grid' | 'mixed'

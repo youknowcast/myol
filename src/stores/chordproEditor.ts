@@ -144,6 +144,41 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		return extractMeasuresFromGrid(grid)
 	})
 
+	// Total measures across all grid sections (for playback)
+	const totalMeasures = computed(() => {
+		if (!document.value) return 1
+		let count = 0
+
+		for (const section of document.value.sections) {
+			if (section.content.kind === 'grid') {
+				const grid = section.content as GridSection
+				let hasSeenFirstBar = false
+				let hasSeenNonBarSinceLastBar = false
+
+				for (const row of grid.rows) {
+					for (const cell of row.cells) {
+						const isBar = BAR_TYPES.includes(cell.type as typeof BAR_TYPES[number])
+
+						if (isBar) {
+							if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+								count++
+							}
+							hasSeenFirstBar = true
+							hasSeenNonBarSinceLastBar = false
+						} else {
+							hasSeenNonBarSinceLastBar = true
+						}
+					}
+				}
+				// Count the last measure
+				if (hasSeenFirstBar) {
+					count++
+				}
+			}
+		}
+		return Math.max(count, 1)
+	})
+
 	const isDirty = computed(() => {
 		if (!document.value) return false
 		return generateChordPro(document.value) !== originalContent.value
@@ -294,6 +329,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		currentSection,
 		currentGridSection,
 		currentMeasures,
+		totalMeasures,
 		isDirty,
 
 		// Actions
