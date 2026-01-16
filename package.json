@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "pinia": "^3.0.4",
@@ -22,6 +24,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.17",
     "vue-tsc": "^3.1.4"
   }
 }
