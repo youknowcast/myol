@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { parseChordPro, autoAssignMeasures, generateChordPro } from '@/lib/chordpro/parser'
+import type { GridSection } from '@/lib/chordpro/types'
+import GridEditor from '@/components/song/GridEditor.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -103,6 +105,31 @@ function autoAssignMeasuresToContent() {
   // Update content with new ChordPro
   content.value = generateChordPro(processed)
 }
+
+// Edit mode: 'text' or 'visual'
+type EditMode = 'text' | 'visual'
+const editMode = ref<EditMode>('text')
+
+// Parse content to get grid sections for visual editor
+const parsedContent = computed(() => {
+  return parseChordPro(content.value)
+})
+
+const gridSections = computed(() => {
+  return parsedContent.value.sections
+    .map((section, index) => ({ section, index }))
+    .filter(({ section }) => section.content.kind === 'grid')
+})
+
+// Update a specific grid section and regenerate ChordPro
+function updateGridSection(sectionIndex: number, newGrid: GridSection) {
+  const parsed = parseChordPro(content.value)
+  const section = parsed.sections[sectionIndex]
+  if (section && section.content.kind === 'grid') {
+    section.content = newGrid
+    content.value = generateChordPro(parsed)
+  }
+}
 </script>
 
 <template>
@@ -196,6 +223,24 @@ function autoAssignMeasuresToContent() {
         <div class="form-group form-group-full">
           <div class="form-label-row">
             <label for="content">ChordPro</label>
+            <div class="edit-mode-toggle">
+              <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: editMode === 'text' }"
+                @click="editMode = 'text'"
+              >
+                テキスト
+              </button>
+              <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: editMode === 'visual' }"
+                @click="editMode = 'visual'"
+              >
+                ビジュアル
+              </button>
+            </div>
             <button
               type="button"
               class="btn btn-secondary btn-sm"
@@ -205,7 +250,25 @@ function autoAssignMeasuresToContent() {
               🎵 小節を自動割り振り
             </button>
           </div>
+
+          <!-- Visual Editor -->
+          <div v-if="editMode === 'visual'" class="visual-editor">
+            <div v-if="gridSections.length === 0" class="no-grids-message">
+              Gridセクションがありません。「小節を自動割り振り」を使ってコードをGridに変換してください。
+            </div>
+            <div v-for="{ section, index } in gridSections" :key="index" class="grid-editor-wrapper">
+              <div class="grid-section-label">{{ section.label || 'Grid ' + (index + 1) }}</div>
+              <GridEditor
+                :model-value="section.content as GridSection"
+                :beats-per-measure="getBeatsPerMeasure()"
+                @update:model-value="(newGrid) => updateGridSection(index, newGrid)"
+              />
+            </div>
+          </div>
+
+          <!-- Text Editor -->
           <textarea
+            v-show="editMode === 'text'"
             id="content"
             v-model="content"
             class="form-textarea"
@@ -326,9 +389,66 @@ function autoAssignMeasuresToContent() {
   font-size: 0.75rem;
 }
 
+.edit-mode-toggle {
+  display: flex;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.mode-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.mode-btn:hover:not(.active) {
+  background: var(--color-bg-secondary);
+}
+
+.visual-editor {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  min-height: 300px;
+}
+
+.no-grids-message {
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.grid-editor-wrapper {
+  margin-bottom: var(--spacing-md);
+}
+
+.grid-section-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-xs);
+}
+
 @media (min-width: 768px) {
   .form-textarea {
     min-height: 500px;
+  }
+
+  .visual-editor {
+    min-height: 400px;
   }
 }
 </style>
