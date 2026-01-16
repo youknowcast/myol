@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -14,6 +14,18 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const gridContent = props.section.content as GridSection
+const gridRef = ref<HTMLElement | null>(null)
+
+// Auto-scroll to current measure when it changes
+watch(() => props.currentMeasure, async () => {
+  await nextTick()
+  if (!gridRef.value) return
+
+  const currentCell = gridRef.value.querySelector('.current-measure')
+  if (currentCell) {
+    currentCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+  }
+})
 
 // Track measure index for each cell
 interface CellWithMeasure {
@@ -24,7 +36,10 @@ interface CellWithMeasure {
 }
 
 const cellsWithMeasures = computed(() => {
+  // measureIndex starts at 0, increments BEFORE each bar (except the first opening bar)
+  // This matches how totalMeasures counts bars
   let measureIndex = 0
+  let hasSeenFirstBar = false
   const result: CellWithMeasure[][] = []
 
   for (const row of gridContent.rows) {
@@ -36,14 +51,17 @@ const cellsWithMeasures = computed(() => {
                     cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
 
       if (isBar) {
-        // Bar itself belongs to current measure
+        if (hasSeenFirstBar) {
+          // This bar ends the current measure
+          measureIndex++
+        }
+        hasSeenFirstBar = true
+
         rowCells.push({
           ...cell,
           measureIndex: measureIndex,
           isCurrentMeasure: measureIndex === props.currentMeasure
         })
-        // Next non-bar cell starts a new measure
-        measureIndex++
       } else {
         rowCells.push({
           ...cell,
@@ -106,7 +124,7 @@ function getCellDisplay(cell: CellWithMeasure): string {
 </script>
 
 <template>
-  <div class="grid-section">
+  <div ref="gridRef" class="grid-section">
     <div v-if="section.label" class="section-label">{{ section.label }}</div>
 
     <div class="chord-grid">
