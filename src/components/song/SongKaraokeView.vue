@@ -189,7 +189,7 @@ function getCellDisplay(cell: GridCell): string {
                   {{ getCellDisplay(cell) }}
                 </span>
               </div>
-              <div v-if="row.content.hint && viewMode === 'lyrics'" class="grid-hint">
+              <div v-if="row.content.hint" class="grid-hint">
                 {{ row.content.hint }}
               </div>
             </div>
@@ -274,7 +274,7 @@ function getCellDisplay(cell: GridCell): string {
 }
 
 .karaoke-row:not(.is-active) {
-  opacity: 0.4;
+  opacity: 0.8;
 }
 
 .is-active {

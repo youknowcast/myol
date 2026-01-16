@@ -333,6 +333,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-sm);
+  position: sticky;
+  top: -16px; /* Adjust based on padding */
+  background: var(--color-bg-secondary);
+  padding: var(--spacing-sm) 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .editor-title {

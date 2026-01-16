@@ -201,7 +201,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		selectedMeasureIndex.value = index
 	}
 
-	function addMeasure(position: 'end' | 'before' | 'after', beatsPerMeasure = 4) {
+	function addMeasure(position: 'end' | 'before' | 'after') {
 		if (selectedSectionIndex.value === null || !document.value) return
 
 		const section = document.value.sections[selectedSectionIndex.value]
@@ -213,7 +213,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 			: extractMeasuresFromGrid(grid)
 
 		const newMeasure: Measure = {
-			cells: Array(beatsPerMeasure).fill(null).map(() => ({ type: 'empty' as const })),
+			cells: [{ type: 'empty' as const }],
 			lyricsHint: undefined
 		}
 
@@ -306,6 +306,11 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		section.content = updated
 	}
 
+	function updateSectionContent(index: number, content: GridSection) {
+		if (!document.value || !document.value.sections[index]) return
+		document.value.sections[index]!.content = content
+	}
+
 	function serialize(): string {
 		if (!document.value) return originalContent.value
 		return generateChordPro(document.value)
@@ -340,6 +345,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		deleteMeasure,
 		updateMeasureCells,
 		swapMeasures,
+		updateSectionContent,
 		serialize,
 		markAsSaved
 	}

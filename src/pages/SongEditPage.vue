@@ -145,8 +145,8 @@ const editMode = ref<EditMode>('text')
 const gridSections = computed(() => editorStore.gridSections)
 
 // Update grid section through store
-function updateGridSection(sectionIndex: number) {
-  editorStore.selectSection(sectionIndex)
+function updateGridSection(sectionIndex: number, newContent: GridSection) {
+  editorStore.updateSectionContent(sectionIndex, newContent)
 }
 </script>
 
@@ -280,7 +280,7 @@ function updateGridSection(sectionIndex: number) {
                 :model-value="(section.content as GridSection)"
                 :beats-per-measure="getBeatsPerMeasure()"
                 :lyrics-hints="(section.content as GridSection).lyricsHints"
-                @update:model-value="() => updateGridSection(index)"
+                @update:model-value="(val) => updateGridSection(index, val)"
               />
             </div>
           </div>

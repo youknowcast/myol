@@ -83,12 +83,8 @@ export function getMeasureCellRange(cells: GridCell[], measureIndex: number): Ce
 /**
  * Create empty measure cells
  */
-export function createEmptyMeasure(beatsPerMeasure: number): GridCell[] {
-	const cells: GridCell[] = []
-	for (let i = 0; i < beatsPerMeasure; i++) {
-		cells.push({ type: 'empty' })
-	}
-	return cells
+export function createEmptyMeasure(_beatsPerMeasure: number = 1): GridCell[] {
+	return [{ type: 'empty' }]
 }
 
 /**
