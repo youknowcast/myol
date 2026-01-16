@@ -36,10 +36,11 @@ interface CellWithMeasure {
 }
 
 const cellsWithMeasures = computed(() => {
-  // measureIndex starts at 0, increments BEFORE each bar (except the first opening bar)
-  // This matches how totalMeasures counts bars
+  // measureIndex increments only when we see a bar AFTER seeing non-bar content
+  // This prevents double-increment at row boundaries (|| ... || || ... ||)
   let measureIndex = 0
   let hasSeenFirstBar = false
+  let hasSeenNonBarSinceLastBar = false
   const result: CellWithMeasure[][] = []
 
   for (const row of gridContent.rows) {
@@ -51,11 +52,12 @@ const cellsWithMeasures = computed(() => {
                     cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
 
       if (isBar) {
-        if (hasSeenFirstBar) {
-          // This bar ends the current measure
+        if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+          // This bar ends the current measure (only if we had content)
           measureIndex++
         }
         hasSeenFirstBar = true
+        hasSeenNonBarSinceLastBar = false
 
         rowCells.push({
           ...cell,
@@ -63,6 +65,7 @@ const cellsWithMeasures = computed(() => {
           isCurrentMeasure: measureIndex === props.currentMeasure
         })
       } else {
+        hasSeenNonBarSinceLastBar = true
         rowCells.push({
           ...cell,
           measureIndex: measureIndex,

@@ -30,20 +30,35 @@ const uniqueChords = computed(() => {
 })
 
 // Count total measures in the song (Grid sections only, lyricsHints don't affect duration)
+// Uses same logic as GridView's measureIndex to stay in sync
 const totalMeasures = computed(() => {
   if (!parsedSong.value) return 0
   let count = 0
   for (const section of parsedSong.value.sections) {
     if (section.content.kind === 'grid') {
       const grid = section.content as GridSection
+      let hasSeenFirstBar = false
+      let hasSeenNonBarSinceLastBar = false
+
       for (const row of grid.rows) {
-        // Count bar lines to estimate measures
         for (const cell of row.cells) {
-          if (cell.type === 'bar' || cell.type === 'barDouble' || cell.type === 'barEnd' ||
-              cell.type === 'repeatStart' || cell.type === 'repeatEnd' || cell.type === 'repeatBoth') {
-            count++
+          const isBar = cell.type === 'bar' || cell.type === 'barDouble' || cell.type === 'barEnd' ||
+              cell.type === 'repeatStart' || cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
+
+          if (isBar) {
+            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+              count++
+            }
+            hasSeenFirstBar = true
+            hasSeenNonBarSinceLastBar = false
+          } else {
+            hasSeenNonBarSinceLastBar = true
           }
         }
+      }
+      // Count the last measure (after last bar but with content)
+      if (hasSeenFirstBar) {
+        count++
       }
     }
     // Note: Lyrics sections are not counted for duration
