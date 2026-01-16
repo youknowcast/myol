@@ -17,16 +17,32 @@ const props = withDefaults(defineProps<Props>(), {
 
 const gridContent = props.section.content as GridSection
 const gridRef = ref<HTMLElement | null>(null)
+const rowHeight = 72 // Matches .grid-row-group height in CSS
 
-// Auto-scroll to current measure when it changes
-watch(() => props.currentMeasure, async () => {
-  await nextTick()
-  if (!gridRef.value) return
-
-  const currentCell = gridRef.value.querySelector('.current-measure')
-  if (currentCell) {
-    currentCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+// Find which row contains the current measure
+const currentRowIndex = computed(() => {
+  for (let rowIdx = 0; rowIdx < cellsWithMeasures.value.length; rowIdx++) {
+    const row = cellsWithMeasures.value[rowIdx]
+    if (row?.some(cell => cell.isCurrentMeasure)) {
+      return rowIdx
+    }
   }
+  return 0
+})
+
+// Calculate transform to center the current row
+const contentTransform = computed(() => {
+  if (!props.isPlaying) return 'translateY(0)'
+
+  const totalRows = cellsWithMeasures.value.length
+  if (totalRows === 0) return 'translateY(0)'
+
+  // Calculate offset: negative to move content up, centering current row
+  // Each row has ~80px height, we want current row at 30% from top
+  const centerOffset = rowHeight * 1.5 // offset to place current row at visual center
+  const translateY = -(currentRowIndex.value * rowHeight) + centerOffset
+
+  return `translateY(${translateY}px)`
 })
 
 // Track measure index for each cell
@@ -134,35 +150,37 @@ function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
 </script>
 
 <template>
-  <div ref="gridRef" class="grid-section">
-    <div v-if="section.label" class="section-label">{{ section.label }}</div>
+  <div ref="gridRef" class="grid-section" :class="{ 'karaoke-mode': isPlaying }">
+    <div v-if="section.label && !isPlaying" class="section-label">{{ section.label }}</div>
 
-    <div class="chord-grid">
-      <!-- Each row contains chords and optional lyrics underneath -->
-      <div
-        v-for="(row, rowIndex) in cellsWithMeasures"
-        :key="rowIndex"
-        class="grid-row-group"
-      >
-        <!-- Chord row -->
-        <div class="grid-row">
-          <span
-            v-for="(cell, cellIndex) in row"
-            :key="cellIndex"
-            class="grid-cell"
-            :class="getCellClass(cell)"
-          >
-            {{ getCellDisplay(cell) }}
-          </span>
-        </div>
-
-        <!-- Lyrics row (if available for this row) -->
+    <div class="chord-grid-container">
+      <div class="chord-grid" :style="{ transform: contentTransform }">
+        <!-- Each row contains chords and optional lyrics underneath -->
         <div
-          v-if="gridContent.lyricsHints && gridContent.lyricsHints[rowIndex]"
-          class="grid-lyrics-row"
+          v-for="(row, rowIndex) in cellsWithMeasures"
+          :key="rowIndex"
+          class="grid-row-group"
           :class="{ 'has-current': rowHasCurrentMeasure(row) }"
         >
-          {{ gridContent.lyricsHints[rowIndex] }}
+          <!-- Chord row -->
+          <div class="grid-row">
+            <span
+              v-for="(cell, cellIndex) in row"
+              :key="cellIndex"
+              class="grid-cell"
+              :class="getCellClass(cell)"
+            >
+              {{ getCellDisplay(cell) }}
+            </span>
+          </div>
+
+          <!-- Lyrics row (if available for this row) -->
+          <div
+            v-if="gridContent.lyricsHints && gridContent.lyricsHints[rowIndex]"
+            class="grid-lyrics-row"
+          >
+            {{ gridContent.lyricsHints[rowIndex] }}
+          </div>
         </div>
       </div>
     </div>
@@ -182,16 +200,47 @@ function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
   margin-bottom: var(--spacing-sm);
 }
 
+.chord-grid-container {
+  position: relative;
+  overflow: hidden;
+  height: 400px; /* Show about 4-5 rows */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.karaoke-mode .chord-grid-container {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 20%,
+    black 80%,
+    transparent 100%
+  );
+}
+
 .chord-grid {
-  overflow-x: auto;
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+  padding: 20px;
+}
+
+.karaoke-mode .chord-grid {
+  /* This ensures we can always center the first and last rows */
+  padding-top: 160px; /* Half container height minus half row height */
+  padding-bottom: 240px;
 }
 
 .grid-row-group {
   margin-bottom: var(--spacing-md);
-  padding: var(--spacing-xs);
+  padding: var(--spacing-sm);
   border-radius: var(--radius-md);
   background: var(--color-bg-secondary);
   transition: all var(--transition-fast);
+  height: 72px; /* Fixed height to match rowHeight in script */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .grid-row {

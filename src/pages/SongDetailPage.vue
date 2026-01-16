@@ -8,6 +8,7 @@ import { usePlaybackState } from '@/composables/usePlaybackState'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
+import SongKaraokeView from '@/components/song/SongKaraokeView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
 import SpeedControl from '@/components/player/SpeedControl.vue'
 
@@ -106,7 +107,7 @@ const sectionMeasureOffsets = computed(() => {
 })
 
 // View mode
-type ViewMode = 'lyrics' | 'grid' | 'mixed'
+type ViewMode = 'lyrics' | 'grid'
 const viewMode = ref<ViewMode>('lyrics')
 
 // Playback state (using composable)
@@ -255,29 +256,23 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <div class="view-mode-toggle">
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'lyrics' }"
-            @click="viewMode = 'lyrics'"
-          >
-            歌詞
-          </button>
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'grid' }"
-            @click="viewMode = 'grid'"
-          >
-            Grid
-          </button>
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'mixed' }"
-            @click="viewMode = 'mixed'"
-          >
-            両方
-          </button>
-        </div>
+          <!-- View mode selector -->
+          <div class="view-selector">
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'lyrics' }"
+              @click="viewMode = 'lyrics'"
+            >
+              歌詞
+            </button>
+            <button
+              class="mode-btn"
+              :class="{ active: viewMode === 'grid' }"
+              @click="viewMode = 'grid'"
+            >
+              Grid
+            </button>
+          </div>
       </div>
 
       <!-- Main content -->
@@ -299,21 +294,32 @@ onUnmounted(() => {
             </div>
           </aside>
 
-          <!-- Song sections -->
-          <div class="song-sections">
+          <!-- Song sections (Unified Karaoke View when playing) -->
+          <div v-if="isPlaying" class="song-sections-karaoke">
+            <SongKaraokeView
+              v-if="parsedSong"
+              :song="parsedSong"
+              :currentMeasure="currentMeasure"
+              :isPlaying="isPlaying"
+              :viewMode="viewMode"
+            />
+          </div>
+
+          <!-- Song sections (Static View when stopped) -->
+          <div v-else class="song-sections">
             <template v-for="(section, index) in parsedSong.sections" :key="index">
               <!-- Grid sections -->
               <GridView
-                v-if="section.content.kind === 'grid' && (viewMode === 'grid' || viewMode === 'mixed')"
+                v-if="section.content.kind === 'grid' && viewMode === 'grid'"
                 :section="section"
                 :currentMeasure="currentMeasure"
                 :measureOffset="sectionMeasureOffsets[index] || 0"
-                :isPlaying="isPlaying"
+                :isPlaying="false"
               />
 
-              <!-- Grid section lyrics hints (shown in lyrics mode) -->
+              <!-- Grid section lyrics hints (shown in lyrics mode as well if needed, but per user request, Grid covers it) -->
               <div
-                v-if="section.content.kind === 'grid' && (viewMode === 'lyrics' || viewMode === 'mixed') && (section.content as GridSection).lyricsHints?.length"
+                v-if="section.content.kind === 'grid' && viewMode === 'lyrics' && (section.content as GridSection).lyricsHints?.length"
                 class="grid-lyrics-section"
               >
                 <div v-if="section.label" class="section-label">{{ section.label }}</div>
@@ -329,13 +335,14 @@ onUnmounted(() => {
 
               <!-- Lyrics sections -->
               <LyricsView
-                v-if="section.content.kind === 'lyrics' && (viewMode === 'lyrics' || viewMode === 'mixed')"
+                v-if="section.content.kind === 'lyrics' && viewMode === 'lyrics'"
                 :section="section"
                 :currentMeasure="currentMeasure"
-                :isPlaying="isPlaying"
+                :measureOffset="sectionMeasureOffsets[index] || 0"
+                :isPlaying="false"
               />
 
-              <!-- Tab sections -->
+              <!-- Tab sections (already handles tab mode separately) -->
               <div
                 v-if="section.content.kind === 'tab'"
                 class="tab-section"

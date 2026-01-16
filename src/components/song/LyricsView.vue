@@ -5,29 +5,48 @@ import type { Section, LyricsSection } from '@/lib/chordpro/types'
 interface Props {
   section: Section
   currentMeasure?: number
+  measureOffset?: number
   isPlaying?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   currentMeasure: 0,
+  measureOffset: 0,
   isPlaying: false
 })
 
 const lyricsContent = props.section.content as LyricsSection
+const rowHeight = 60 // Estimated line height for lyrics
 
 // Track which line corresponds to current measure
 const currentLineIndex = computed(() => {
   if (lyricsContent.lines.length === 0) return -1
-  // Simple mapping: each line ≈ 1 measure
-  return props.currentMeasure % lyricsContent.lines.length
+  // Local measure index within this section
+  const localMeasure = props.currentMeasure - props.measureOffset
+  if (localMeasure < 0) return -1
+
+  // Simple mapping: each line ≈ 1 measure for lyrics sections
+  // In a more complex parser, this mapping would be provided in the data
+  return localMeasure % lyricsContent.lines.length
+})
+
+// Calculate transform to center the current row
+const contentTransform = computed(() => {
+  if (!props.isPlaying || currentLineIndex.value === -1) return 'translateY(0)'
+
+  const centerOffset = rowHeight * 1.5
+  const translateY = -(currentLineIndex.value * rowHeight) + centerOffset
+
+  return `translateY(${translateY}px)`
 })
 </script>
 
 <template>
-  <div class="lyrics-section">
-    <div v-if="section.label" class="section-label">{{ section.label }}</div>
+  <div class="lyrics-section" :class="{ 'karaoke-mode': isPlaying }">
+    <div v-if="section.label && !isPlaying" class="section-label">{{ section.label }}</div>
 
-    <div class="lyrics-lines">
+    <div class="lyrics-container">
+      <div class="lyrics-lines" :style="{ transform: contentTransform }">
       <div
         v-for="(line, lineIndex) in lyricsContent.lines"
         :key="lineIndex"
@@ -49,6 +68,7 @@ const currentLineIndex = computed(() => {
             <span>{{ segment.text }}</span>
           </template>
         </div>
+        </div>
       </div>
     </div>
   </div>
@@ -69,15 +89,45 @@ const currentLineIndex = computed(() => {
   border-bottom: 1px solid var(--color-border);
 }
 
+.lyrics-container {
+  position: relative;
+  overflow: hidden;
+  height: 360px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-lg);
+}
+
+.karaoke-mode .lyrics-container {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 20%,
+    black 80%,
+    transparent 100%
+  );
+}
+
 .lyrics-lines {
   line-height: 1.6;
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
+  padding: 20px;
+}
+
+.karaoke-mode .lyrics-lines {
+  padding-top: 150px;
+  padding-bottom: 210px;
 }
 
 .lyrics-line {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
+  height: 60px; /* Fixed height to match rowHeight in script */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .lyrics-line.current-line {
