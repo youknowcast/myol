@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { parseChordPro } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
+import { usePlaybackState } from '@/composables/usePlaybackState'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -55,40 +56,28 @@ const totalMeasures = computed(() => {
 type ViewMode = 'lyrics' | 'grid' | 'mixed'
 const viewMode = ref<ViewMode>('lyrics')
 
-// Playback state
-const isPlaying = ref(false)
-const speedMultiplier = ref(1)
-const currentTime = ref(0) // in seconds
+// Playback state (using composable)
+const playback = usePlaybackState()
 const contentRef = ref<HTMLElement | null>(null)
-let playbackInterval: ReturnType<typeof setInterval> | null = null
 
-const tempo = computed(() => parsedSong.value?.tempo || 80)
-const timeSignature = computed(() => {
-  const time = parsedSong.value?.time ?? '4/4'
-  const parts = time.split('/')
-  return { beats: parseInt(parts[0] ?? '4', 10) || 4, noteValue: parseInt(parts[1] ?? '4', 10) || 4 }
-})
+// Sync config from parsed song
+watch([parsedSong, totalMeasures], () => {
+  if (parsedSong.value) {
+    playback.tempo.value = parsedSong.value.tempo || 80
+    const time = parsedSong.value.time ?? '4/4'
+    const parts = time.split('/')
+    playback.beatsPerMeasure.value = parseInt(parts[0] ?? '4', 10) || 4
+  }
+  playback.totalMeasures.value = totalMeasures.value
+}, { immediate: true })
 
-// Time per measure in seconds
-const secondsPerMeasure = computed(() => {
-  return (60 / tempo.value) * timeSignature.value.beats
-})
-
-// Total duration in seconds
-const totalDuration = computed(() => {
-  return totalMeasures.value * secondsPerMeasure.value
-})
-
-// Current measure (0-indexed)
-const currentMeasure = computed(() => {
-  return Math.floor(currentTime.value / secondsPerMeasure.value)
-})
-
-// Progress (0-1)
-const progress = computed(() => {
-  if (totalDuration.value <= 0) return 0
-  return Math.min(currentTime.value / totalDuration.value, 1)
-})
+// Expose for template and child components
+const isPlaying = playback.isPlaying
+const currentTime = playback.currentTime
+const currentMeasure = playback.currentMeasure
+const progress = playback.progress
+const totalDuration = playback.totalDuration
+const speedMultiplier = playback.speedMultiplier
 
 // Provide current measure to child components
 provide('currentMeasure', currentMeasure)
@@ -102,48 +91,22 @@ function formatTime(seconds: number): string {
 }
 
 function togglePlay() {
-  isPlaying.value = !isPlaying.value
+  playback.togglePlay()
 }
 
 function handleSpeedChange(speed: number) {
-  speedMultiplier.value = speed
+  playback.setSpeed(speed)
 }
 
-function startPlayback() {
-  if (playbackInterval) return
-
-  playbackInterval = setInterval(() => {
-    currentTime.value += (16 / 1000) * speedMultiplier.value
-
-    // Auto-scroll based on time
-    if (contentRef.value) {
-      const scrollable = contentRef.value
-      const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
-      if (maxScroll > 0) {
-        const targetScroll = progress.value * maxScroll
-        scrollable.scrollTop = targetScroll
-      }
+// Auto-scroll when playing
+watch([isPlaying, progress], () => {
+  if (isPlaying.value && contentRef.value) {
+    const scrollable = contentRef.value
+    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
+    if (maxScroll > 0) {
+      const targetScroll = progress.value * maxScroll
+      scrollable.scrollTop = targetScroll
     }
-
-    if (currentTime.value >= totalDuration.value) {
-      currentTime.value = totalDuration.value
-      isPlaying.value = false
-    }
-  }, 16)
-}
-
-function stopPlayback() {
-  if (playbackInterval) {
-    clearInterval(playbackInterval)
-    playbackInterval = null
-  }
-}
-
-watch(isPlaying, (playing) => {
-  if (playing) {
-    startPlayback()
-  } else {
-    stopPlayback()
   }
 })
 
@@ -155,7 +118,7 @@ function handleSeek(event: MouseEvent | TouchEvent) {
   const x = clientX - rect.left
   const percentage = Math.max(0, Math.min(1, x / rect.width))
 
-  currentTime.value = percentage * totalDuration.value
+  playback.seek(percentage * totalDuration.value)
 
   // Also scroll to position
   if (contentRef.value) {
@@ -171,7 +134,7 @@ function handleScroll() {
   const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
   if (maxScroll > 0) {
     const scrollProgress = scrollable.scrollTop / maxScroll
-    currentTime.value = scrollProgress * totalDuration.value
+    playback.seek(scrollProgress * totalDuration.value)
   }
 }
 
@@ -188,7 +151,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopPlayback()
+  playback.dispose()
 })
 </script>
 
