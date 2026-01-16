@@ -125,6 +125,17 @@ function getCellDisplay(cell: CellWithMeasure): string {
         </span>
       </div>
     </div>
+
+    <!-- Lyrics hints (non-editable) -->
+    <div v-if="gridContent.lyricsHints && gridContent.lyricsHints.length > 0" class="lyrics-hints">
+      <div
+        v-for="(hint, hintIndex) in gridContent.lyricsHints"
+        :key="hintIndex"
+        class="lyrics-hint"
+      >
+        {{ hint }}
+      </div>
+    </div>
   </div>
 </template>
 
@@ -203,5 +214,23 @@ function getCellDisplay(cell: CellWithMeasure): string {
   .grid-cell {
     min-width: 4rem;
   }
+}
+
+.lyrics-hints {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.lyrics-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lyrics-hint:last-child {
+  border-bottom: none;
 }
 </style>

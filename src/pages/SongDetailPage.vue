@@ -28,7 +28,7 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
-// Count total measures in the song
+// Count total measures in the song (Grid sections only, lyricsHints don't affect duration)
 const totalMeasures = computed(() => {
   if (!parsedSong.value) return 0
   let count = 0
@@ -44,10 +44,9 @@ const totalMeasures = computed(() => {
           }
         }
       }
-    } else if (section.content.kind === 'lyrics') {
-      // Estimate: each lyrics line ≈ 1-2 measures
-      count += section.content.lines.length
     }
+    // Note: Lyrics sections are not counted for duration
+    // They should be converted to Grid sections via autoAssignMeasures
   }
   return Math.max(count, 1)
 })
@@ -294,6 +293,22 @@ onUnmounted(() => {
                 :currentMeasure="currentMeasure"
                 :isPlaying="isPlaying"
               />
+
+              <!-- Grid section lyrics hints (shown in lyrics mode) -->
+              <div
+                v-if="section.content.kind === 'grid' && (viewMode === 'lyrics' || viewMode === 'mixed') && (section.content as GridSection).lyricsHints?.length"
+                class="grid-lyrics-section"
+              >
+                <div v-if="section.label" class="section-label">{{ section.label }}</div>
+                <div
+                  v-for="(hint, hintIndex) in (section.content as GridSection).lyricsHints"
+                  :key="hintIndex"
+                  class="lyrics-hint-line"
+                  :class="{ 'current-line': hintIndex === currentMeasure % ((section.content as GridSection).lyricsHints?.length || 1) }"
+                >
+                  {{ hint }}
+                </div>
+              </div>
 
               <!-- Lyrics sections -->
               <LyricsView
@@ -569,5 +584,31 @@ onUnmounted(() => {
 
 .measure-total {
   font-family: var(--font-mono);
+}
+
+.grid-lyrics-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.lyrics-hint-line {
+  padding: var(--spacing-sm) 0;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  transition: all var(--transition-fast);
+}
+
+.lyrics-hint-line:last-child {
+  border-bottom: none;
+}
+
+.lyrics-hint-line.current-line {
+  background: var(--color-primary);
+  color: white;
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+  margin: 0 calc(-1 * var(--spacing-md));
+  border-radius: var(--radius-sm);
 }
 </style>
