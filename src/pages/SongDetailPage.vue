@@ -66,6 +66,45 @@ const totalMeasures = computed(() => {
   return Math.max(count, 1)
 })
 
+// Calculate measure offset for each section (for syncing currentMeasure across sections)
+const sectionMeasureOffsets = computed(() => {
+  if (!parsedSong.value) return []
+  const offsets: number[] = []
+  let offset = 0
+
+  for (const section of parsedSong.value.sections) {
+    offsets.push(offset)
+
+    if (section.content.kind === 'grid') {
+      const grid = section.content as GridSection
+      let sectionMeasureCount = 0
+      let hasSeenFirstBar = false
+      let hasSeenNonBarSinceLastBar = false
+
+      for (const row of grid.rows) {
+        for (const cell of row.cells) {
+          const isBar = BAR_TYPES.includes(cell.type)
+
+          if (isBar) {
+            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+              sectionMeasureCount++
+            }
+            hasSeenFirstBar = true
+            hasSeenNonBarSinceLastBar = false
+          } else {
+            hasSeenNonBarSinceLastBar = true
+          }
+        }
+      }
+      if (hasSeenFirstBar) {
+        sectionMeasureCount++
+      }
+      offset += sectionMeasureCount
+    }
+  }
+  return offsets
+})
+
 // View mode
 type ViewMode = 'lyrics' | 'grid' | 'mixed'
 const viewMode = ref<ViewMode>('lyrics')
@@ -268,6 +307,7 @@ onUnmounted(() => {
                 v-if="section.content.kind === 'grid' && (viewMode === 'grid' || viewMode === 'mixed')"
                 :section="section"
                 :currentMeasure="currentMeasure"
+                :measureOffset="sectionMeasureOffsets[index] || 0"
                 :isPlaying="isPlaying"
               />
 
@@ -281,7 +321,7 @@ onUnmounted(() => {
                   v-for="(hint, hintIndex) in (section.content as GridSection).lyricsHints"
                   :key="hintIndex"
                   class="lyrics-hint-line"
-                  :class="{ 'current-line': hintIndex === currentMeasure % ((section.content as GridSection).lyricsHints?.length || 1) }"
+                  :class="{ 'current-line': hintIndex === (currentMeasure - (sectionMeasureOffsets[index] || 0)) }"
                 >
                   {{ hint }}
                 </div>

@@ -5,11 +5,13 @@ import type { Section, GridSection } from '@/lib/chordpro/types'
 interface Props {
   section: Section
   currentMeasure?: number
+  measureOffset?: number  // Offset for this section in global measure count
   isPlaying?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   currentMeasure: 0,
+  measureOffset: 0,
   isPlaying: false
 })
 
@@ -62,14 +64,14 @@ const cellsWithMeasures = computed(() => {
         rowCells.push({
           ...cell,
           measureIndex: measureIndex,
-          isCurrentMeasure: measureIndex === props.currentMeasure
+          isCurrentMeasure: (measureIndex + props.measureOffset) === props.currentMeasure
         })
       } else {
         hasSeenNonBarSinceLastBar = true
         rowCells.push({
           ...cell,
           measureIndex: measureIndex,
-          isCurrentMeasure: measureIndex === props.currentMeasure
+          isCurrentMeasure: (measureIndex + props.measureOffset) === props.currentMeasure
         })
       }
     }
