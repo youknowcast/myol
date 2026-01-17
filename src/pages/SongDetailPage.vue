@@ -7,6 +7,7 @@ import { usePlaybackState } from '@/composables/usePlaybackState'
 import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useGridMeasureHints } from '@/composables/useGridMeasureHints'
+import { useSongDetailViewState } from '@/composables/useSongDetailViewState'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -34,15 +35,25 @@ const uniqueChords = computed(() => {
 
 const { getGridMeasureHints } = useGridMeasureHints()
 
-// View mode
-type ViewMode = 'lyrics' | 'grid'
-const viewMode = ref<ViewMode>('lyrics')
-
 // Playback state (using composable)
 const playback = usePlaybackState()
 const contentRef = ref<HTMLElement | null>(null)
 
+const {
+  viewMode,
+  isPlaying,
+  currentMeasure,
+  progress,
+  totalDuration,
+  speedMultiplier,
+  formattedCurrentTime,
+  formattedTotalDuration,
+  togglePlay,
+  handleSpeedChange
+} = useSongDetailViewState({ playback })
+
 // Sync config from parsed song
+
 watch([parsedSong, totalMeasures, beatsPerMeasure], () => {
   if (parsedSong.value) {
     playback.tempo.value = parsedSong.value.tempo || 80
@@ -51,32 +62,9 @@ watch([parsedSong, totalMeasures, beatsPerMeasure], () => {
   playback.totalMeasures.value = totalMeasures.value
 }, { immediate: true })
 
-// Expose for template and child components
-const isPlaying = playback.isPlaying
-const currentTime = playback.currentTime
-const currentMeasure = playback.currentMeasure
-const progress = playback.progress
-const totalDuration = playback.totalDuration
-const speedMultiplier = playback.speedMultiplier
-
 // Provide current measure to child components
 provide('currentMeasure', currentMeasure)
 provide('isPlaying', isPlaying)
-
-// Format time as MM:SS
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-function togglePlay() {
-  playback.togglePlay()
-}
-
-function handleSpeedChange(speed: number) {
-  playback.setSpeed(speed)
-}
 
 const { handleSeek, handleScroll } = usePlaybackSync({
   contentRef,
@@ -265,7 +253,7 @@ onUnmounted(() => {
       <footer class="player-bar">
         <!-- Time display and seek bar -->
         <div class="time-bar">
-          <span class="time-display">{{ formatTime(currentTime) }}</span>
+          <span class="time-display">{{ formattedCurrentTime }}</span>
           <div
             class="seek-bar"
             @click="handleSeek"
@@ -274,7 +262,7 @@ onUnmounted(() => {
             <div class="seek-bar-fill" :style="{ width: `${progress * 100}%` }"></div>
             <div class="seek-bar-thumb" :style="{ left: `${progress * 100}%` }"></div>
           </div>
-          <span class="time-display">{{ formatTime(totalDuration) }}</span>
+          <span class="time-display">{{ formattedTotalDuration }}</span>
         </div>
 
         <!-- Measure indicator -->
