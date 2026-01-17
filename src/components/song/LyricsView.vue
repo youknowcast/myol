@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useLyricsHighlight } from '@/composables/useLyricsHighlight'
 import type { Section, LyricsSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -18,26 +19,12 @@ const props = withDefaults(defineProps<Props>(), {
 const lyricsContent = props.section.content as LyricsSection
 const rowHeight = 60 // Estimated line height for lyrics
 
-// Track which line corresponds to current measure
-const currentLineIndex = computed(() => {
-  if (lyricsContent.lines.length === 0) return -1
-  // Local measure index within this section
-  const localMeasure = props.currentMeasure - props.measureOffset
-  if (localMeasure < 0) return -1
-
-  // Simple mapping: each line ≈ 1 measure for lyrics sections
-  // In a more complex parser, this mapping would be provided in the data
-  return localMeasure % lyricsContent.lines.length
-})
-
-// Calculate transform to center the current row
-const contentTransform = computed(() => {
-  if (!props.isPlaying || currentLineIndex.value === -1) return 'translateY(0)'
-
-  const centerOffset = rowHeight * 1.5
-  const translateY = -(currentLineIndex.value * rowHeight) + centerOffset
-
-  return `translateY(${translateY}px)`
+const { currentLineIndex, contentTransform } = useLyricsHighlight({
+  linesCount: computed(() => lyricsContent.lines.length),
+  currentMeasure: computed(() => props.currentMeasure),
+  measureOffset: computed(() => props.measureOffset),
+  isPlaying: computed(() => props.isPlaying),
+  rowHeight
 })
 </script>
 

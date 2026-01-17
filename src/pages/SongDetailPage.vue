@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
+import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
@@ -81,45 +82,13 @@ function handleSpeedChange(speed: number) {
   playback.setSpeed(speed)
 }
 
-// Auto-scroll when playing
-watch([isPlaying, progress], () => {
-  if (isPlaying.value && contentRef.value) {
-    const scrollable = contentRef.value
-    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
-    if (maxScroll > 0) {
-      const targetScroll = progress.value * maxScroll
-      scrollable.scrollTop = targetScroll
-    }
-  }
+const { handleSeek, handleScroll } = usePlaybackSync({
+  contentRef,
+  isPlaying,
+  progress,
+  totalDuration,
+  seek: playback.seek
 })
-
-// Seek to position
-function handleSeek(event: MouseEvent | TouchEvent) {
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const clientX = 'touches' in event ? event.touches[0]!.clientX : event.clientX
-  const x = clientX - rect.left
-  const percentage = Math.max(0, Math.min(1, x / rect.width))
-
-  playback.seek(percentage * totalDuration.value)
-
-  // Also scroll to position
-  if (contentRef.value) {
-    const scrollable = contentRef.value
-    const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
-    scrollable.scrollTop = percentage * maxScroll
-  }
-}
-
-function handleScroll() {
-  if (!contentRef.value || isPlaying.value) return
-  const scrollable = contentRef.value
-  const maxScroll = scrollable.scrollHeight - scrollable.clientHeight
-  if (maxScroll > 0) {
-    const scrollProgress = scrollable.scrollTop / maxScroll
-    playback.seek(scrollProgress * totalDuration.value)
-  }
-}
 
 function goBack() {
   router.push({ name: 'home' })

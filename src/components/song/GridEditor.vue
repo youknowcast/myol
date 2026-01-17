@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import Sortable from 'sortablejs'
+import { useGridMeasureEditor } from '@/composables/useGridMeasureEditor'
 import type { GridSection, GridCell, Measure } from '@/lib/chordpro/types'
 import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
 
@@ -19,15 +20,18 @@ const emit = defineEmits<Emits>()
 const containerRef = ref<HTMLElement | null>(null)
 const selectedMeasureIndex = ref<number | null>(null)
 
-const measures = computed(() => {
-  const source = props.modelValue.measures ?? []
-  return source.map((measure, index) => ({
-    ...measure,
-    cells: measure.cells.map((cell, cellIndex) => ({
-      id: `${index}-${cellIndex}`,
-      ...cell
-    }))
-  }))
+const measures = computed(() => props.modelValue.measures ?? [])
+
+const {
+  displayMeasures,
+  addMeasure,
+  copyMeasure,
+  deleteMeasure,
+  swapMeasure,
+  reorderCells
+} = useGridMeasureEditor({
+  measures,
+  selectedMeasureIndex
 })
 
 // Display helpers
@@ -67,121 +71,29 @@ function selectMeasure(index: number) {
   selectedMeasureIndex.value = selectedMeasureIndex.value === index ? null : index
 }
 
-const emptyMeasure = (): Measure => ({
-  cells: [{ type: 'empty' }]
-})
-
 // Add measure operations
 function handleAddMeasure(position: 'end' | 'before' | 'after') {
-  const next = measures.value.map(measure => ({
-    cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
-    lyricsHint: measure.lyricsHint
-  }))
-
-  if (position === 'end') {
-    next.push(emptyMeasure())
-    emitUpdate(next)
-    return
-  }
-
-  if (selectedMeasureIndex.value !== null) {
-    const insertIndex = position === 'before'
-      ? selectedMeasureIndex.value
-      : selectedMeasureIndex.value + 1
-    next.splice(insertIndex, 0, emptyMeasure())
-    emitUpdate(next)
-  }
+  emitUpdate(addMeasure(position))
 }
 
 // Copy measure
 function handleCopyMeasure() {
-  if (selectedMeasureIndex.value === null) return
-  const next = measures.value.map(measure => ({
-    cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
-    lyricsHint: measure.lyricsHint
-  }))
-
-  const original = next[selectedMeasureIndex.value]
-  if (!original) return
-
-  next.splice(selectedMeasureIndex.value + 1, 0, {
-    cells: original.cells.map(cell => ({ ...cell })),
-    lyricsHint: original.lyricsHint
-  })
-  emitUpdate(next)
+  emitUpdate(copyMeasure())
 }
 
 // Delete measure (prevent if has lyrics)
 function handleDeleteMeasure() {
-  if (selectedMeasureIndex.value === null) return
-  if (measures.value.length <= 1) return
-
-  const lyricsHint = measures.value[selectedMeasureIndex.value]?.lyricsHint
-  const hasLyrics = lyricsHint !== undefined && lyricsHint.trim() !== ''
-
-  if (hasLyrics) {
-    alert('歌詞が付いている小節は削除できません')
-    return
-  }
-
-  const next = measures.value.map(measure => ({
-    cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
-    lyricsHint: measure.lyricsHint
-  }))
-  next.splice(selectedMeasureIndex.value, 1)
-  selectedMeasureIndex.value = null
-  emitUpdate(next)
+  emitUpdate(deleteMeasure())
 }
 
 // Swap measure with adjacent
 function handleSwapMeasure(direction: 'left' | 'right') {
-  if (selectedMeasureIndex.value === null) return
-  const targetIdx = direction === 'left'
-    ? selectedMeasureIndex.value - 1
-    : selectedMeasureIndex.value + 1
-  if (targetIdx < 0 || targetIdx >= measures.value.length) return
-
-  const next = measures.value.map(measure => ({
-    cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
-    lyricsHint: measure.lyricsHint
-  }))
-
-  const temp = next[selectedMeasureIndex.value]
-  next[selectedMeasureIndex.value] = next[targetIdx]!
-  next[targetIdx] = temp!
-
-  selectedMeasureIndex.value = targetIdx
-  emitUpdate(next)
+  emitUpdate(swapMeasure(direction))
 }
 
 // Handle drag & drop reorder within a measure
 function handleReorder(measureIndex: number, orderedCellIds: string[]) {
-  const measure = measures.value[measureIndex]
-  if (!measure) return
-
-  const cellMap = new Map<string, GridCell>()
-  measure.cells.forEach((cell: { id: string } & GridCell) => {
-    cellMap.set(cell.id, { type: cell.type, value: cell.value })
-  })
-
-  const newOrder = orderedCellIds
-    .map(id => cellMap.get(id))
-    .filter((c): c is GridCell => c !== undefined)
-
-  if (newOrder.length !== measure.cells.length) {
-    console.warn('Cell count mismatch during reorder')
-    return
-  }
-
-  const next = measures.value.map(current => ({
-    cells: current.cells.map(cell => ({ type: cell.type, value: cell.value })),
-    lyricsHint: current.lyricsHint
-  }))
-  next[measureIndex] = {
-    cells: newOrder.map(cell => ({ ...cell })),
-    lyricsHint: next[measureIndex]?.lyricsHint
-  }
-  emitUpdate(next)
+  emitUpdate(reorderCells(measureIndex, orderedCellIds))
 }
 
 // Initialize SortableJS for drag & drop
@@ -300,7 +212,7 @@ onUnmounted(() => {
     </div>
 
     <div class="measures-container">
-      <template v-for="(measure, measureIndex) in measures" :key="measureIndex">
+      <template v-for="(measure, measureIndex) in displayMeasures" :key="measureIndex">
         <!-- Bar line (left) -->
         <div class="bar-line" v-if="measureIndex === 0">║</div>
 

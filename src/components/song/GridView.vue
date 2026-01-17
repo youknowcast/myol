@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
+import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -19,125 +20,14 @@ const gridContent = props.section.content as GridSection
 const gridRef = ref<HTMLElement | null>(null)
 const rowHeight = 72 // Matches .grid-row-group height in CSS
 
-const rowHints = computed(() => {
-  if (!gridContent.measures || gridContent.measures.length === 0) {
-    return []
-  }
-
-  const hints: string[] = []
-  let measureIndex = 0
-  let hasSeenFirstBar = false
-  let hasSeenNonBarSinceLastBar = false
-
-  for (const row of gridContent.rows) {
-    const startIndex = measureIndex
-
-    for (const cell of row.cells) {
-      const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
-                    cell.type === 'barEnd' || cell.type === 'repeatStart' ||
-                    cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
-
-      if (isBar) {
-        if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-          measureIndex++
-        }
-        hasSeenFirstBar = true
-        hasSeenNonBarSinceLastBar = false
-      } else {
-        hasSeenNonBarSinceLastBar = true
-      }
-    }
-
-    const endIndex = measureIndex
-    const rowHint = gridContent.measures
-      .slice(startIndex, endIndex + 1)
-      .map(measure => measure.lyricsHint)
-      .filter((hint): hint is string => Boolean(hint && hint.trim()))
-      .join(' ')
-    hints.push(rowHint)
-  }
-
-  return hints
+const { rowHints, cellsWithMeasures, currentRowIndex, contentTransform } = useGridViewState({
+  grid: gridContent,
+  currentMeasure: computed(() => props.currentMeasure),
+  measureOffset: computed(() => props.measureOffset),
+  isPlaying: computed(() => props.isPlaying),
+  rowHeight
 })
 
-// Find which row contains the current measure
-const currentRowIndex = computed(() => {
-  for (let rowIdx = 0; rowIdx < cellsWithMeasures.value.length; rowIdx++) {
-    const row = cellsWithMeasures.value[rowIdx]
-    if (row?.some(cell => cell.isCurrentMeasure)) {
-      return rowIdx
-    }
-  }
-  return 0
-})
-
-// Calculate transform to center the current row
-const contentTransform = computed(() => {
-  if (!props.isPlaying) return 'translateY(0)'
-
-  const totalRows = cellsWithMeasures.value.length
-  if (totalRows === 0) return 'translateY(0)'
-
-  // Calculate offset: negative to move content up, centering current row
-  // Each row has ~80px height, we want current row at 30% from top
-  const centerOffset = rowHeight * 1.5 // offset to place current row at visual center
-  const translateY = -(currentRowIndex.value * rowHeight) + centerOffset
-
-  return `translateY(${translateY}px)`
-})
-
-// Track measure index for each cell
-interface CellWithMeasure {
-  type: string
-  value?: string
-  measureIndex: number
-  isCurrentMeasure: boolean
-}
-
-const cellsWithMeasures = computed(() => {
-  // measureIndex increments only when we see a bar AFTER seeing non-bar content
-  // This prevents double-increment at row boundaries (|| ... || || ... ||)
-  let measureIndex = 0
-  let hasSeenFirstBar = false
-  let hasSeenNonBarSinceLastBar = false
-  const result: CellWithMeasure[][] = []
-
-  for (const row of gridContent.rows) {
-    const rowCells: CellWithMeasure[] = []
-
-    for (const cell of row.cells) {
-      const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
-                    cell.type === 'barEnd' || cell.type === 'repeatStart' ||
-                    cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
-
-      if (isBar) {
-        if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-          // This bar ends the current measure (only if we had content)
-          measureIndex++
-        }
-        hasSeenFirstBar = true
-        hasSeenNonBarSinceLastBar = false
-
-        rowCells.push({
-          ...cell,
-          measureIndex: measureIndex,
-          isCurrentMeasure: (measureIndex + props.measureOffset) === props.currentMeasure
-        })
-      } else {
-        hasSeenNonBarSinceLastBar = true
-        rowCells.push({
-          ...cell,
-          measureIndex: measureIndex,
-          isCurrentMeasure: (measureIndex + props.measureOffset) === props.currentMeasure
-        })
-      }
-    }
-
-    result.push(rowCells)
-  }
-
-  return result
-})
 
 function getCellClass(cell: CellWithMeasure): string[] {
   const classes: string[] = []

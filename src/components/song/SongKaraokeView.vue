@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useKaraokeScroll } from '@/composables/useKaraokeScroll'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { KaraokeRow } from '@/composables/useChordProDocument'
 
@@ -17,20 +18,12 @@ const containerHeight = 450
 
 const karaokeRows = computed(() => props.rows)
 
-const activeRowIndex = computed(() => {
-  const idx = karaokeRows.value.findIndex(row =>
-    props.currentMeasure >= row.startMeasure && props.currentMeasure <= row.endMeasure
-  )
-  return idx !== -1 ? idx : 0
-})
-
-const contentTransform = computed(() => {
-  if (!props.isPlaying) return 'translateY(0)'
-
-  const centerOffset = containerHeight * 0.35 // Higher than middle to show more future context
-  const translateY = -(activeRowIndex.value * rowHeight) + centerOffset
-
-  return `translateY(${translateY}px)`
+const { activeRowIndex, contentTransform } = useKaraokeScroll({
+  rows: karaokeRows,
+  currentMeasure: computed(() => props.currentMeasure),
+  isPlaying: computed(() => props.isPlaying),
+  rowHeight,
+  containerHeight
 })
 
 function getCellClass(cell: GridCell, row: KaraokeRow): string[] {

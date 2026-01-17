@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
+import { useBeatSignature } from '@/composables/useBeatSignature'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
 import type { GridSection } from '@/lib/chordpro/types'
@@ -25,6 +26,7 @@ const time = ref('4/4')
 const content = ref('')
 
 const { autoAssignMeasuresToContent } = useChordProDocument({ content })
+const { beatsPerMeasure } = useBeatSignature(time)
 
 useChordProEditorSync({ content, editorStore })
 
@@ -95,14 +97,8 @@ function goBack() {
   }
 }
 
-// Parse time signature to get beats per measure
-function getBeatsPerMeasure(): number {
-  const parts = time.value.split('/')
-  return parseInt(parts[0] || '4', 10) || 4
-}
-
 function handleAutoAssignMeasures() {
-  autoAssignMeasuresToContent(getBeatsPerMeasure())
+  autoAssignMeasuresToContent(beatsPerMeasure.value)
 }
 
 
