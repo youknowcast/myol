@@ -68,13 +68,36 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		if (options.selectedMeasureIndex.value === null) return cloneMeasures(options.measures.value)
 		if (options.measures.value.length <= 1) return cloneMeasures(options.measures.value)
 
-		const current = options.measures.value[options.selectedMeasureIndex.value]
-		const hasLyrics = Boolean(current?.lyricsHint && current.lyricsHint.trim())
-		if (hasLyrics) return cloneMeasures(options.measures.value)
-
 		const next = cloneMeasures(options.measures.value)
 		next.splice(options.selectedMeasureIndex.value, 1)
 		options.selectedMeasureIndex.value = null
+		return next
+	}
+
+	function deleteLyrics(): Measure[] {
+		if (options.selectedMeasureIndex.value === null) return cloneMeasures(options.measures.value)
+		const next = cloneMeasures(options.measures.value)
+		const target = next[options.selectedMeasureIndex.value]
+		if (!target) return next
+		next[options.selectedMeasureIndex.value] = {
+			cells: target.cells.map(cell => ({ ...cell })),
+			lyricsHint: undefined
+		}
+		return next
+	}
+
+	function deleteChords(): Measure[] {
+		if (options.selectedMeasureIndex.value === null) return cloneMeasures(options.measures.value)
+		const next = cloneMeasures(options.measures.value)
+		const target = next[options.selectedMeasureIndex.value]
+		if (!target) return next
+		const clearedCells = target.cells.length > 0
+			? target.cells.map(() => ({ type: 'empty' as const }))
+			: [{ type: 'empty' as const }]
+		next[options.selectedMeasureIndex.value] = {
+			cells: clearedCells,
+			lyricsHint: target.lyricsHint
+		}
 		return next
 	}
 
@@ -159,6 +182,8 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		addMeasure,
 		copyMeasure,
 		deleteMeasure,
+		deleteLyrics,
+		deleteChords,
 		swapMeasure,
 		mergeLyrics,
 		reorderCells

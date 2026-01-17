@@ -28,6 +28,8 @@ const measures = computed(() => props.modelValue.measures ?? [])
     addMeasure,
     copyMeasure,
     deleteMeasure,
+    deleteLyrics,
+    deleteChords,
     swapMeasure,
     mergeLyrics,
     reorderCells
@@ -67,6 +69,14 @@ function handleCopyMeasure() {
 // Delete measure (prevent if has lyrics)
 function handleDeleteMeasure() {
   emitUpdate(deleteMeasure())
+}
+
+function handleDeleteLyrics() {
+  emitUpdate(deleteLyrics())
+}
+
+function handleDeleteChords() {
+  emitUpdate(deleteChords())
 }
 
 // Swap measure with adjacent
@@ -126,7 +136,9 @@ onUnmounted(() => {
           @copy="handleCopyMeasure"
           @swap="handleSwapMeasure"
           @merge="handleMergeLyrics"
-          @delete="handleDeleteMeasure"
+          @delete-measure="handleDeleteMeasure"
+          @delete-lyrics="handleDeleteLyrics"
+          @delete-chords="handleDeleteChords"
         />
 
         <!-- Bar line (right) -->

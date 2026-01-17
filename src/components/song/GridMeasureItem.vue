@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { EditableMeasure } from '@/composables/useGridMeasureEditor'
 
@@ -15,11 +16,38 @@ interface Emits {
   (e: 'copy'): void
   (e: 'swap', value: 'left' | 'right'): void
   (e: 'merge', direction: 'left' | 'right', sourceIndex: number): void
-  (e: 'delete'): void
+  (e: 'delete-measure'): void
+  (e: 'delete-lyrics'): void
+  (e: 'delete-chords'): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const isDeleteMenuOpen = ref(false)
+
+function toggleDeleteMenu() {
+  isDeleteMenuOpen.value = !isDeleteMenuOpen.value
+}
+
+function closeDeleteMenu() {
+  isDeleteMenuOpen.value = false
+}
+
+function handleDeleteMeasure() {
+  emit('delete-measure')
+  closeDeleteMenu()
+}
+
+function handleDeleteLyrics() {
+  emit('delete-lyrics')
+  closeDeleteMenu()
+}
+
+function handleDeleteChords() {
+  emit('delete-chords')
+  closeDeleteMenu()
+}
 
 function getCellClass(cell: GridCell): string {
   switch (cell.type) {
@@ -125,15 +153,26 @@ function getCellDisplay(cell: GridCell): string {
           📝➡
         </button>
       </div>
-      <div class="tool-group">
+      <div class="tool-group delete-group">
         <button
           class="toolbar-btn toolbar-btn-danger"
-          @click.stop="emit('delete')"
+          @click.stop="toggleDeleteMenu"
           :disabled="measuresLength <= 1"
-          title="削除"
+          title="削除メニュー"
         >
           🗑
         </button>
+        <div v-if="isDeleteMenuOpen" class="delete-menu">
+          <button class="delete-menu-item" @click.stop="handleDeleteMeasure">
+            小節削除
+          </button>
+          <button class="delete-menu-item" @click.stop="handleDeleteLyrics">
+            歌詞削除
+          </button>
+          <button class="delete-menu-item" @click.stop="handleDeleteChords">
+            コード削除
+          </button>
+        </div>
       </div>
     </div>
     <div
@@ -191,6 +230,38 @@ function getCellDisplay(cell: GridCell): string {
   border-right: none;
   margin-right: 0;
   padding-right: 0;
+}
+
+.delete-group {
+  position: relative;
+}
+
+.delete-menu {
+  position: absolute;
+  top: 32px;
+  right: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  z-index: 30;
+}
+
+.delete-menu-item {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.delete-menu-item:hover {
+  background: var(--color-bg-secondary);
 }
 
 .toolbar-btn {

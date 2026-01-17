@@ -36,10 +36,11 @@ describe('useGridMeasureEditor', () => {
 		expect(next.length).toBe(1)
 	})
 
-	it('does not delete measure with lyrics', () => {
+	it('deletes measure even with lyrics', () => {
 		const selectedMeasureIndex = ref<number | null>(0)
 		const measures = computed<Measure[]>(() => [
-			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep' }
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep' },
+			{ cells: [{ type: 'chord', value: 'G' }] }
 		])
 		const { deleteMeasure } = useGridMeasureEditor({ measures, selectedMeasureIndex })
 
@@ -88,5 +89,29 @@ describe('useGridMeasureEditor', () => {
 		expect(next[1]?.lyricsHint).toBe('Current Next')
 		expect(next[0]?.lyricsHint).toBeUndefined()
 		expect(selectedMeasureIndex.value).toBe(0)
+	})
+
+	it('deletes lyrics only', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep' }
+		])
+		const { deleteLyrics } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = deleteLyrics()
+		expect(next[0]?.lyricsHint).toBeUndefined()
+		expect(next[0]?.cells[0]?.value).toBe('C')
+	})
+
+	it('deletes chords only', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep' }
+		])
+		const { deleteChords } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = deleteChords()
+		expect(next[0]?.cells[0]?.type).toBe('empty')
+		expect(next[0]?.lyricsHint).toBe('Keep')
 	})
 })
