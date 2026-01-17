@@ -127,10 +127,13 @@ export function extractUniqueChords(sections: Section[]): string[] {
 			}
 		} else if (section.content.kind === 'grid') {
 			const gridContent = section.content as GridSection
-			for (const row of gridContent.rows) {
-				for (const cell of row.cells) {
+			const sourceMeasures = gridContent.measures
+				? gridContent.measures
+				: gridContent.rows.map(row => ({ cells: row.cells }))
+
+			for (const measure of sourceMeasures) {
+				for (const cell of measure.cells) {
 					if (cell.type === 'chord' && cell.value) {
-						// Handle multiple chords in one cell (e.g., "C~Am")
 						const cellChords = cell.value.split('~')
 						for (const c of cellChords) {
 							if (c && c !== '/' && c !== '.') {

@@ -37,8 +37,8 @@ describe('useChordProEditorSync', () => {
 
 		const updatedGrid = {
 			...(firstGrid!.section.content as any),
-			rows: [
-				{ cells: [{ type: 'barDouble' }, { type: 'chord', value: 'Dm' }, { type: 'barDouble' }] }
+			measures: [
+				{ cells: [{ type: 'chord', value: 'Dm' }] }
 			]
 		}
 

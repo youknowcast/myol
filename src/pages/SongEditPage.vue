@@ -247,8 +247,6 @@ function updateGridSection(sectionIndex: number, newContent: GridSection) {
               <div class="grid-section-label">{{ section.label || 'Grid ' + (index + 1) }}</div>
               <GridEditor
                 :model-value="(section.content as GridSection)"
-                :beats-per-measure="getBeatsPerMeasure()"
-                :lyrics-hints="(section.content as GridSection).lyricsHints"
                 @update:model-value="(val) => updateGridSection(index, val)"
               />
             </div>

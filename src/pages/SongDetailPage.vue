@@ -30,6 +30,13 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
+function getGridMeasureHints(grid: GridSection): string[] {
+  if (!grid.measures || grid.measures.length === 0) {
+    return []
+  }
+  return grid.measures.map(measure => measure.lyricsHint ?? '')
+}
+
 // View mode
 type ViewMode = 'lyrics' | 'grid'
 const viewMode = ref<ViewMode>('lyrics')
@@ -241,12 +248,12 @@ onUnmounted(() => {
 
               <!-- Grid section lyrics hints (shown in lyrics mode as well if needed, but per user request, Grid covers it) -->
               <div
-                v-if="section.content.kind === 'grid' && viewMode === 'lyrics' && (section.content as GridSection).lyricsHints?.length"
+                v-if="section.content.kind === 'grid' && viewMode === 'lyrics' && getGridMeasureHints(section.content as GridSection).length"
                 class="grid-lyrics-section"
               >
                 <div v-if="section.label" class="section-label">{{ section.label }}</div>
                 <div
-                  v-for="(hint, hintIndex) in (section.content as GridSection).lyricsHints"
+                  v-for="(hint, hintIndex) in getGridMeasureHints(section.content as GridSection)"
                   :key="hintIndex"
                   class="lyrics-hint-line"
                   :class="{ 'current-line': hintIndex === (currentMeasure - (sectionMeasureOffsets[index] || 0)) }"

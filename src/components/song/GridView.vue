@@ -19,6 +19,47 @@ const gridContent = props.section.content as GridSection
 const gridRef = ref<HTMLElement | null>(null)
 const rowHeight = 72 // Matches .grid-row-group height in CSS
 
+const rowHints = computed(() => {
+  if (!gridContent.measures || gridContent.measures.length === 0) {
+    return []
+  }
+
+  const hints: string[] = []
+  let measureIndex = 0
+  let hasSeenFirstBar = false
+  let hasSeenNonBarSinceLastBar = false
+
+  for (const row of gridContent.rows) {
+    const startIndex = measureIndex
+
+    for (const cell of row.cells) {
+      const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
+                    cell.type === 'barEnd' || cell.type === 'repeatStart' ||
+                    cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
+
+      if (isBar) {
+        if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+          measureIndex++
+        }
+        hasSeenFirstBar = true
+        hasSeenNonBarSinceLastBar = false
+      } else {
+        hasSeenNonBarSinceLastBar = true
+      }
+    }
+
+    const endIndex = measureIndex
+    const rowHint = gridContent.measures
+      .slice(startIndex, endIndex + 1)
+      .map(measure => measure.lyricsHint)
+      .filter((hint): hint is string => Boolean(hint && hint.trim()))
+      .join(' ')
+    hints.push(rowHint)
+  }
+
+  return hints
+})
+
 // Find which row contains the current measure
 const currentRowIndex = computed(() => {
   for (let rowIdx = 0; rowIdx < cellsWithMeasures.value.length; rowIdx++) {
@@ -176,10 +217,10 @@ function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
 
           <!-- Lyrics row (if available for this row) -->
           <div
-            v-if="gridContent.lyricsHints && gridContent.lyricsHints[rowIndex]"
+            v-if="rowHints[rowIndex]"
             class="grid-lyrics-row"
           >
-            {{ gridContent.lyricsHints[rowIndex] }}
+            {{ rowHints[rowIndex] }}
           </div>
         </div>
       </div>

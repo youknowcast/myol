@@ -6,7 +6,7 @@ import {
 	parseChordPro,
 	parseChordProToExtended
 } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection, LyricsSection, Section } from '@/lib/chordpro/types'
+import type { ParsedSong, GridSection, LyricsSection } from '@/lib/chordpro/types'
 
 interface KaraokeGridRowContent {
 	cells: GridSection['rows'][number]['cells']
@@ -17,27 +17,15 @@ interface KaraokeLyricsRowContent {
 	segments: LyricsSection['lines'][number]['segments']
 }
 
-function buildKaraokeRowContent(section: Section, rowIndex: number): KaraokeRow['content'] | null {
-	if (section.content.kind === 'grid') {
-		const grid = section.content as GridSection
-		const row = grid.rows[rowIndex]
-		if (!row) return null
-		return {
-			cells: row.cells,
-			hint: grid.lyricsHints?.[rowIndex]
-		} satisfies KaraokeGridRowContent
-	}
+function buildGridRowHint(grid: GridSection, startMeasure: number, endMeasure: number): string | undefined {
+	if (!grid.measures || grid.measures.length === 0) return undefined
+	const hints = grid.measures
+		.slice(startMeasure, endMeasure + 1)
+		.map(measure => measure.lyricsHint)
+		.filter((hint): hint is string => Boolean(hint && hint.trim()))
 
-	if (section.content.kind === 'lyrics') {
-		const lyrics = section.content as LyricsSection
-		const line = lyrics.lines[rowIndex]
-		if (!line) return null
-		return {
-			segments: line.segments
-		} satisfies KaraokeLyricsRowContent
-	}
-
-	return null
+	if (hints.length === 0) return undefined
+	return hints.join(' ')
 }
 
 export interface UseChordProDocumentOptions {
@@ -185,7 +173,10 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 						rowIndex,
 						startMeasure: rowStartMeasure,
 						endMeasure: rowEndMeasure,
-						content: buildKaraokeRowContent(section, rowIndex)
+						content: {
+							cells: row.cells,
+							hint: buildGridRowHint(grid, rowStartMeasure - globalMeasureOffset, rowEndMeasure - globalMeasureOffset)
+						} satisfies KaraokeGridRowContent
 					})
 				})
 
@@ -195,7 +186,7 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 				globalMeasureOffset += sectionMeasures
 			} else if (section.content.kind === 'lyrics') {
 				const lyrics = section.content as LyricsSection
-				lyrics.lines.forEach((_, rowIndex) => {
+				lyrics.lines.forEach((line, rowIndex) => {
 					const start = globalMeasureOffset + rowIndex
 					rows.push({
 						type: 'lyrics',
@@ -203,7 +194,9 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 						rowIndex,
 						startMeasure: start,
 						endMeasure: start,
-						content: buildKaraokeRowContent(section, rowIndex)
+						content: {
+							segments: line.segments
+						} satisfies KaraokeLyricsRowContent
 					})
 				})
 				globalMeasureOffset += lyrics.lines.length

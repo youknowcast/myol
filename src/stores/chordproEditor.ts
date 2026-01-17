@@ -5,8 +5,8 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { parseChordProToExtended, generateChordPro } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection, GridCell, Measure, GridRow } from '@/lib/chordpro/types'
+import { generateChordPro, gridRowsFromMeasures, parseChordProToExtended } from '@/lib/chordpro/parser'
+import type { ParsedSong, GridSection, GridCell, Measure } from '@/lib/chordpro/types'
 
 // Bar line types
 const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'] as const
@@ -19,6 +19,13 @@ function isBarCell(cell: GridCell): boolean {
  * Extract measures from flat cells with their lyrics hints
  */
 function extractMeasuresFromGrid(grid: GridSection): Measure[] {
+	if (grid.measures && grid.measures.length > 0) {
+		return grid.measures.map(measure => ({
+			cells: measure.cells.map(cell => ({ ...cell })),
+			lyricsHint: measure.lyricsHint
+		}))
+	}
+
 	const measures: Measure[] = []
 	const cells = grid.rows.flatMap(row => row.cells)
 	let currentCells: GridCell[] = []
@@ -39,7 +46,6 @@ function extractMeasuresFromGrid(grid: GridSection): Measure[] {
 		}
 	}
 
-	// Remaining cells (shouldn't happen in well-formed grids)
 	if (currentCells.length > 0) {
 		measures.push({
 			cells: currentCells,
@@ -54,54 +60,12 @@ function extractMeasuresFromGrid(grid: GridSection): Measure[] {
  * Convert measures back to GridSection format
  */
 function measuresToGridSection(measures: Measure[], shape?: string, measuresPerRow = 4): GridSection {
-	const rows: GridRow[] = []
-	const lyricsHints: string[] = []
-	let currentRowCells: GridCell[] = []
-	let measureCount = 0
-	let isFirst = true
-
-	for (const measure of measures) {
-		// Add opening bar for first measure or closing bar for previous
-		if (isFirst) {
-			currentRowCells.push({ type: 'barDouble' })
-			isFirst = false
-		} else {
-			currentRowCells.push({ type: 'bar' })
-		}
-
-		// Add measure cells
-		currentRowCells.push(...measure.cells.map(c => ({ ...c })))
-
-		// Track lyrics hint
-		if (measure.lyricsHint) {
-			lyricsHints.push(measure.lyricsHint)
-		} else {
-			lyricsHints.push('')
-		}
-
-		measureCount++
-
-		// Start new row after measuresPerRow
-		if (measureCount >= measuresPerRow) {
-			currentRowCells.push({ type: 'barDouble' })
-			rows.push({ cells: currentRowCells })
-			currentRowCells = []
-			measureCount = 0
-			isFirst = true
-		}
-	}
-
-	// Add remaining cells with closing bar
-	if (currentRowCells.length > 0) {
-		currentRowCells.push({ type: 'barDouble' })
-		rows.push({ cells: currentRowCells })
-	}
+	const rows = gridRowsFromMeasures(measures, measuresPerRow)
 
 	return {
 		kind: 'grid',
 		shape,
 		rows,
-		lyricsHints: lyricsHints.filter(h => h !== ''),
 		measures
 	}
 }
@@ -152,6 +116,11 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		for (const section of document.value.sections) {
 			if (section.content.kind === 'grid') {
 				const grid = section.content as GridSection
+				if (grid.measures && grid.measures.length > 0) {
+					count += grid.measures.length
+					continue
+				}
+
 				let hasSeenFirstBar = false
 				let hasSeenNonBarSinceLastBar = false
 
@@ -170,7 +139,6 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 						}
 					}
 				}
-				// Count the last measure
 				if (hasSeenFirstBar) {
 					count++
 				}

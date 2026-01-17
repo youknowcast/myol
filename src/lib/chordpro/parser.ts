@@ -530,6 +530,40 @@ export function lyricsLineToGridRow(
  * @param beatsPerMeasure - Number of beats per measure (default: 4)
  * @returns A new ParsedSong with measures assigned
  */
+export function gridRowsFromMeasures(measures: Measure[], measuresPerRow: number = 4): GridRow[] {
+	const rows: GridRow[] = []
+	let currentRowCells: GridCell[] = []
+	let measureCount = 0
+	let isFirst = true
+
+	for (const measure of measures) {
+		if (isFirst) {
+			currentRowCells.push({ type: 'barDouble' })
+			isFirst = false
+		} else {
+			currentRowCells.push({ type: 'bar' })
+		}
+
+		currentRowCells.push(...measure.cells.map(cell => ({ ...cell })))
+		measureCount++
+
+		if (measureCount >= measuresPerRow) {
+			currentRowCells.push({ type: 'barDouble' })
+			rows.push({ cells: currentRowCells })
+			currentRowCells = []
+			measureCount = 0
+			isFirst = true
+		}
+	}
+
+	if (currentRowCells.length > 0) {
+		currentRowCells.push({ type: 'barDouble' })
+		rows.push({ cells: currentRowCells })
+	}
+
+	return rows
+}
+
 export function autoAssignMeasures(
 	song: ParsedSong,
 	beatsPerMeasure: number = 4
@@ -623,8 +657,18 @@ export function generateChordPro(song: ParsedSong): string {
 			const shapePart = section.content.shape ? ` shape="${section.content.shape}"` : ''
 			lines.push(`{start_of_grid${labelPart}${shapePart}}`)
 
-			// Output parts if available
-			if (section.content.parts && section.content.parts.length > 0) {
+			if (section.content.measures && section.content.measures.length > 0) {
+				const rows = gridRowsFromMeasures(section.content.measures)
+				for (const row of rows) {
+					lines.push(row.cells.map(cellToString).join(' '))
+				}
+				for (const measure of section.content.measures) {
+					const hint = measure.lyricsHint?.trim()
+					if (hint) {
+						lines.push(`{lyrics_hint: ${hint}}`)
+					}
+				}
+			} else if (section.content.parts && section.content.parts.length > 0) {
 				for (const part of section.content.parts) {
 					lines.push(`{part: ${part.name}}`)
 					for (const row of part.rows) {
@@ -632,15 +676,13 @@ export function generateChordPro(song: ParsedSong): string {
 					}
 				}
 			} else {
-				// Fallback to rows
 				for (const row of section.content.rows) {
 					lines.push(row.cells.map(cellToString).join(' '))
 				}
-			}
-			// Output lyrics hints if available
-			if (section.content.lyricsHints && section.content.lyricsHints.length > 0) {
-				for (const hint of section.content.lyricsHints) {
-					lines.push(`{lyrics_hint: ${hint}}`)
+				if (section.content.lyricsHints && section.content.lyricsHints.length > 0) {
+					for (const hint of section.content.lyricsHints) {
+						lines.push(`{lyrics_hint: ${hint}}`)
+					}
 				}
 			}
 			lines.push(`{end_of_grid}`)
