@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import Sortable from 'sortablejs'
 import { useGridMeasureEditor } from '@/composables/useGridMeasureEditor'
+import { useSortableGrid } from '@/composables/useSortableGrid'
 import type { GridSection, GridCell, Measure } from '@/lib/chordpro/types'
 import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
 
@@ -96,56 +96,24 @@ function handleReorder(measureIndex: number, orderedCellIds: string[]) {
   emitUpdate(reorderCells(measureIndex, orderedCellIds))
 }
 
-// Initialize SortableJS for drag & drop
-let sortableInstances: Sortable[] = []
-
-function initSortable() {
-  // Destroy existing instances first
-  sortableInstances.forEach(s => s.destroy())
-  sortableInstances = []
-
-  if (!containerRef.value) return
-
-  const measureContainers = containerRef.value.querySelectorAll('.measure-cells')
-
-  measureContainers.forEach((container) => {
-    const instance = Sortable.create(container as HTMLElement, {
-      animation: 150,
-      ghostClass: 'cell-ghost',
-      chosenClass: 'cell-chosen',
-      dragClass: 'cell-drag',
-      group: 'cells',
-      onEnd: (evt) => {
-        // Get measure index from data attribute
-        const measureIndexStr = evt.to.getAttribute('data-measure-index')
-        if (measureIndexStr === null) return
-        const measureIndex = parseInt(measureIndexStr, 10)
-
-        const items = Array.from(evt.to.querySelectorAll('[data-id]'))
-          .map(el => el.getAttribute('data-id'))
-          .filter((id): id is string => id !== null)
-
-        handleReorder(measureIndex, items)
-      }
-    })
-    sortableInstances.push(instance)
-  })
-}
+const { init: initSortable, destroy: destroySortable } = useSortableGrid({
+  onReorder: handleReorder
+})
 
 onMounted(() => {
   nextTick(() => {
-    initSortable()
+    initSortable(containerRef.value)
   })
 })
 
 watch(() => props.modelValue, () => {
   nextTick(() => {
-    initSortable()
+    initSortable(containerRef.value)
   })
 }, { deep: true })
 
 onUnmounted(() => {
-  // SortableJS instances are automatically cleaned up when DOM elements are removed
+  destroySortable()
 })
 </script>
 
