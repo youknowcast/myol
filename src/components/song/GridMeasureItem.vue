@@ -150,7 +150,7 @@ function getCellDisplay(cell: GridCell): string {
   border-radius: var(--radius-sm);
   padding: var(--spacing-xs);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  z-index: 2;
+  z-index: 20;
 }
 
 .toolbar-btn {
