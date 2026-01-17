@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
 import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
+import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -30,16 +31,11 @@ const { rowHints, cellsWithMeasures, contentTransform } = useGridViewState({
 })
 
 
-const { getCellDisplay, getCellClass: getBaseCellClass } = useGridCellDisplay()
+const { getCellDisplay } = useGridCellDisplay()
+const { getGridViewCellClass } = useGridCellHighlight()
 
 function getCellClass(cell: CellWithMeasure): string[] {
-  const classes = [...getBaseCellClass(cell)]
-
-  if (cell.isCurrentMeasure && cell.type === 'chord') {
-    classes.push('current-measure')
-  }
-
-  return classes
+  return getGridViewCellClass(cell)
 }
 
 // Check if any cell in this row is the current measure

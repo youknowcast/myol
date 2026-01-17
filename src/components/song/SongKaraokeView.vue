@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useKaraokeScroll } from '@/composables/useKaraokeScroll'
 import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
+import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { KaraokeRow } from '@/composables/useChordProDocument'
 
@@ -27,15 +28,15 @@ const { activeRowIndex, contentTransform } = useKaraokeScroll({
   containerHeight
 })
 
-const { getCellDisplay, getCellClass: getBaseCellClass } = useGridCellDisplay()
+const { getCellDisplay } = useGridCellDisplay()
+const { getKaraokeCellClass } = useGridCellHighlight()
 
 function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
-  const classes = [...getBaseCellClass(cell)]
-  const isBar = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'].includes(cell.type)
-  if (!isBar && props.currentMeasure >= row.startMeasure && props.currentMeasure <= row.endMeasure) {
-    classes.push('current-measure')
-  }
-  return classes
+  return getKaraokeCellClass(cell, {
+    currentMeasure: props.currentMeasure,
+    rowStartMeasure: row.startMeasure,
+    rowEndMeasure: row.endMeasure
+  })
 }
 </script>
 

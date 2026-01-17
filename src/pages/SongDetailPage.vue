@@ -2,13 +2,13 @@
 import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
-import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
 import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useGridMeasureHints } from '@/composables/useGridMeasureHints'
 import { useSongDetailViewState } from '@/composables/useSongDetailViewState'
 import { useSongDetailNavigation } from '@/composables/useSongDetailNavigation'
+import { useSongChords } from '@/composables/useSongChords'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -29,10 +29,7 @@ const { parsedSong, beatsPerMeasure, totalMeasures, sectionMeasureOffsets, karao
   content: songContent
 })
 
-const uniqueChords = computed(() => {
-  if (!parsedSong.value) return []
-  return extractUniqueChords(parsedSong.value.sections)
-})
+const { uniqueChords } = useSongChords(parsedSong)
 
 const { getGridMeasureHints } = useGridMeasureHints()
 

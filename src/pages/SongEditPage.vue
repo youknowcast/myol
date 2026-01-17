@@ -8,6 +8,7 @@ import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
 import { useSongEditForm } from '@/composables/useSongEditForm'
 import { useGridSectionUpdater } from '@/composables/useGridSectionUpdater'
+import { useSongEditNavigation } from '@/composables/useSongEditNavigation'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
@@ -67,13 +68,11 @@ async function save() {
   }
 }
 
-function goBack() {
-  if (isNew.value) {
-    router.push({ name: 'home' })
-  } else {
-    router.push({ name: 'song-detail', params: { id: songId.value } })
-  }
-}
+const { goBack } = useSongEditNavigation({
+  router,
+  isNew,
+  songId
+})
 
 function handleAutoAssignMeasures() {
   autoAssignMeasuresToContent(beatsPerMeasure.value)
