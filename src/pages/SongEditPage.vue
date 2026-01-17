@@ -11,6 +11,7 @@ import { useGridSectionManager } from '@/composables/useGridSectionManager'
 import { useSongEditNavigation } from '@/composables/useSongEditNavigation'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -94,6 +95,28 @@ const {
   canSplit,
   setSelectedMeasure
 } = useGridSectionManager(editorStore)
+
+const isLabelDialogOpen = ref(false)
+const labelDraft = ref('')
+const labelTargetIndex = ref<number | null>(null)
+
+function openLabelDialog(index: number, currentLabel: string) {
+  labelDraft.value = currentLabel
+  labelTargetIndex.value = index
+  isLabelDialogOpen.value = true
+}
+
+function closeLabelDialog() {
+  isLabelDialogOpen.value = false
+  labelDraft.value = ''
+  labelTargetIndex.value = null
+}
+
+function commitLabelDialog() {
+  if (labelTargetIndex.value === null) return
+  updateLabel(labelTargetIndex.value, labelDraft.value)
+  closeLabelDialog()
+}
 </script>
 
 <template>
@@ -115,6 +138,26 @@ const {
     </header>
 
     <main class="edit-content">
+      <ConfirmModal
+        :is-open="isLabelDialogOpen"
+        title="Section名を編集"
+        message=""
+        confirm-text="保存"
+        cancel-text="キャンセル"
+        @confirm="commitLabelDialog"
+        @cancel="closeLabelDialog"
+        @update:isOpen="(val) => { if (!val) closeLabelDialog() }"
+      >
+        <template #message>
+          <input
+            v-model="labelDraft"
+            type="text"
+            class="form-input"
+            placeholder="Section名"
+            @keydown.enter.prevent="commitLabelDialog"
+          />
+        </template>
+      </ConfirmModal>
       <div class="edit-form">
         <div class="form-row">
           <div class="form-group">
@@ -222,12 +265,16 @@ const {
             </div>
             <div v-for="{ section, index, displayLabel } in gridSections" :key="index" class="grid-editor-wrapper">
               <div class="grid-section-header">
-                <input
-                  class="grid-section-input"
-                  :value="section.label ?? ''"
-                  :placeholder="displayLabel"
-                  @input="updateLabel(index, ($event.target as HTMLInputElement).value)"
-                />
+                <div class="grid-section-title">
+                  <span>{{ section.label ?? displayLabel }}</span>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="openLabelDialog(index, section.label ?? '')"
+                  >
+                    編集
+                  </button>
+                </div>
                 <div class="grid-section-actions">
                   <button
                     type="button"
@@ -444,6 +491,22 @@ const {
 
 .grid-editor-wrapper {
   margin-bottom: var(--spacing-md);
+}
+
+.grid-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.grid-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 .grid-section-label {

@@ -53,18 +53,32 @@ describe('parseChordProToExtended', () => {
 
 	it('builds measures for grid parts', () => {
 		const content = `{start_of_grid}
-{part: A}
-|| C . . . | G . . . ||
-{part: B}
-|| Am . . . | F . . . ||
-{end_of_grid}
-`
+		{part: A}
+		|| C . . . | G . . . ||
+		{part: B}
+		|| Am . . . | F . . . ||
+		{end_of_grid}
+		`
 
 		const parsed = parseChordProToExtended(content)
 		const grid = parsed.sections[0]!.content as GridSection
 		expect(grid.measures?.length).toBe(4)
 		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'empty', 'empty'])
 	})
+
+	it('parses grid labels without colon', () => {
+		const content = `{start_of_grid label="Intro" shape="4x4"}
+		|| C . . . | G . . . ||
+		{end_of_grid}
+		`
+
+		const parsed = parseChordProToExtended(content)
+		const section = parsed.sections[0]!
+		const grid = section.content as GridSection
+		expect(section.label).toBe('Intro')
+		expect(grid.shape).toBe('4x4')
+	})
+
 
 	it('maps shorter lyrics hints without crashing', () => {
 		const content = `{start_of_grid}

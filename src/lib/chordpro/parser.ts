@@ -130,10 +130,23 @@ export function parseChordPro(content: string): ParsedSong {
 		}
 
 		// Parse directives
-		const directiveMatch = trimmed.match(/^\{([^:}]+)(?::\s*(.+))?\}$/)
+		const directiveMatch = trimmed.match(/^\{([^}]+)\}$/)
 		if (directiveMatch) {
-			const [, directive, value] = directiveMatch
-			if (!directive) continue
+			const rawDirective = directiveMatch[1]?.trim()
+			if (!rawDirective) continue
+			let directive = rawDirective
+			let value: string | undefined
+			const colonIndex = rawDirective.indexOf(':')
+			if (colonIndex >= 0) {
+				directive = rawDirective.slice(0, colonIndex).trim()
+				value = rawDirective.slice(colonIndex + 1).trim()
+			} else {
+				const spaceMatch = rawDirective.match(/^(\S+)\s+(.+)$/)
+				if (spaceMatch) {
+					directive = spaceMatch[1] ?? rawDirective
+					value = spaceMatch[2]?.trim()
+				}
+			}
 			const dir = directive.toLowerCase().trim()
 			const val = value?.trim()
 
