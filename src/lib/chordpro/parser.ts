@@ -27,7 +27,7 @@ export function parseBeatsPerMeasure(time?: string): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : 4
 }
 
-function buildMeasuresFromRows(rows: GridRow[], lyricsHints?: string[]): Measure[] {
+function splitRowsIntoMeasures(rows: GridRow[]): { measures: Measure[]; rowStartIndices: number[] } {
 	const measures: Measure[] = []
 	const rowStartIndices: number[] = []
 
@@ -51,47 +51,43 @@ function buildMeasuresFromRows(rows: GridRow[], lyricsHints?: string[]): Measure
 		}
 	})
 
-	if (lyricsHints && lyricsHints.length > 0 && measures.length > 0) {
-		if (lyricsHints.length === measures.length) {
-			lyricsHints.forEach((hint, index) => {
-				measures[index]!.lyricsHint = hint
-			})
-		} else if (lyricsHints.length === rowStartIndices.length) {
-			rowStartIndices.forEach((startIndex, rowIndex) => {
-				const hint = lyricsHints[rowIndex]
-				if (hint && measures[startIndex]) {
-					measures[startIndex]!.lyricsHint = hint
-				}
-			})
-		} else {
-			const limit = Math.min(lyricsHints.length, measures.length)
-			for (let index = 0; index < limit; index += 1) {
-				measures[index]!.lyricsHint = lyricsHints[index]
-			}
-		}
+	return { measures, rowStartIndices }
+}
+
+function applyLyricsHints(measures: Measure[], rowStartIndices: number[], lyricsHints?: string[]) {
+	if (!lyricsHints || lyricsHints.length === 0 || measures.length === 0) return
+
+	if (lyricsHints.length === measures.length) {
+		lyricsHints.forEach((hint, index) => {
+			measures[index]!.lyricsHint = hint
+		})
+		return
 	}
 
+	if (lyricsHints.length === rowStartIndices.length) {
+		rowStartIndices.forEach((startIndex, rowIndex) => {
+			const hint = lyricsHints[rowIndex]
+			if (hint && measures[startIndex]) {
+				measures[startIndex]!.lyricsHint = hint
+			}
+		})
+		return
+	}
+
+	const limit = Math.min(lyricsHints.length, measures.length)
+	for (let index = 0; index < limit; index += 1) {
+		measures[index]!.lyricsHint = lyricsHints[index]
+	}
+}
+
+function buildMeasuresFromRows(rows: GridRow[], lyricsHints?: string[]): Measure[] {
+	const { measures, rowStartIndices } = splitRowsIntoMeasures(rows)
+	applyLyricsHints(measures, rowStartIndices, lyricsHints)
 	return measures
 }
 
 export function ensureGridMeasures(song: ParsedSong): ParsedSong {
-	const sections = song.sections.map(section => {
-		if (section.content.kind !== 'grid') return section
-		const grid = section.content as GridSection
-		if (grid.measures && grid.measures.length > 0) return section
-		return {
-			...section,
-			content: {
-				...grid,
-				measures: []
-			}
-		}
-	})
-
-	return {
-		...song,
-		sections
-	}
+	return song
 }
 
 export function parseChordProToExtended(content: string): ParsedSong {

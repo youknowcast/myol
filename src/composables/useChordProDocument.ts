@@ -19,7 +19,7 @@ interface KaraokeLyricsRowContent {
 }
 
 function buildGridRowHint(grid: GridSection, startMeasure: number, endMeasure: number): string | undefined {
-	if (!grid.measures || grid.measures.length === 0) return undefined
+	if (grid.measures.length === 0) return undefined
 	const hints = grid.measures
 		.slice(startMeasure, endMeasure + 1)
 		.map(measure => measure.lyricsHint)
