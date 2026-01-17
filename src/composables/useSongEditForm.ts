@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue'
 import type { Song } from '@/lib/chordpro/types'
+import { generateChordPro, parseChordPro } from '@/lib/chordpro/parser'
 
 export interface UseSongEditFormOptions {
 	isNew: Ref<boolean>
@@ -48,9 +49,21 @@ export function useSongEditForm(options: UseSongEditFormOptions) {
 		content.value = options.initialTemplate
 	}
 
+	function applyMetadataToContent() {
+		const parsed = parseChordPro(content.value || '')
+		parsed.title = title.value || 'Untitled'
+		parsed.artist = artist.value
+		parsed.key = key.value || undefined
+		parsed.capo = Number.isFinite(capo.value) ? capo.value : undefined
+		parsed.tempo = Number.isFinite(tempo.value) ? tempo.value : undefined
+		parsed.time = time.value || undefined
+		content.value = generateChordPro(parsed)
+	}
+
 	async function save() {
 		saving.value = true
 		try {
+			applyMetadataToContent()
 			const song = formSong.value
 			await options.songsStore.saveSong(song)
 			return song
