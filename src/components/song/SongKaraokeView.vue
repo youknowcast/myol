@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useKaraokeScroll } from '@/composables/useKaraokeScroll'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { KaraokeRow } from '@/composables/useChordProDocument'

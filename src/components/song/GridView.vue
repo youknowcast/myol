@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
@@ -20,7 +20,7 @@ const gridContent = props.section.content as GridSection
 const gridRef = ref<HTMLElement | null>(null)
 const rowHeight = 72 // Matches .grid-row-group height in CSS
 
-const { rowHints, cellsWithMeasures, currentRowIndex, contentTransform } = useGridViewState({
+const { rowHints, cellsWithMeasures, contentTransform } = useGridViewState({
   grid: gridContent,
   currentMeasure: computed(() => props.currentMeasure),
   measureOffset: computed(() => props.measureOffset),
