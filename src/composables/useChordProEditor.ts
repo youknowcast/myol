@@ -70,8 +70,8 @@ export function useMeasureEditor() {
 		store.selectMeasure(index)
 	}
 
-	function addMeasure(position: 'end' | 'before' | 'after', beatsPerMeasure = 4) {
-		store.addMeasure(position, beatsPerMeasure)
+	function addMeasure(position: 'end' | 'before' | 'after') {
+		store.addMeasure(position)
 	}
 
 	function deleteMeasure() {
@@ -133,19 +133,7 @@ export function useChordProPlayback() {
 		let count = 0
 		for (const { section } of gridSections.value) {
 			if (section.content.kind === 'grid') {
-				const grid = section.content
-				if (grid.measures && grid.measures.length > 0) {
-					count += grid.measures.length
-				} else {
-					// Fallback: estimate from rows
-					for (const row of grid.rows) {
-						for (const cell of row.cells) {
-							if (['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'].includes(cell.type)) {
-								// This is a rough estimate
-							}
-						}
-					}
-				}
+				count += section.content.measures.length
 			}
 		}
 		return Math.max(count, 1)

@@ -127,11 +127,8 @@ export function extractUniqueChords(sections: Section[]): string[] {
 			}
 		} else if (section.content.kind === 'grid') {
 			const gridContent = section.content as GridSection
-			const sourceMeasures = gridContent.measures
-				? gridContent.measures
-				: gridContent.rows.map(row => ({ cells: row.cells }))
 
-			for (const measure of sourceMeasures) {
+			for (const measure of gridContent.measures) {
 				for (const cell of measure.cells) {
 					if (cell.type === 'chord' && cell.value) {
 						const cellChords = cell.value.split('~')

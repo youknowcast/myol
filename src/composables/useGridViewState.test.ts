@@ -5,9 +5,6 @@ import type { GridSection } from '@/lib/chordpro/types'
 
 const grid: GridSection = {
 	kind: 'grid',
-	rows: [
-		{ cells: [{ type: 'barDouble' }, { type: 'chord', value: 'C' }, { type: 'bar' }, { type: 'chord', value: 'G' }, { type: 'barDouble' }] }
-	],
 	measures: [
 		{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Hello' },
 		{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'World' }

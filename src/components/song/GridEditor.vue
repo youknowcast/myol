@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useGridMeasureEditor } from '@/composables/useGridMeasureEditor'
 import { useSortableGrid } from '@/composables/useSortableGrid'
 import type { GridSection, GridCell, Measure } from '@/lib/chordpro/types'
-import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
 
 interface Props {
   modelValue: GridSection
@@ -57,12 +56,10 @@ function getCellDisplay(cell: GridCell): string {
 function emitUpdate(newMeasures: Measure[]) {
   emit('update:modelValue', {
     ...props.modelValue,
-    parts: undefined,
     measures: newMeasures.map(measure => ({
       cells: measure.cells.map(cell => ({ ...cell })),
       lyricsHint: measure.lyricsHint
-    })),
-    rows: gridRowsFromMeasures(newMeasures)
+    }))
   })
 }
 

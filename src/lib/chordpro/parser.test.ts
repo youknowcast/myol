@@ -89,9 +89,6 @@ describe('parseChordProToExtended', () => {
 					type: 'grid',
 					content: {
 						kind: 'grid',
-						rows: [
-							{ cells: [{ type: 'barDouble' }, { type: 'chord', value: 'C' }, { type: 'barDouble' }] }
-						],
 						measures: [{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'keep' }]
 					}
 				}

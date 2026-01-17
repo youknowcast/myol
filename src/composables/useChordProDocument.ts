@@ -2,14 +2,15 @@ import { computed, type ComputedRef, type Ref } from 'vue'
 import {
 	autoAssignMeasures,
 	generateChordPro,
+	gridRowsFromMeasures,
 	parseBeatsPerMeasure,
 	parseChordPro,
 	parseChordProToExtended
 } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection, LyricsSection } from '@/lib/chordpro/types'
+import type { ParsedSong, GridSection, LyricsSection, GridCell } from '@/lib/chordpro/types'
 
 interface KaraokeGridRowContent {
-	cells: GridSection['rows'][number]['cells']
+	cells: GridCell[]
 	hint?: string
 }
 
@@ -52,40 +53,10 @@ export interface UseChordProDocument {
 	autoAssignMeasuresToContent: (beatsPerMeasure?: number) => void
 }
 
-const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'] as const
-
-type BarType = typeof BAR_TYPES[number]
+const MEASURES_PER_ROW = 4
 
 function countMeasuresInGrid(grid: GridSection): number {
-	if (grid.measures && grid.measures.length > 0) {
-		return grid.measures.length
-	}
-
-	let count = 0
-	let hasSeenFirstBar = false
-	let hasSeenNonBarSinceLastBar = false
-
-	for (const row of grid.rows) {
-		for (const cell of row.cells) {
-			const isBar = BAR_TYPES.includes(cell.type as BarType)
-
-			if (isBar) {
-				if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-					count++
-				}
-				hasSeenFirstBar = true
-				hasSeenNonBarSinceLastBar = false
-			} else {
-				hasSeenNonBarSinceLastBar = true
-			}
-		}
-	}
-
-	if (hasSeenFirstBar) {
-		count++
-	}
-
-	return Math.max(count, 1)
+	return Math.max(grid.measures.length, 1)
 }
 
 export function useChordProDocument(options: UseChordProDocumentOptions): UseChordProDocument {
@@ -146,27 +117,16 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 
 			if (section.content.kind === 'grid') {
 				const grid = section.content as GridSection
-				let sectionMeasures = 0
-				let hasSeenFirstBar = false
-				let hasSeenNonBarSinceLastBar = false
+				const gridMeasures = grid.measures
+				const rowCells = gridRowsFromMeasures(gridMeasures, MEASURES_PER_ROW)
 
-				grid.rows.forEach((row, rowIndex) => {
-					const rowStartMeasure = globalMeasureOffset + sectionMeasures
+				rowCells.forEach((row, rowIndex) => {
+					const rowStartMeasure = globalMeasureOffset + rowIndex * MEASURES_PER_ROW
+					const rowEndMeasure = Math.min(
+						globalMeasureOffset + gridMeasures.length - 1,
+						rowStartMeasure + MEASURES_PER_ROW - 1
+					)
 
-					row.cells.forEach(cell => {
-						const isBar = BAR_TYPES.includes(cell.type as BarType)
-						if (isBar) {
-							if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-								sectionMeasures++
-							}
-							hasSeenFirstBar = true
-							hasSeenNonBarSinceLastBar = false
-						} else {
-							hasSeenNonBarSinceLastBar = true
-						}
-					})
-
-					const rowEndMeasure = globalMeasureOffset + sectionMeasures
 					rows.push({
 						type: 'grid',
 						sectionIndex,
@@ -180,10 +140,7 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 					})
 				})
 
-				if (hasSeenFirstBar) {
-					sectionMeasures++
-				}
-				globalMeasureOffset += sectionMeasures
+				globalMeasureOffset += gridMeasures.length
 			} else if (section.content.kind === 'lyrics') {
 				const lyrics = section.content as LyricsSection
 				lyrics.lines.forEach((line, rowIndex) => {

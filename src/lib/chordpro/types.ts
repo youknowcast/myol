@@ -51,15 +51,7 @@ export interface LyricsSegment {
 export interface GridSection {
 	kind: 'grid'
 	shape?: string
-	parts?: GridPart[]  // パートグループ (Aメロ, Bメロ etc.)
-	rows: GridRow[]     // parts がない場合のフォールバック
-	lyricsHints?: string[]  // 各小節に対応する歌詞ヒント（表示用）- deprecated
-	measures?: Measure[]  // 新形式: 小節ごとに歌詞を持つ
-}
-
-export interface GridPart {
-	name: string       // "Aメロ", "Bメロ", "サビ" etc.
-	rows: GridRow[]
+	measures: Measure[]  // 新形式: 小節ごとに歌詞を持つ
 }
 
 export interface GridRow {

@@ -8,7 +8,7 @@ describe('useGridSectionUpdater', () => {
 		let updatedContent: GridSection | null = null
 		const store = {
 			gridSections: [
-				{ index: 0, section: { content: { kind: 'grid', rows: [] } as GridSection } }
+				{ index: 0, section: { content: { kind: 'grid', measures: [] } as GridSection } }
 			],
 			updateSectionContent: (index: number, content: GridSection) => {
 				updatedIndex = index
@@ -17,7 +17,7 @@ describe('useGridSectionUpdater', () => {
 		}
 
 		const { updateGridSection, gridSections } = useGridSectionUpdater(store)
-		const payload: GridSection = { kind: 'grid', rows: [] }
+		const payload: GridSection = { kind: 'grid', measures: [] }
 
 		updateGridSection(0, payload)
 

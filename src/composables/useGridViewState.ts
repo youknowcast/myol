@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
+import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
 import type { GridSection } from '@/lib/chordpro/types'
 
 export interface CellWithMeasure {
@@ -18,39 +19,17 @@ export interface UseGridViewStateOptions {
 
 export function useGridViewState(options: UseGridViewStateOptions) {
 	const rowHeight = options.rowHeight ?? 72
+	const measuresPerRow = 4
 
 	const rowHints = computed(() => {
-		if (!options.grid.measures || options.grid.measures.length === 0) {
+		if (options.grid.measures.length === 0) {
 			return []
 		}
 
 		const hints: string[] = []
-		let measureIndex = 0
-		let hasSeenFirstBar = false
-		let hasSeenNonBarSinceLastBar = false
-
-		for (const row of options.grid.rows) {
-			const startIndex = measureIndex
-
-			for (const cell of row.cells) {
-				const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
-					cell.type === 'barEnd' || cell.type === 'repeatStart' ||
-					cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
-
-				if (isBar) {
-					if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-						measureIndex++
-					}
-					hasSeenFirstBar = true
-					hasSeenNonBarSinceLastBar = false
-				} else {
-					hasSeenNonBarSinceLastBar = true
-				}
-			}
-
-			const endIndex = measureIndex
+		for (let index = 0; index < options.grid.measures.length; index += measuresPerRow) {
 			const rowHint = options.grid.measures
-				.slice(startIndex, endIndex + 1)
+				.slice(index, index + measuresPerRow)
 				.map(measure => measure.lyricsHint)
 				.filter((hint): hint is string => Boolean(hint && hint.trim()))
 				.join(' ')
@@ -65,8 +44,9 @@ export function useGridViewState(options: UseGridViewStateOptions) {
 		let hasSeenFirstBar = false
 		let hasSeenNonBarSinceLastBar = false
 		const result: CellWithMeasure[][] = []
+		const rows = gridRowsFromMeasures(options.grid.measures, measuresPerRow)
 
-		for (const row of options.grid.rows) {
+		for (const row of rows) {
 			const rowCells: CellWithMeasure[] = []
 
 			for (const cell of row.cells) {

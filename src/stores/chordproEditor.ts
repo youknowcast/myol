@@ -5,67 +5,26 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { generateChordPro, gridRowsFromMeasures, parseChordProToExtended } from '@/lib/chordpro/parser'
+import { generateChordPro, parseChordProToExtended } from '@/lib/chordpro/parser'
 import type { ParsedSong, GridSection, GridCell, Measure } from '@/lib/chordpro/types'
 
-// Bar line types
-const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'] as const
-
-function isBarCell(cell: GridCell): boolean {
-	return BAR_TYPES.includes(cell.type as typeof BAR_TYPES[number])
-}
-
 /**
- * Extract measures from flat cells with their lyrics hints
+ * Extract measures from grid section
  */
 function extractMeasuresFromGrid(grid: GridSection): Measure[] {
-	if (grid.measures && grid.measures.length > 0) {
-		return grid.measures.map(measure => ({
-			cells: measure.cells.map(cell => ({ ...cell })),
-			lyricsHint: measure.lyricsHint
-		}))
-	}
-
-	const measures: Measure[] = []
-	const cells = grid.rows.flatMap(row => row.cells)
-	let currentCells: GridCell[] = []
-	let measureIndex = 0
-
-	for (const cell of cells) {
-		if (isBarCell(cell)) {
-			if (currentCells.length > 0) {
-				measures.push({
-					cells: currentCells,
-					lyricsHint: grid.lyricsHints?.[measureIndex]
-				})
-				measureIndex++
-			}
-			currentCells = []
-		} else {
-			currentCells.push({ ...cell })
-		}
-	}
-
-	if (currentCells.length > 0) {
-		measures.push({
-			cells: currentCells,
-			lyricsHint: grid.lyricsHints?.[measureIndex]
-		})
-	}
-
-	return measures
+	return grid.measures.map(measure => ({
+		cells: measure.cells.map(cell => ({ ...cell })),
+		lyricsHint: measure.lyricsHint
+	}))
 }
 
 /**
  * Convert measures back to GridSection format
  */
-function measuresToGridSection(measures: Measure[], shape?: string, measuresPerRow = 4): GridSection {
-	const rows = gridRowsFromMeasures(measures, measuresPerRow)
-
+function measuresToGridSection(measures: Measure[], shape?: string): GridSection {
 	return {
 		kind: 'grid',
 		shape,
-		rows,
 		measures
 	}
 }
@@ -116,32 +75,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		for (const section of document.value.sections) {
 			if (section.content.kind === 'grid') {
 				const grid = section.content as GridSection
-				if (grid.measures && grid.measures.length > 0) {
-					count += grid.measures.length
-					continue
-				}
-
-				let hasSeenFirstBar = false
-				let hasSeenNonBarSinceLastBar = false
-
-				for (const row of grid.rows) {
-					for (const cell of row.cells) {
-						const isBar = BAR_TYPES.includes(cell.type as typeof BAR_TYPES[number])
-
-						if (isBar) {
-							if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-								count++
-							}
-							hasSeenFirstBar = true
-							hasSeenNonBarSinceLastBar = false
-						} else {
-							hasSeenNonBarSinceLastBar = true
-						}
-					}
-				}
-				if (hasSeenFirstBar) {
-					count++
-				}
+				count += grid.measures.length
 			}
 		}
 		return Math.max(count, 1)

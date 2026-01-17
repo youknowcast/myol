@@ -6,7 +6,6 @@ import type {
 	LyricsSegment,
 	LyricsSection,
 	GridSection,
-	GridPart,
 	TabSection,
 	GridRow,
 	GridCell,
@@ -26,13 +25,6 @@ export function parseBeatsPerMeasure(time?: string): number {
 	const [beats] = time.split('/')
 	const parsed = Number.parseInt(beats ?? '4', 10)
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : 4
-}
-
-function collectGridRows(grid: GridSection): GridRow[] {
-	if (grid.parts && grid.parts.length > 0) {
-		return grid.parts.flatMap(part => part.rows)
-	}
-	return grid.rows
 }
 
 function buildMeasuresFromRows(rows: GridRow[], lyricsHints?: string[]): Measure[] {
@@ -87,14 +79,11 @@ export function ensureGridMeasures(song: ParsedSong): ParsedSong {
 		if (section.content.kind !== 'grid') return section
 		const grid = section.content as GridSection
 		if (grid.measures && grid.measures.length > 0) return section
-		const rows = collectGridRows(grid)
-		const measures = buildMeasuresFromRows(rows, grid.lyricsHints)
 		return {
 			...section,
 			content: {
 				...grid,
-				rows,
-				measures
+				measures: []
 			}
 		}
 	})
@@ -131,10 +120,7 @@ export function parseChordPro(content: string): ParsedSong {
 	let inTab = false
 	let gridShape: string | undefined
 	let gridRows: GridRow[] = []
-	let gridParts: GridPart[] = []
 	let gridLyricsHints: string[] = []
-	let currentPartName: string | undefined
-	let currentPartRows: GridRow[] = []
 	let tabLines: string[] = []
 	let lyricsLines: LyricsLine[] = []
 	let currentLabel: string | undefined
@@ -195,10 +181,7 @@ export function parseChordPro(content: string): ParsedSong {
 					inGrid = true
 					gridShape = extractShape(val)
 					gridRows = []
-					gridParts = []
 					gridLyricsHints = []
-					currentPartName = undefined
-					currentPartRows = []
 				} else if (sectionType === 'tab') {
 					inTab = true
 					tabLines = []
@@ -218,17 +201,11 @@ export function parseChordPro(content: string): ParsedSong {
 			if (dir.startsWith('end_of_') || dir.startsWith('eo')) {
 				if (currentSection) {
 					if (inGrid) {
-						// Flush any remaining part
-						if (currentPartName && currentPartRows.length > 0) {
-							gridParts.push({ name: currentPartName, rows: currentPartRows })
-						}
-
+						const measures = buildMeasuresFromRows(gridRows, gridLyricsHints)
 						currentSection.content = {
 							kind: 'grid',
 							shape: gridShape,
-							parts: gridParts.length > 0 ? gridParts : undefined,
-							rows: gridParts.length > 0 ? [] : gridRows,
-							lyricsHints: gridLyricsHints.length > 0 ? gridLyricsHints : undefined
+							measures
 						} as GridSection
 						inGrid = false
 					} else if (inTab) {
@@ -249,20 +226,6 @@ export function parseChordPro(content: string): ParsedSong {
 				continue
 			}
 
-			// {part: ...} directive for grid section parts
-			if (dir === 'part' && inGrid) {
-				// Flush previous part if any
-				if (currentPartName && currentPartRows.length > 0) {
-					gridParts.push({ name: currentPartName, rows: currentPartRows })
-				} else if (!currentPartName && gridRows.length > 0) {
-					// Move any rows before the first {part} into a default part
-					gridParts.push({ name: 'Intro', rows: gridRows })
-					gridRows = []
-				}
-				currentPartName = val || 'Part'
-				currentPartRows = []
-				continue
-			}
 
 			// {lyrics_hint: ...} directive for grid section lyrics
 			if (dir === 'lyrics_hint' && inGrid && val) {
@@ -278,11 +241,7 @@ export function parseChordPro(content: string): ParsedSong {
 		if (inGrid) {
 			const row = parseGridRow(trimmed)
 			if (row.cells.length > 0) {
-				if (currentPartName) {
-					currentPartRows.push(row)
-				} else {
-					gridRows.push(row)
-				}
+				gridRows.push(row)
 			}
 		} else if (inTab) {
 			tabLines.push(line)
@@ -309,7 +268,8 @@ export function parseChordPro(content: string): ParsedSong {
 	// Flush remaining section
 	if (currentSection) {
 		if (inGrid) {
-			currentSection.content = { kind: 'grid', shape: gridShape, rows: gridRows } as GridSection
+			const measures = buildMeasuresFromRows(gridRows, gridLyricsHints)
+			currentSection.content = { kind: 'grid', shape: gridShape, measures } as GridSection
 		} else if (inTab) {
 			currentSection.content = { kind: 'tab', lines: tabLines } as TabSection
 		} else {
@@ -596,14 +556,13 @@ export function autoAssignMeasures(
 
 			// If we found convertible lines, create a new grid section for them
 			if (hasConvertedLines && gridRows.length > 0) {
-				// Add grid section with converted lines
+				const measures = buildMeasuresFromRows(gridRows, lyricsHints)
 				newSections.push({
 					type: 'grid',
 					label: section.label ? `${section.label} (Grid)` : 'Chord Progression',
 					content: {
 						kind: 'grid',
-						rows: gridRows,
-						lyricsHints: lyricsHints.length > 0 ? lyricsHints : undefined
+						measures
 					} as GridSection
 				})
 			}
@@ -657,32 +616,14 @@ export function generateChordPro(song: ParsedSong): string {
 			const shapePart = section.content.shape ? ` shape="${section.content.shape}"` : ''
 			lines.push(`{start_of_grid${labelPart}${shapePart}}`)
 
-			if (section.content.measures && section.content.measures.length > 0) {
-				const rows = gridRowsFromMeasures(section.content.measures)
-				for (const row of rows) {
-					lines.push(row.cells.map(cellToString).join(' '))
-				}
-				for (const measure of section.content.measures) {
-					const hint = measure.lyricsHint?.trim()
-					if (hint) {
-						lines.push(`{lyrics_hint: ${hint}}`)
-					}
-				}
-			} else if (section.content.parts && section.content.parts.length > 0) {
-				for (const part of section.content.parts) {
-					lines.push(`{part: ${part.name}}`)
-					for (const row of part.rows) {
-						lines.push(row.cells.map(cellToString).join(' '))
-					}
-				}
-			} else {
-				for (const row of section.content.rows) {
-					lines.push(row.cells.map(cellToString).join(' '))
-				}
-				if (section.content.lyricsHints && section.content.lyricsHints.length > 0) {
-					for (const hint of section.content.lyricsHints) {
-						lines.push(`{lyrics_hint: ${hint}}`)
-					}
+			const rows = gridRowsFromMeasures(section.content.measures)
+			for (const row of rows) {
+				lines.push(row.cells.map(cellToString).join(' '))
+			}
+			for (const measure of section.content.measures) {
+				const hint = measure.lyricsHint?.trim()
+				if (hint) {
+					lines.push(`{lyrics_hint: ${hint}}`)
 				}
 			}
 			lines.push(`{end_of_grid}`)
