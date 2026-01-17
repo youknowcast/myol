@@ -93,6 +93,14 @@ function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
             </div>
           </template>
 
+          <template v-else-if="row.type === 'grid' && viewMode === 'lyrics'">
+            <div v-if="row.content?.hint" class="lyrics-display">
+              <div class="lyrics-text">
+                <span>{{ row.content.hint }}</span>
+              </div>
+            </div>
+          </template>
+
           <!-- Label Row -->
           <template v-if="row.type === 'label' && !isPlaying">
             <div class="section-label">{{ row.content }}</div>
