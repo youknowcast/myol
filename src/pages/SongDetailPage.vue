@@ -2,9 +2,9 @@
 import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
-import { parseChordProToExtended } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
+import { useChordProDocument } from '@/composables/useChordProDocument'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -20,90 +20,14 @@ const songId = computed(() => route.params.id as string)
 const song = computed(() => songsStore.currentSong)
 const loading = computed(() => songsStore.loading)
 
-const parsedSong = computed(() => {
-  if (!song.value) return null
-  return parseChordProToExtended(song.value.content)
+const songContent = computed(() => song.value?.content ?? '')
+const { parsedSong, totalMeasures, sectionMeasureOffsets } = useChordProDocument({
+  content: songContent
 })
 
 const uniqueChords = computed(() => {
   if (!parsedSong.value) return []
   return extractUniqueChords(parsedSong.value.sections)
-})
-
-// Bar types for measure counting
-const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth']
-
-// Count total measures directly (not using editorStore to avoid conflicts)
-const totalMeasures = computed(() => {
-  if (!parsedSong.value) return 1
-  let count = 0
-
-  for (const section of parsedSong.value.sections) {
-    if (section.content.kind === 'grid') {
-      const grid = section.content as GridSection
-      let hasSeenFirstBar = false
-      let hasSeenNonBarSinceLastBar = false
-
-      for (const row of grid.rows) {
-        for (const cell of row.cells) {
-          const isBar = BAR_TYPES.includes(cell.type)
-
-          if (isBar) {
-            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-              count++
-            }
-            hasSeenFirstBar = true
-            hasSeenNonBarSinceLastBar = false
-          } else {
-            hasSeenNonBarSinceLastBar = true
-          }
-        }
-      }
-      if (hasSeenFirstBar) {
-        count++
-      }
-    }
-  }
-  return Math.max(count, 1)
-})
-
-// Calculate measure offset for each section (for syncing currentMeasure across sections)
-const sectionMeasureOffsets = computed(() => {
-  if (!parsedSong.value) return []
-  const offsets: number[] = []
-  let offset = 0
-
-  for (const section of parsedSong.value.sections) {
-    offsets.push(offset)
-
-    if (section.content.kind === 'grid') {
-      const grid = section.content as GridSection
-      let sectionMeasureCount = 0
-      let hasSeenFirstBar = false
-      let hasSeenNonBarSinceLastBar = false
-
-      for (const row of grid.rows) {
-        for (const cell of row.cells) {
-          const isBar = BAR_TYPES.includes(cell.type)
-
-          if (isBar) {
-            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-              sectionMeasureCount++
-            }
-            hasSeenFirstBar = true
-            hasSeenNonBarSinceLastBar = false
-          } else {
-            hasSeenNonBarSinceLastBar = true
-          }
-        }
-      }
-      if (hasSeenFirstBar) {
-        sectionMeasureCount++
-      }
-      offset += sectionMeasureCount
-    }
-  }
-  return offsets
 })
 
 // View mode

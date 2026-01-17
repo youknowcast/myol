@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
-import { autoAssignMeasures, generateChordPro, parseChordPro } from '@/lib/chordpro/parser'
+import { useChordProDocument } from '@/composables/useChordProDocument'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
@@ -22,6 +22,8 @@ const capo = ref(0)
 const tempo = ref(120)
 const time = ref('4/4')
 const content = ref('')
+
+const { autoAssignMeasuresToContent } = useChordProDocument({ content })
 
 const saving = ref(false)
 
@@ -124,18 +126,10 @@ function getBeatsPerMeasure(): number {
   return parseInt(parts[0] || '4', 10) || 4
 }
 
-// Auto-assign measures to chord-only content
-function autoAssignMeasuresToContent() {
-  // Parse current content
-  const parsed = parseChordPro(content.value)
-
-  // Apply auto-assign measures
-  const beatsPerMeasure = getBeatsPerMeasure()
-  const processed = autoAssignMeasures(parsed, beatsPerMeasure)
-
-  // Update content with new ChordPro
-  content.value = generateChordPro(processed)
+function handleAutoAssignMeasures() {
+  autoAssignMeasuresToContent(getBeatsPerMeasure())
 }
+
 
 // Edit mode: 'text' or 'visual'
 type EditMode = 'text' | 'visual'
@@ -262,7 +256,7 @@ function updateGridSection(sectionIndex: number, newContent: GridSection) {
             <button
               type="button"
               class="btn btn-secondary btn-sm"
-              @click="autoAssignMeasuresToContent"
+              @click="handleAutoAssignMeasures"
               title="コードのみの行を検出し、拍子に基づいて小節を自動割り振りします"
             >
               🎵 小節を自動割り振り
