@@ -6,6 +6,7 @@ import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
 import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
+import { useGridMeasureHints } from '@/composables/useGridMeasureHints'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -31,12 +32,7 @@ const uniqueChords = computed(() => {
   return extractUniqueChords(parsedSong.value.sections)
 })
 
-function getGridMeasureHints(grid: GridSection): string[] {
-  if (!grid.measures || grid.measures.length === 0) {
-    return []
-  }
-  return grid.measures.map(measure => measure.lyricsHint ?? '')
-}
+const { getGridMeasureHints } = useGridMeasureHints()
 
 // View mode
 type ViewMode = 'lyrics' | 'grid'
