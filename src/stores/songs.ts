@@ -76,6 +76,23 @@ Than [G]when we'd [D]first be[G]gun
 		}
 	}
 
+	const localSongs = ref<Record<string, Song>>({ ...sampleSongs })
+
+	function upsertSongMeta(song: Song) {
+		const meta: SongMeta = {
+			id: song.id,
+			title: song.title,
+			artist: song.artist,
+			key: song.key
+		}
+		const index = songs.value.findIndex(item => item.id === song.id)
+		if (index >= 0) {
+			songs.value.splice(index, 1, meta)
+		} else {
+			songs.value.push(meta)
+		}
+	}
+
 	async function fetchSongs() {
 		loading.value = true
 		error.value = null
@@ -106,8 +123,8 @@ Than [G]when we'd [D]first be[G]gun
 					})
 				)
 			} else {
-				// API 未設定時はサンプルデータを使用
-				songs.value = Object.values(sampleSongs).map(s => ({
+				// API 未設定時はローカルデータを使用
+				songs.value = Object.values(localSongs.value).map(s => ({
 					id: s.id,
 					title: s.title,
 					artist: s.artist,
@@ -116,8 +133,8 @@ Than [G]when we'd [D]first be[G]gun
 			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
-			// エラー時もサンプルデータを表示
-			songs.value = Object.values(sampleSongs).map(s => ({
+			// エラー時もローカルデータを表示
+			songs.value = Object.values(localSongs.value).map(s => ({
 				id: s.id,
 				title: s.title,
 				artist: s.artist,
@@ -147,13 +164,13 @@ Than [G]when we'd [D]first be[G]gun
 					content
 				}
 			} else {
-				// API 未設定時はサンプルデータを使用
-				currentSong.value = sampleSongs[id] ?? sampleSongs['amazing-grace'] ?? null
+				// API 未設定時はローカルデータを使用
+				currentSong.value = localSongs.value[id] ?? localSongs.value['amazing-grace'] ?? null
 			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
-			// エラー時はサンプルデータを試す
-			currentSong.value = sampleSongs[id] ?? null
+			// エラー時はローカルデータを試す
+			currentSong.value = localSongs.value[id] ?? null
 		} finally {
 			loading.value = false
 		}
@@ -167,9 +184,15 @@ Than [G]when we'd [D]first be[G]gun
 				// S3 に保存
 				await s3Api.saveSongContent(song.id, song.content)
 			} else {
-				// API 未設定時はコンソールログ
-				console.log('Saving song (mock):', song)
+				// API 未設定時はローカルデータを更新
+				localSongs.value = {
+					...localSongs.value,
+					[song.id]: song
+				}
 			}
+
+			currentSong.value = song
+			upsertSongMeta(song)
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
 			throw e
@@ -184,7 +207,14 @@ Than [G]when we'd [D]first be[G]gun
 		try {
 			if (s3Api.isApiConfigured()) {
 				await s3Api.deleteSong(id)
-				songs.value = songs.value.filter(s => s.id !== id)
+			} else {
+				const { [id]: _, ...rest } = localSongs.value
+				localSongs.value = rest
+			}
+
+			songs.value = songs.value.filter(s => s.id !== id)
+			if (currentSong.value?.id === id) {
+				currentSong.value = null
 			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
