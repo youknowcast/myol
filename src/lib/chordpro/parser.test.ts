@@ -63,7 +63,7 @@ describe('parseChordProToExtended', () => {
 		const parsed = parseChordProToExtended(content)
 		const grid = parsed.sections[0]!.content as GridSection
 		expect(grid.measures?.length).toBe(4)
-		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'chord'])
+		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'empty', 'empty'])
 	})
 
 	it('maps shorter lyrics hints without crashing', () => {
