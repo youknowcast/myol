@@ -82,7 +82,7 @@ function handleAutoAssignMeasures() {
 
 // Edit mode: 'text' or 'visual'
 type EditMode = 'text' | 'visual'
-const editMode = ref<EditMode>('text')
+const editMode = ref<EditMode>('visual')
 
 const {
   gridSections,
@@ -234,18 +234,18 @@ function commitLabelDialog() {
               <button
                 type="button"
                 class="mode-btn"
-                :class="{ active: editMode === 'text' }"
-                @click="editMode = 'text'"
-              >
-                テキスト
-              </button>
-              <button
-                type="button"
-                class="mode-btn"
                 :class="{ active: editMode === 'visual' }"
                 @click="editMode = 'visual'"
               >
                 ビジュアル
+              </button>
+              <button
+                type="button"
+                class="mode-btn"
+                :class="{ active: editMode === 'text' }"
+                @click="editMode = 'text'"
+              >
+                テキスト(Professional)
               </button>
             </div>
             <button
