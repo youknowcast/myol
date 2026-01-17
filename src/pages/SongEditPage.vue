@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { useChordProDocument } from '@/composables/useChordProDocument'
+import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
@@ -25,6 +26,8 @@ const content = ref('')
 
 const { autoAssignMeasuresToContent } = useChordProDocument({ content })
 
+useChordProEditorSync({ content, editorStore })
+
 const saving = ref(false)
 
 onMounted(async () => {
@@ -38,8 +41,6 @@ onMounted(async () => {
       tempo.value = songsStore.currentSong.tempo || 120
       time.value = songsStore.currentSong.time || '4/4'
       content.value = songsStore.currentSong.content
-      // Load into editor store
-      editorStore.loadDocument(content.value)
     }
   } else {
     // Default template for new song
@@ -57,34 +58,8 @@ onMounted(async () => {
 || C . . . | G . . . | Am . . . | F . . . ||
 {end_of_grid}
 `
-    editorStore.loadDocument(content.value)
   }
 })
-
-// Flag to prevent infinite loop in bidirectional sync
-let isSyncingFromStore = false
-let isSyncingToStore = false
-
-// Sync content changes to editor store (only if not syncing from store)
-watch(content, (newContent) => {
-  if (isSyncingFromStore) return
-  isSyncingToStore = true
-  editorStore.loadDocument(newContent)
-  isSyncingToStore = false
-})
-
-// Sync editor store changes back to content (only if not syncing to store)
-watch(() => editorStore.document, () => {
-  if (isSyncingToStore) return
-  if (editorStore.document) {
-    const serialized = editorStore.serialize()
-    if (serialized !== content.value) {
-      isSyncingFromStore = true
-      content.value = serialized
-      isSyncingFromStore = false
-    }
-  }
-}, { deep: true })
 
 async function save() {
   saving.value = true
