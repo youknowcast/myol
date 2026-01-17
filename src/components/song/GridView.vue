@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
+import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -29,49 +30,16 @@ const { rowHints, cellsWithMeasures, contentTransform } = useGridViewState({
 })
 
 
-function getCellClass(cell: CellWithMeasure): string[] {
-  const classes: string[] = []
+const { getCellDisplay, getCellClass: getBaseCellClass } = useGridCellDisplay()
 
-  switch (cell.type) {
-    case 'bar':
-    case 'barDouble':
-    case 'barEnd':
-    case 'repeatStart':
-    case 'repeatEnd':
-    case 'repeatBoth':
-      classes.push('grid-bar')
-      break
-    case 'chord':
-      classes.push('grid-chord')
-      break
-    case 'empty':
-      classes.push('grid-empty')
-      break
-    case 'repeat':
-      classes.push('grid-repeat')
-      break
-  }
+function getCellClass(cell: CellWithMeasure): string[] {
+  const classes = [...getBaseCellClass(cell)]
 
   if (cell.isCurrentMeasure && cell.type === 'chord') {
     classes.push('current-measure')
   }
 
   return classes
-}
-
-function getCellDisplay(cell: CellWithMeasure): string {
-  switch (cell.type) {
-    case 'bar': return '│'
-    case 'barDouble': return '║'
-    case 'barEnd': return '║'
-    case 'repeatStart': return '║:'
-    case 'repeatEnd': return ':║'
-    case 'repeatBoth': return ':║:'
-    case 'empty': return '·'
-    case 'repeat': return cell.value || '%'
-    case 'chord': return cell.value || ''
-    default: return ''
-  }
 }
 
 // Check if any cell in this row is the current measure
