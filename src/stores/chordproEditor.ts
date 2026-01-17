@@ -213,6 +213,75 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		document.value.sections[index]!.content = content
 	}
 
+	function updateSectionLabel(index: number, label: string | undefined) {
+		if (!document.value || !document.value.sections[index]) return
+		document.value.sections[index]!.label = label
+	}
+
+	function addGridSection(afterIndex?: number, label?: string) {
+		if (!document.value) return
+		const newSection = {
+			type: 'grid' as const,
+			label,
+			content: {
+				kind: 'grid' as const,
+				measures: [{ cells: [{ type: 'empty' as const }] }]
+			}
+		}
+
+		const insertIndex = afterIndex !== undefined ? afterIndex + 1 : document.value.sections.length
+		document.value.sections.splice(insertIndex, 0, newSection)
+	}
+
+	function removeSection(index: number) {
+		if (!document.value) return
+		if (index < 0 || index >= document.value.sections.length) return
+		document.value.sections.splice(index, 1)
+		if (selectedSectionIndex.value === index) {
+			selectedSectionIndex.value = null
+			selectedMeasureIndex.value = null
+		}
+	}
+
+	function moveSection(index: number, direction: 'up' | 'down') {
+		if (!document.value) return
+		const targetIndex = direction === 'up' ? index - 1 : index + 1
+		if (targetIndex < 0 || targetIndex >= document.value.sections.length) return
+		const sections = document.value.sections
+		const temp = sections[index]
+		sections[index] = sections[targetIndex]!
+		sections[targetIndex] = temp!
+	}
+
+	function splitGridSection(index: number, measureIndex: number, label?: string) {
+		if (!document.value) return
+		const section = document.value.sections[index]
+		if (!section || section.content.kind !== 'grid') return
+		const grid = section.content as GridSection
+		if (measureIndex < 0 || measureIndex >= grid.measures.length - 1) return
+
+		const leftMeasures = grid.measures.slice(0, measureIndex + 1)
+		const rightMeasures = grid.measures.slice(measureIndex + 1)
+
+		section.content = {
+			kind: 'grid',
+			shape: grid.shape,
+			measures: leftMeasures
+		}
+
+		const newSection = {
+			type: 'grid' as const,
+			label,
+			content: {
+				kind: 'grid' as const,
+				shape: grid.shape,
+				measures: rightMeasures
+			}
+		}
+
+		document.value.sections.splice(index + 1, 0, newSection)
+	}
+
 	function serialize(): string {
 		if (!document.value) return originalContent.value
 		return generateChordPro(document.value)
@@ -248,6 +317,11 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		updateMeasureCells,
 		swapMeasures,
 		updateSectionContent,
+		updateSectionLabel,
+		addGridSection,
+		removeSection,
+		moveSection,
+		splitGridSection,
 		serialize,
 		markAsSaved
 	}

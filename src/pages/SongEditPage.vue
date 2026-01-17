@@ -7,7 +7,7 @@ import { useBeatSignature } from '@/composables/useBeatSignature'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
 import { useSongEditForm } from '@/composables/useSongEditForm'
-import { useGridSectionUpdater } from '@/composables/useGridSectionUpdater'
+import { useGridSectionManager } from '@/composables/useGridSectionManager'
 import { useSongEditNavigation } from '@/composables/useSongEditNavigation'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
@@ -83,7 +83,17 @@ function handleAutoAssignMeasures() {
 type EditMode = 'text' | 'visual'
 const editMode = ref<EditMode>('text')
 
-const { gridSections, updateGridSection } = useGridSectionUpdater(editorStore)
+const {
+  gridSections,
+  updateGridSection,
+  updateLabel,
+  addSection,
+  removeSection,
+  moveSection,
+  splitSection,
+  canSplit,
+  setSelectedMeasure
+} = useGridSectionManager(editorStore)
 </script>
 
 <template>
@@ -210,11 +220,60 @@ const { gridSections, updateGridSection } = useGridSectionUpdater(editorStore)
             <div v-if="gridSections.length === 0" class="no-grids-message">
               Gridセクションがありません。「小節を自動割り振り」を使ってコードをGridに変換してください。
             </div>
-            <div v-for="{ section, index } in gridSections" :key="index" class="grid-editor-wrapper">
-              <div class="grid-section-label">{{ section.label || 'Grid ' + (index + 1) }}</div>
+            <div v-for="{ section, index, displayLabel } in gridSections" :key="index" class="grid-editor-wrapper">
+              <div class="grid-section-header">
+                <input
+                  class="grid-section-input"
+                  :value="section.label ?? ''"
+                  :placeholder="displayLabel"
+                  @input="updateLabel(index, ($event.target as HTMLInputElement).value)"
+                />
+                <div class="grid-section-actions">
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="moveSection(index, 'up')"
+                    :disabled="index === 0"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="moveSection(index, 'down')"
+                    :disabled="index === gridSections.length - 1"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="addSection(index)"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="splitSection(index)"
+                    :disabled="!canSplit(index)"
+                  >
+                    分割
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    @click="removeSection(index)"
+                    :disabled="gridSections.length <= 1"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
               <GridEditor
                 :model-value="(section.content as GridSection)"
                 @update:model-value="(val) => updateGridSection(index, val)"
+                @select-measure="(val) => setSelectedMeasure(index, val)"
               />
             </div>
           </div>

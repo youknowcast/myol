@@ -10,6 +10,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: GridSection): void
+  (e: 'select-measure', value: number | null): void
 }
 
 const props = defineProps<Props>()
@@ -66,6 +67,7 @@ function emitUpdate(newMeasures: Measure[]) {
 // Select a measure
 function selectMeasure(index: number) {
   selectedMeasureIndex.value = selectedMeasureIndex.value === index ? null : index
+  emit('select-measure', selectedMeasureIndex.value)
 }
 
 // Add measure operations
