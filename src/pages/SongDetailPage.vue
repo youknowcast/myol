@@ -8,6 +8,7 @@ import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useGridMeasureHints } from '@/composables/useGridMeasureHints'
 import { useSongDetailViewState } from '@/composables/useSongDetailViewState'
+import { useSongDetailNavigation } from '@/composables/useSongDetailNavigation'
 import type { GridSection } from '@/lib/chordpro/types'
 import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
@@ -74,13 +75,7 @@ const { handleSeek, handleScroll } = usePlaybackSync({
   seek: playback.seek
 })
 
-function goBack() {
-  router.push({ name: 'home' })
-}
-
-function goToEdit() {
-  router.push({ name: 'song-edit', params: { id: songId.value } })
-}
+const { goBack, goToEdit } = useSongDetailNavigation({ router, songId })
 
 onMounted(() => {
   songsStore.fetchSong(songId.value)
