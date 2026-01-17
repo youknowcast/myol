@@ -7,6 +7,7 @@ import { useBeatSignature } from '@/composables/useBeatSignature'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
 import { useSongEditForm } from '@/composables/useSongEditForm'
+import { useGridSectionUpdater } from '@/composables/useGridSectionUpdater'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
@@ -83,13 +84,7 @@ function handleAutoAssignMeasures() {
 type EditMode = 'text' | 'visual'
 const editMode = ref<EditMode>('text')
 
-// Use editor store for grid sections
-const gridSections = computed(() => editorStore.gridSections)
-
-// Update grid section through store
-function updateGridSection(sectionIndex: number, newContent: GridSection) {
-  editorStore.updateSectionContent(sectionIndex, newContent)
-}
+const { gridSections, updateGridSection } = useGridSectionUpdater(editorStore)
 </script>
 
 <template>
