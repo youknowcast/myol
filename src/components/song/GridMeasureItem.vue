@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { EditableMeasure } from '@/composables/useGridMeasureEditor'
+import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
 
 interface Props {
   measure: EditableMeasure
@@ -23,31 +23,6 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
-
-const isDeleteMenuOpen = ref(false)
-
-function toggleDeleteMenu() {
-  isDeleteMenuOpen.value = !isDeleteMenuOpen.value
-}
-
-function closeDeleteMenu() {
-  isDeleteMenuOpen.value = false
-}
-
-function handleDeleteMeasure() {
-  emit('delete-measure')
-  closeDeleteMenu()
-}
-
-function handleDeleteLyrics() {
-  emit('delete-lyrics')
-  closeDeleteMenu()
-}
-
-function handleDeleteChords() {
-  emit('delete-chords')
-  closeDeleteMenu()
-}
 
 function getCellClass(cell: GridCell): string {
   switch (cell.type) {
@@ -82,99 +57,19 @@ function getCellDisplay(cell: GridCell): string {
     :class="{ selected: selected }"
     @click.self="emit('select', measureIndex)"
   >
-    <div
+    <GridMeasureToolbox
       v-if="selected"
-      class="measure-toolbox"
-      @click.stop
-    >
-      <div class="tool-group">
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('add-measure', 'before')"
-          title="前に挿入"
-        >
-          ➕⬅
-        </button>
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('add-measure', 'after')"
-          title="後に挿入"
-        >
-          ➕➡
-        </button>
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('add-measure', 'end')"
-          title="末尾に小節を追加"
-        >
-          ➕末
-        </button>
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('copy')"
-          title="コピー"
-        >
-          📋
-        </button>
-      </div>
-      <div class="tool-group">
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('swap', 'left')"
-          :disabled="measureIndex === 0"
-          title="左へ移動"
-        >
-          ⬅
-        </button>
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('swap', 'right')"
-          :disabled="measureIndex === measuresLength - 1"
-          title="右へ移動"
-        >
-          ➡
-        </button>
-      </div>
-      <div class="tool-group">
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('merge', 'left', measureIndex)"
-          :disabled="!measure.lyricsHint || measureIndex === 0"
-          title="歌詞を左にマージ"
-        >
-          📝⬅
-        </button>
-        <button
-          class="toolbar-btn"
-          @click.stop="emit('merge', 'right', measureIndex)"
-          :disabled="!measure.lyricsHint || measureIndex === measuresLength - 1"
-          title="歌詞を右にマージ"
-        >
-          📝➡
-        </button>
-      </div>
-      <div class="tool-group delete-group">
-        <button
-          class="toolbar-btn toolbar-btn-danger"
-          @click.stop="toggleDeleteMenu"
-          :disabled="measuresLength <= 1"
-          title="削除メニュー"
-        >
-          🗑
-        </button>
-        <div v-if="isDeleteMenuOpen" class="delete-menu">
-          <button class="delete-menu-item" @click.stop="handleDeleteMeasure">
-            小節削除
-          </button>
-          <button class="delete-menu-item" @click.stop="handleDeleteLyrics">
-            歌詞削除
-          </button>
-          <button class="delete-menu-item" @click.stop="handleDeleteChords">
-            コード削除
-          </button>
-        </div>
-      </div>
-    </div>
+      :measure-index="measureIndex"
+      :measures-length="measuresLength"
+      :has-lyrics="Boolean(measure.lyricsHint)"
+      @add-measure="(position) => emit('add-measure', position)"
+      @copy="() => emit('copy')"
+      @swap="(direction) => emit('swap', direction)"
+      @merge="(direction, sourceIndex) => emit('merge', direction, sourceIndex)"
+      @delete-measure="() => emit('delete-measure')"
+      @delete-lyrics="() => emit('delete-lyrics')"
+      @delete-chords="() => emit('delete-chords')"
+    />
     <div
       class="measure-cells"
       :data-measure-index="measureIndex"
@@ -202,95 +97,6 @@ function getCellDisplay(cell: GridCell): string {
 </template>
 
 <style scoped>
-.measure-toolbox {
-  position: absolute;
-  top: -44px;
-  left: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--spacing-xs);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  z-index: 20;
-}
-
-.tool-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-right: var(--spacing-xs);
-  margin-right: var(--spacing-xs);
-  border-right: 1px solid var(--color-border);
-}
-
-.tool-group:last-child {
-  border-right: none;
-  margin-right: 0;
-  padding-right: 0;
-}
-
-.delete-group {
-  position: relative;
-}
-
-.delete-menu {
-  position: absolute;
-  top: 32px;
-  right: 0;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
-  z-index: 30;
-}
-
-.delete-menu-item {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: none;
-  text-align: left;
-  color: var(--color-text);
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-
-.delete-menu-item:hover {
-  background: var(--color-bg-secondary);
-}
-
-.toolbar-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.7rem;
-  background: var(--color-bg-card);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.toolbar-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.toolbar-btn-danger:hover:not(:disabled) {
-  background: var(--color-error, #ef4444);
-  border-color: var(--color-error, #ef4444);
-}
 
 .measure-wrapper {
   position: relative;
@@ -349,6 +155,21 @@ function getCellDisplay(cell: GridCell): string {
 .cell-repeat {
   background: var(--color-accent);
   color: white;
+}
+
+/* SortableJS states */
+.cell-ghost {
+  opacity: 0.4;
+  background: var(--color-primary) !important;
+}
+
+.cell-chosen {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  transform: scale(1.1);
+}
+
+.cell-drag {
+  opacity: 0.9;
 }
 
 @media (min-width: 768px) {
