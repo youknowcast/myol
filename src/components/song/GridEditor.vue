@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useGridMeasureEditor } from '@/composables/useGridMeasureEditor'
 import { useSortableGrid } from '@/composables/useSortableGrid'
-import type { GridSection, GridCell, Measure } from '@/lib/chordpro/types'
+import type { GridSection, Measure } from '@/lib/chordpro/types'
+import GridMeasureItem from '@/components/song/GridMeasureItem.vue'
 
 interface Props {
   modelValue: GridSection
@@ -33,25 +34,6 @@ const {
   measures,
   selectedMeasureIndex
 })
-
-// Display helpers
-function getCellClass(cell: GridCell): string {
-  switch (cell.type) {
-    case 'chord': return 'cell-chord'
-    case 'empty': return 'cell-empty'
-    case 'repeat': return 'cell-repeat'
-    default: return ''
-  }
-}
-
-function getCellDisplay(cell: GridCell): string {
-  switch (cell.type) {
-    case 'empty': return '·'
-    case 'repeat': return cell.value || '%'
-    case 'chord': return cell.value || ''
-    default: return ''
-  }
-}
 
 // Emit updated grid
 function emitUpdate(newMeasures: Measure[]) {
@@ -120,62 +102,6 @@ onUnmounted(() => {
   <div ref="containerRef" class="grid-editor">
     <div class="editor-header">
       <span class="editor-title">🎵 小節編集</span>
-      <div class="editor-toolbar">
-        <button
-          class="toolbar-btn"
-          @click="handleAddMeasure('end')"
-          title="末尾に小節を追加"
-        >
-          ➕ 追加
-        </button>
-        <template v-if="selectedMeasureIndex !== null">
-          <button
-            class="toolbar-btn"
-            @click="handleAddMeasure('before')"
-            title="前に挿入"
-          >
-            ⬅ 前に
-          </button>
-          <button
-            class="toolbar-btn"
-            @click="handleAddMeasure('after')"
-            title="後に挿入"
-          >
-            後に ➡
-          </button>
-          <button
-            class="toolbar-btn"
-            @click="handleCopyMeasure"
-            title="コピー"
-          >
-            📋 コピー
-          </button>
-          <button
-            class="toolbar-btn"
-            @click="handleSwapMeasure('left')"
-            :disabled="selectedMeasureIndex === 0"
-            title="左へ移動"
-          >
-            ⬅
-          </button>
-          <button
-            class="toolbar-btn"
-            @click="handleSwapMeasure('right')"
-            :disabled="selectedMeasureIndex === measures.length - 1"
-            title="右へ移動"
-          >
-            ➡
-          </button>
-          <button
-            class="toolbar-btn toolbar-btn-danger"
-            @click="handleDeleteMeasure"
-            :disabled="measures.length <= 1"
-            title="削除"
-          >
-            🗑
-          </button>
-        </template>
-      </div>
     </div>
 
     <div class="measures-container">
@@ -184,36 +110,17 @@ onUnmounted(() => {
         <div class="bar-line" v-if="measureIndex === 0">║</div>
 
         <!-- Measure wrapper (clickable for selection) -->
-        <div
-          class="measure-wrapper"
-          :class="{ selected: selectedMeasureIndex === measureIndex }"
-          @click.self="selectMeasure(measureIndex)"
-        >
-          <!-- Measure cells (sortable) -->
-          <div
-            class="measure-cells"
-            :data-measure-index="measureIndex"
-            @click="selectMeasure(measureIndex)"
-          >
-            <div
-              v-for="cell in measure.cells"
-              :key="cell.id"
-              :data-id="cell.id"
-              class="editable-cell"
-              :class="getCellClass(cell)"
-            >
-              {{ getCellDisplay(cell) }}
-            </div>
-          </div>
-          <!-- Lyrics hint (non-editable) -->
-          <div
-            v-if="measure.lyricsHint"
-            class="lyrics-hint"
-            :title="measure.lyricsHint"
-          >
-            {{ measure.lyricsHint }}
-          </div>
-        </div>
+        <GridMeasureItem
+          :measure="measure"
+          :measure-index="measureIndex"
+          :measures-length="measures.length"
+          :selected="selectedMeasureIndex === measureIndex"
+          @select="selectMeasure"
+          @add-measure="handleAddMeasure"
+          @copy="handleCopyMeasure"
+          @swap="handleSwapMeasure"
+          @delete="handleDeleteMeasure"
+        />
 
         <!-- Bar line (right) -->
         <div class="bar-line">{{ measureIndex === measures.length - 1 ? '║' : '│' }}</div>
@@ -267,56 +174,6 @@ onUnmounted(() => {
   padding: 0 2px;
 }
 
-.editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  flex-wrap: wrap;
-}
-
-.toolbar-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.7rem;
-  background: var(--color-bg-card);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.toolbar-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.toolbar-btn-danger:hover:not(:disabled) {
-  background: var(--color-error, #ef4444);
-  border-color: var(--color-error, #ef4444);
-}
-
-.measure-wrapper {
-  position: relative;
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  transition: all var(--transition-fast);
-}
-
-.measure-wrapper:hover {
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.measure-wrapper.selected {
-  background: rgba(99, 102, 241, 0.2);
-  box-shadow: 0 0 0 2px var(--color-primary);
-}
 
 .editor-hint {
   font-size: 0.7rem;
@@ -325,14 +182,7 @@ onUnmounted(() => {
   text-align: center;
 }
 
-.measure-cells {
-  display: flex;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs);
-  background: var(--color-bg-card);
-  border-radius: var(--radius-sm);
-  min-height: 2.5rem;
-}
+
 
 .editable-cell {
   padding: var(--spacing-xs) var(--spacing-sm);
