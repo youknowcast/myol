@@ -6,6 +6,7 @@ import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { useBeatSignature } from '@/composables/useBeatSignature'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
+import { useSongEditForm } from '@/composables/useSongEditForm'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 
@@ -17,36 +18,22 @@ const editorStore = useChordProEditorStore()
 const isNew = computed(() => route.name === 'song-new')
 const songId = computed(() => route.params.id as string | undefined)
 
-const title = ref('')
-const artist = ref('')
-const key = ref('')
-const capo = ref(0)
-const tempo = ref(120)
-const time = ref('4/4')
-const content = ref('')
-
-const { autoAssignMeasuresToContent } = useChordProDocument({ content })
-const { beatsPerMeasure } = useBeatSignature(time)
-
-useChordProEditorSync({ content, editorStore })
-
-const saving = ref(false)
-
-onMounted(async () => {
-  if (!isNew.value && songId.value) {
-    await songsStore.fetchSong(songId.value)
-    if (songsStore.currentSong) {
-      title.value = songsStore.currentSong.title
-      artist.value = songsStore.currentSong.artist
-      key.value = songsStore.currentSong.key || ''
-      capo.value = songsStore.currentSong.capo || 0
-      tempo.value = songsStore.currentSong.tempo || 120
-      time.value = songsStore.currentSong.time || '4/4'
-      content.value = songsStore.currentSong.content
-    }
-  } else {
-    // Default template for new song
-    content.value = `{title: }
+const {
+  title,
+  artist,
+  key,
+  capo,
+  tempo,
+  time,
+  content,
+  saving,
+  loadSong,
+  save: saveSong
+} = useSongEditForm({
+  isNew,
+  songId,
+  songsStore,
+  initialTemplate: `{title: }
 {artist: }
 {key: C}
 {tempo: 120}
@@ -60,33 +47,23 @@ onMounted(async () => {
 || C . . . | G . . . | Am . . . | F . . . ||
 {end_of_grid}
 `
-  }
+})
+
+const { autoAssignMeasuresToContent } = useChordProDocument({ content })
+const { beatsPerMeasure } = useBeatSignature(time)
+
+useChordProEditorSync({ content, editorStore })
+
+onMounted(async () => {
+  await loadSong()
 })
 
 async function save() {
-  saving.value = true
-  try {
-    const song = {
-      id: songId.value || generateId(),
-      title: title.value || 'Untitled',
-      artist: artist.value,
-      key: key.value,
-      capo: capo.value,
-      tempo: tempo.value,
-      time: time.value,
-      content: content.value
-    }
-
-    await songsStore.saveSong(song)
+  const song = await saveSong()
+  if (song) {
     editorStore.markAsSaved()
     router.push({ name: 'song-detail', params: { id: song.id } })
-  } finally {
-    saving.value = false
   }
-}
-
-function generateId(): string {
-  return `song-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 function goBack() {
