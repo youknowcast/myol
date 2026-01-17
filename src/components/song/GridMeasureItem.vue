@@ -14,6 +14,7 @@ interface Emits {
   (e: 'add-measure', value: 'end' | 'before' | 'after'): void
   (e: 'copy'): void
   (e: 'swap', value: 'left' | 'right'): void
+  (e: 'merge', direction: 'left' | 'right', sourceIndex: number): void
   (e: 'delete'): void
 }
 
@@ -58,58 +59,82 @@ function getCellDisplay(cell: GridCell): string {
       class="measure-toolbox"
       @click.stop
     >
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('add-measure', 'before')"
-        title="前に挿入"
-      >
-        ⬅ 前に
-      </button>
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('add-measure', 'after')"
-        title="後に挿入"
-      >
-        後に ➡
-      </button>
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('add-measure', 'end')"
-        title="末尾に小節を追加"
-      >
-        ➕ 追加
-      </button>
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('copy')"
-        title="コピー"
-      >
-        📋 コピー
-      </button>
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('swap', 'left')"
-        :disabled="measureIndex === 0"
-        title="左へ移動"
-      >
-        ⬅
-      </button>
-      <button
-        class="toolbar-btn"
-        @click.stop="emit('swap', 'right')"
-        :disabled="measureIndex === measuresLength - 1"
-        title="右へ移動"
-      >
-        ➡
-      </button>
-      <button
-        class="toolbar-btn toolbar-btn-danger"
-        @click.stop="emit('delete')"
-        :disabled="measuresLength <= 1"
-        title="削除"
-      >
-        🗑
-      </button>
+      <div class="tool-group">
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('add-measure', 'before')"
+          title="前に挿入"
+        >
+          ➕⬅
+        </button>
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('add-measure', 'after')"
+          title="後に挿入"
+        >
+          ➕➡
+        </button>
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('add-measure', 'end')"
+          title="末尾に小節を追加"
+        >
+          ➕末
+        </button>
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('copy')"
+          title="コピー"
+        >
+          📋
+        </button>
+      </div>
+      <div class="tool-group">
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('swap', 'left')"
+          :disabled="measureIndex === 0"
+          title="左へ移動"
+        >
+          ⬅
+        </button>
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('swap', 'right')"
+          :disabled="measureIndex === measuresLength - 1"
+          title="右へ移動"
+        >
+          ➡
+        </button>
+      </div>
+      <div class="tool-group">
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('merge', 'left', measureIndex)"
+          :disabled="!measure.lyricsHint || measureIndex === 0"
+          title="歌詞を左にマージ"
+        >
+          📝⬅
+        </button>
+        <button
+          class="toolbar-btn"
+          @click.stop="emit('merge', 'right', measureIndex)"
+          :disabled="!measure.lyricsHint || measureIndex === measuresLength - 1"
+          title="歌詞を右にマージ"
+        >
+          📝➡
+        </button>
+      </div>
+      <div class="tool-group">
+        <button
+          class="toolbar-btn toolbar-btn-danger"
+          @click.stop="emit('delete')"
+          :disabled="measuresLength <= 1"
+          title="削除"
+        >
+          🗑
+        </button>
+      </div>
     </div>
     <div
       class="measure-cells"
@@ -151,6 +176,21 @@ function getCellDisplay(cell: GridCell): string {
   padding: var(--spacing-xs);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   z-index: 20;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: var(--spacing-xs);
+  margin-right: var(--spacing-xs);
+  border-right: 1px solid var(--color-border);
+}
+
+.tool-group:last-child {
+  border-right: none;
+  margin-right: 0;
+  padding-right: 0;
 }
 
 .toolbar-btn {

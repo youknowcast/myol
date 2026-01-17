@@ -97,6 +97,38 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		return next
 	}
 
+	function mergeLyrics(direction: 'left' | 'right', sourceIndex?: number): Measure[] {
+		const currentIndex = sourceIndex ?? options.selectedMeasureIndex.value
+		if (currentIndex === null || currentIndex === undefined) {
+			return cloneMeasures(options.measures.value)
+		}
+		const targetIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1
+		if (targetIndex < 0 || targetIndex >= options.measures.value.length) {
+			return cloneMeasures(options.measures.value)
+		}
+
+		const current = options.measures.value[currentIndex]
+		const currentLyrics = current?.lyricsHint?.trim()
+		if (!currentLyrics) return cloneMeasures(options.measures.value)
+
+		const next = cloneMeasures(options.measures.value)
+		const targetLyrics = next[targetIndex]?.lyricsHint?.trim()
+		const mergedLyrics = targetLyrics
+			? direction === 'left'
+				? `${targetLyrics} ${currentLyrics}`
+				: `${currentLyrics} ${targetLyrics}`
+			: currentLyrics
+		next[targetIndex] = {
+			cells: next[targetIndex]?.cells ?? [],
+			lyricsHint: mergedLyrics
+		}
+		next[currentIndex] = {
+			cells: next[currentIndex]?.cells ?? [],
+			lyricsHint: undefined
+		}
+		return next
+	}
+
 	function reorderCells(measureIndex: number, orderedCellIds: string[]): Measure[] {
 		const measure = displayMeasures.value[measureIndex]
 		if (!measure) return cloneMeasures(options.measures.value)
@@ -128,6 +160,7 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		copyMeasure,
 		deleteMeasure,
 		swapMeasure,
+		mergeLyrics,
 		reorderCells
 	}
 }

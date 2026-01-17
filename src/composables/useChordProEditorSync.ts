@@ -25,6 +25,7 @@ export function useChordProEditorSync(options: UseChordProEditorSyncOptions) {
 
 	watch(options.content, (newContent) => {
 		if (isSyncingFromStore) return
+		if (newContent === options.editorStore.serialize()) return
 		isSyncingToStore = true
 		options.editorStore.loadDocument(newContent)
 		isSyncingToStore = false

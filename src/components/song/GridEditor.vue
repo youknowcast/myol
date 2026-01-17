@@ -23,17 +23,19 @@ const selectedMeasureIndex = ref<number | null>(null)
 
 const measures = computed(() => props.modelValue.measures ?? [])
 
-const {
-  displayMeasures,
-  addMeasure,
-  copyMeasure,
-  deleteMeasure,
-  swapMeasure,
-  reorderCells
-} = useGridMeasureEditor({
-  measures,
-  selectedMeasureIndex
-})
+  const {
+    displayMeasures,
+    addMeasure,
+    copyMeasure,
+    deleteMeasure,
+    swapMeasure,
+    mergeLyrics,
+    reorderCells
+  } = useGridMeasureEditor({
+    measures,
+    selectedMeasureIndex
+  })
+
 
 // Emit updated grid
 function emitUpdate(newMeasures: Measure[]) {
@@ -70,6 +72,10 @@ function handleDeleteMeasure() {
 // Swap measure with adjacent
 function handleSwapMeasure(direction: 'left' | 'right') {
   emitUpdate(swapMeasure(direction))
+}
+
+function handleMergeLyrics(direction: 'left' | 'right', sourceIndex: number) {
+  emitUpdate(mergeLyrics(direction, sourceIndex))
 }
 
 // Handle drag & drop reorder within a measure
@@ -119,6 +125,7 @@ onUnmounted(() => {
           @add-measure="handleAddMeasure"
           @copy="handleCopyMeasure"
           @swap="handleSwapMeasure"
+          @merge="handleMergeLyrics"
           @delete="handleDeleteMeasure"
         />
 

@@ -59,4 +59,34 @@ describe('useGridMeasureEditor', () => {
 
 		expect(next[0]?.cells[0]?.value).toBe('G')
 	})
+
+	it('merges lyrics to the left and clears current', () => {
+		const selectedMeasureIndex = ref<number | null>(1)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Prev' },
+			{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'Current' }
+		])
+		const { mergeLyrics } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = mergeLyrics('left')
+
+		expect(next[0]?.lyricsHint).toBe('Prev Current')
+		expect(next[1]?.lyricsHint).toBeUndefined()
+		expect(selectedMeasureIndex.value).toBe(1)
+	})
+
+	it('merges lyrics to the right and clears current', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Current' },
+			{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'Next' }
+		])
+		const { mergeLyrics } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = mergeLyrics('right')
+
+		expect(next[1]?.lyricsHint).toBe('Current Next')
+		expect(next[0]?.lyricsHint).toBeUndefined()
+		expect(selectedMeasureIndex.value).toBe(0)
+	})
 })
