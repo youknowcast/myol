@@ -36,6 +36,17 @@ describe('useGridMeasureEditor', () => {
 		expect(next.length).toBe(1)
 	})
 
+	it('does not delete measure with lyrics', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep' }
+		])
+		const { deleteMeasure } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = deleteMeasure()
+		expect(next.length).toBe(1)
+	})
+
 	it('reorders cells within a measure', () => {
 		const selectedMeasureIndex = ref<number | null>(0)
 		const measures = computed<Measure[]>(() => [

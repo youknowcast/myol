@@ -60,4 +60,20 @@ describe('usePlaybackSync', () => {
 
 		expect(seek).toHaveBeenCalledWith(30)
 	})
+
+	it('ignores scroll when playing', () => {
+		const element = createScrollableElement(1000, 500)
+		const contentRef = ref<HTMLElement | null>(element)
+		const isPlaying = ref(true)
+		const progress = ref(0)
+		const totalDuration = ref(120)
+		const seek = vi.fn()
+
+		const { handleScroll } = usePlaybackSync({ contentRef, isPlaying, progress, totalDuration, seek })
+
+		element.scrollTop = 200
+		handleScroll()
+
+		expect(seek).not.toHaveBeenCalled()
+	})
 })

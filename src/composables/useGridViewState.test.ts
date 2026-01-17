@@ -45,4 +45,20 @@ describe('useGridViewState', () => {
 		expect(cellsWithMeasures.value[0]?.some(cell => cell.isCurrentMeasure)).toBe(true)
 		expect(currentRowIndex.value).toBe(0)
 	})
+
+	it('applies measure offset to current measure', () => {
+		const currentMeasure = ref(2)
+		const measureOffset = ref(2)
+		const isPlaying = ref(false)
+
+		const { cellsWithMeasures } = useGridViewState({
+			grid,
+			currentMeasure,
+			measureOffset,
+			isPlaying
+		})
+
+		const hasCurrent = cellsWithMeasures.value[0]?.some(cell => cell.isCurrentMeasure)
+		expect(hasCurrent).toBe(true)
+	})
 })

@@ -30,4 +30,12 @@ describe('useKaraokeScroll', () => {
 
 		expect(contentTransform.value).toBe('translateY(140px)')
 	})
+
+	it('stays at zero when not playing', () => {
+		const currentMeasure = ref(1)
+		const isPlaying = ref(false)
+		const { contentTransform } = useKaraokeScroll({ rows, currentMeasure, isPlaying })
+
+		expect(contentTransform.value).toBe('translateY(0)')
+	})
 })

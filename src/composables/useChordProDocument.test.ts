@@ -32,6 +32,7 @@ describe('useChordProDocument', () => {
 	expect(totalMeasures.value).toBe(3)
 	expect(sectionMeasureOffsets.value).toEqual([0, 2])
 	expect(karaokeRows.value.length).toBeGreaterThan(0)
+	expect(karaokeRows.value[0]?.startMeasure).toBe(0)
 
 	})
 
