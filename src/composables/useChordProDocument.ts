@@ -6,16 +6,59 @@ import {
 	parseChordPro,
 	parseChordProToExtended
 } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection } from '@/lib/chordpro/types'
+import type { ParsedSong, GridSection, LyricsSection, Section } from '@/lib/chordpro/types'
+
+interface KaraokeGridRowContent {
+	cells: GridSection['rows'][number]['cells']
+	hint?: string
+}
+
+interface KaraokeLyricsRowContent {
+	segments: LyricsSection['lines'][number]['segments']
+}
+
+function buildKaraokeRowContent(section: Section, rowIndex: number): KaraokeRow['content'] | null {
+	if (section.content.kind === 'grid') {
+		const grid = section.content as GridSection
+		const row = grid.rows[rowIndex]
+		if (!row) return null
+		return {
+			cells: row.cells,
+			hint: grid.lyricsHints?.[rowIndex]
+		} satisfies KaraokeGridRowContent
+	}
+
+	if (section.content.kind === 'lyrics') {
+		const lyrics = section.content as LyricsSection
+		const line = lyrics.lines[rowIndex]
+		if (!line) return null
+		return {
+			segments: line.segments
+		} satisfies KaraokeLyricsRowContent
+	}
+
+	return null
+}
 
 export interface UseChordProDocumentOptions {
 	content: Ref<string | null | undefined>
 }
 
+export interface KaraokeRow {
+	type: 'grid' | 'lyrics' | 'label' | 'spacer'
+	sectionIndex: number
+	rowIndex: number
+	startMeasure: number
+	endMeasure: number
+	content: unknown
+}
+
 export interface UseChordProDocument {
 	parsedSong: ComputedRef<ParsedSong | null>
+	beatsPerMeasure: ComputedRef<number>
 	totalMeasures: ComputedRef<number>
 	sectionMeasureOffsets: ComputedRef<number[]>
+	karaokeRows: ComputedRef<KaraokeRow[]>
 	serialize: () => string
 	setContent: (next: string) => void
 	autoAssignMeasuresToContent: (beatsPerMeasure?: number) => void
@@ -64,6 +107,11 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 		return parseChordProToExtended(source)
 	})
 
+	const beatsPerMeasure = computed(() => {
+		if (!parsedSong.value) return 4
+		return parseBeatsPerMeasure(parsedSong.value.time)
+	})
+
 	const totalMeasures = computed(() => {
 		if (!parsedSong.value) return 1
 		let count = 0
@@ -91,6 +139,89 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 		return offsets
 	})
 
+	const karaokeRows = computed(() => {
+		if (!parsedSong.value) return []
+		const rows: KaraokeRow[] = []
+		let globalMeasureOffset = 0
+
+		parsedSong.value.sections.forEach((section, sectionIndex) => {
+			if (section.label) {
+				rows.push({
+					type: 'label',
+					sectionIndex,
+					rowIndex: -1,
+					startMeasure: globalMeasureOffset,
+					endMeasure: globalMeasureOffset,
+					content: section.label
+				})
+			}
+
+			if (section.content.kind === 'grid') {
+				const grid = section.content as GridSection
+				let sectionMeasures = 0
+				let hasSeenFirstBar = false
+				let hasSeenNonBarSinceLastBar = false
+
+				grid.rows.forEach((row, rowIndex) => {
+					const rowStartMeasure = globalMeasureOffset + sectionMeasures
+
+					row.cells.forEach(cell => {
+						const isBar = BAR_TYPES.includes(cell.type as BarType)
+						if (isBar) {
+							if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
+								sectionMeasures++
+							}
+							hasSeenFirstBar = true
+							hasSeenNonBarSinceLastBar = false
+						} else {
+							hasSeenNonBarSinceLastBar = true
+						}
+					})
+
+					const rowEndMeasure = globalMeasureOffset + sectionMeasures
+					rows.push({
+						type: 'grid',
+						sectionIndex,
+						rowIndex,
+						startMeasure: rowStartMeasure,
+						endMeasure: rowEndMeasure,
+						content: buildKaraokeRowContent(section, rowIndex)
+					})
+				})
+
+				if (hasSeenFirstBar) {
+					sectionMeasures++
+				}
+				globalMeasureOffset += sectionMeasures
+			} else if (section.content.kind === 'lyrics') {
+				const lyrics = section.content as LyricsSection
+				lyrics.lines.forEach((_, rowIndex) => {
+					const start = globalMeasureOffset + rowIndex
+					rows.push({
+						type: 'lyrics',
+						sectionIndex,
+						rowIndex,
+						startMeasure: start,
+						endMeasure: start,
+						content: buildKaraokeRowContent(section, rowIndex)
+					})
+				})
+				globalMeasureOffset += lyrics.lines.length
+			}
+
+			rows.push({
+				type: 'spacer',
+				sectionIndex,
+				rowIndex: -1,
+				startMeasure: globalMeasureOffset,
+				endMeasure: globalMeasureOffset,
+				content: null
+			})
+		})
+
+		return rows
+	})
+
 	function serialize(): string {
 		if (!parsedSong.value) return options.content.value ?? ''
 		return generateChordPro(parsedSong.value)
@@ -111,8 +242,10 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 
 	return {
 		parsedSong,
+		beatsPerMeasure,
 		totalMeasures,
 		sectionMeasureOffsets,
+		karaokeRows,
 		serialize,
 		setContent,
 		autoAssignMeasuresToContent

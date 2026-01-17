@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Song, Section, GridSection, LyricsSection, GridCell } from '@/lib/chordpro/types'
-import GridView from './GridView.vue' // We can reuse sub-components or implement logic directly
+import type { GridCell } from '@/lib/chordpro/types'
+import type { KaraokeRow } from '@/composables/useChordProDocument'
 
 interface Props {
-  song: Song
+  rows: KaraokeRow[]
   currentMeasure: number
   isPlaying: boolean
   viewMode: 'lyrics' | 'grid'
@@ -15,107 +15,7 @@ const props = defineProps<Props>()
 const rowHeight = 72
 const containerHeight = 450
 
-interface KaraokeRow {
-  type: 'grid' | 'lyrics' | 'label' | 'spacer'
-  sectionIndex: number
-  rowIndex: number
-  startMeasure: number
-  endMeasure: number
-  content: any
-}
-
-// Flatten the song into rows for karaoke display
-const karaokeRows = computed(() => {
-  const rows: KaraokeRow[] = []
-  let globalMeasureOffset = 0
-
-  props.song.sections.forEach((section, sIdx) => {
-    // Add label row if exists
-    if (section.label) {
-      rows.push({
-        type: 'label',
-        sectionIndex: sIdx,
-        rowIndex: -1,
-        startMeasure: globalMeasureOffset,
-        endMeasure: globalMeasureOffset,
-        content: section.label
-      })
-    }
-
-    if (section.content.kind === 'grid') {
-      const grid = section.content as GridSection
-      let sectionMeasures = 0
-      let hasSeenFirstBar = false
-      let hasSeenNonBarSinceLastBar = false
-
-      grid.rows.forEach((row, rIdx) => {
-        const rowStartMeasure = globalMeasureOffset + sectionMeasures
-
-        // Count measures in this row
-        row.cells.forEach(cell => {
-          const isBar = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'].includes(cell.type)
-          if (isBar) {
-            if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-              sectionMeasures++
-            }
-            hasSeenFirstBar = true
-            hasSeenNonBarSinceLastBar = false
-          } else {
-            hasSeenNonBarSinceLastBar = true
-          }
-        })
-
-        const rowEndMeasure = globalMeasureOffset + sectionMeasures
-
-        rows.push({
-          type: 'grid',
-          sectionIndex: sIdx,
-          rowIndex: rIdx,
-          startMeasure: rowStartMeasure,
-          endMeasure: rowEndMeasure,
-          content: {
-            cells: row.cells,
-            hint: grid.lyricsHints?.[rIdx]
-          }
-        })
-      })
-
-      // Finishing last bar of the section if any
-      if (hasSeenFirstBar) {
-        sectionMeasures++
-      }
-      globalMeasureOffset += sectionMeasures
-
-    } else if (section.content.kind === 'lyrics') {
-      const lyrics = section.content as LyricsSection
-      lyrics.lines.forEach((line, rIdx) => {
-        // Simple 1-line = 1-measure mapping for lyrics sections
-        const start = globalMeasureOffset + rIdx
-        rows.push({
-          type: 'lyrics',
-          sectionIndex: sIdx,
-          rowIndex: rIdx,
-          startMeasure: start,
-          endMeasure: start,
-          content: line
-        })
-      })
-      globalMeasureOffset += lyrics.lines.length
-    }
-
-    // Add spacer between sections
-    rows.push({
-      type: 'spacer',
-      sectionIndex: sIdx,
-      rowIndex: -1,
-      startMeasure: globalMeasureOffset,
-      endMeasure: globalMeasureOffset,
-      content: null
-    })
-  })
-
-  return rows
-})
+const karaokeRows = computed(() => props.rows)
 
 const activeRowIndex = computed(() => {
   const idx = karaokeRows.value.findIndex(row =>
@@ -135,10 +35,8 @@ const contentTransform = computed(() => {
 
 function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
   const classes = [cell.type === 'chord' ? 'grid-chord' : 'grid-bar']
-  // Sync highlight
   const isBar = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'].includes(cell.type)
   if (!isBar && props.currentMeasure >= row.startMeasure && props.currentMeasure <= row.endMeasure) {
-    // This is oversimplified, ideally we track per-cell measure but for karaoke this is usually enough
     classes.push('current-measure')
   }
   return classes
@@ -181,7 +79,7 @@ function getCellDisplay(cell: GridCell): string {
             <div class="grid-display">
               <div class="grid-cells">
                 <span
-                  v-for="(cell, cIdx) in row.content.cells"
+                  v-for="(cell, cIdx) in row.content?.cells ?? []"
                   :key="cIdx"
                   class="cell"
                   :class="getCellClass(cell, row)"
@@ -189,7 +87,7 @@ function getCellDisplay(cell: GridCell): string {
                   {{ getCellDisplay(cell) }}
                 </span>
               </div>
-              <div v-if="row.content.hint" class="grid-hint">
+              <div v-if="row.content?.hint" class="grid-hint">
                 {{ row.content.hint }}
               </div>
             </div>
@@ -199,14 +97,14 @@ function getCellDisplay(cell: GridCell): string {
           <template v-if="row.type === 'lyrics' && viewMode === 'lyrics'">
             <div class="lyrics-display">
               <div class="lyrics-chords">
-                <template v-for="(seg, sIdx) in row.content.segments" :key="sIdx">
+                <template v-for="(seg, sIdx) in row.content?.segments ?? []" :key="sIdx">
                   <span v-if="seg.chord" class="chord">{{ seg.chord }}</span>
                   <span v-else class="chord-space">&nbsp;</span>
                   <span class="chord-spacer" :style="{ width: `${seg.text.length}ch` }"></span>
                 </template>
               </div>
               <div class="lyrics-text">
-                <template v-for="(seg, sIdx) in row.content.segments" :key="sIdx">
+                <template v-for="(seg, sIdx) in row.content?.segments ?? []" :key="sIdx">
                   <span>{{ seg.text }}</span>
                 </template>
               </div>

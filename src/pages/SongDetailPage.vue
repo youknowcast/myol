@@ -21,7 +21,7 @@ const song = computed(() => songsStore.currentSong)
 const loading = computed(() => songsStore.loading)
 
 const songContent = computed(() => song.value?.content ?? '')
-const { parsedSong, totalMeasures, sectionMeasureOffsets } = useChordProDocument({
+const { parsedSong, beatsPerMeasure, totalMeasures, sectionMeasureOffsets, karaokeRows } = useChordProDocument({
   content: songContent
 })
 
@@ -39,12 +39,10 @@ const playback = usePlaybackState()
 const contentRef = ref<HTMLElement | null>(null)
 
 // Sync config from parsed song
-watch([parsedSong, totalMeasures], () => {
+watch([parsedSong, totalMeasures, beatsPerMeasure], () => {
   if (parsedSong.value) {
     playback.tempo.value = parsedSong.value.tempo || 80
-    const time = parsedSong.value.time ?? '4/4'
-    const parts = time.split('/')
-    playback.beatsPerMeasure.value = parseInt(parts[0] ?? '4', 10) || 4
+    playback.beatsPerMeasure.value = beatsPerMeasure.value
   }
   playback.totalMeasures.value = totalMeasures.value
 }, { immediate: true })
@@ -222,7 +220,7 @@ onUnmounted(() => {
           <div v-if="isPlaying" class="song-sections-karaoke">
             <SongKaraokeView
               v-if="parsedSong"
-              :song="parsedSong"
+              :rows="karaokeRows"
               :currentMeasure="currentMeasure"
               :isPlaying="isPlaying"
               :viewMode="viewMode"
