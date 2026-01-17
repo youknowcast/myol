@@ -9,8 +9,108 @@ import type {
 	GridPart,
 	TabSection,
 	GridRow,
-	GridCell
+	GridCell,
+	Measure
 } from './types'
+
+const BAR_TYPES = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth'] as const
+
+type BarType = typeof BAR_TYPES[number]
+
+function isBarCell(cell: GridCell): boolean {
+	return BAR_TYPES.includes(cell.type as BarType)
+}
+
+export function parseBeatsPerMeasure(time?: string): number {
+	if (!time) return 4
+	const [beats] = time.split('/')
+	const parsed = Number.parseInt(beats ?? '4', 10)
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : 4
+}
+
+function collectGridRows(grid: GridSection): GridRow[] {
+	if (grid.parts && grid.parts.length > 0) {
+		return grid.parts.flatMap(part => part.rows)
+	}
+	return grid.rows
+}
+
+function buildMeasuresFromRows(rows: GridRow[], lyricsHints?: string[]): Measure[] {
+	const measures: Measure[] = []
+	const rowStartIndices: number[] = []
+
+	rows.forEach((row, rowIndex) => {
+		rowStartIndices[rowIndex] = measures.length
+		let currentCells: GridCell[] = []
+
+		for (const cell of row.cells) {
+			if (isBarCell(cell)) {
+				if (currentCells.length > 0) {
+					measures.push({ cells: currentCells })
+					currentCells = []
+				}
+				continue
+			}
+			currentCells.push({ ...cell })
+		}
+
+		if (currentCells.length > 0) {
+			measures.push({ cells: currentCells })
+		}
+	})
+
+	if (lyricsHints && lyricsHints.length > 0 && measures.length > 0) {
+		if (lyricsHints.length === measures.length) {
+			lyricsHints.forEach((hint, index) => {
+				measures[index]!.lyricsHint = hint
+			})
+		} else if (lyricsHints.length === rowStartIndices.length) {
+			rowStartIndices.forEach((startIndex, rowIndex) => {
+				const hint = lyricsHints[rowIndex]
+				if (hint && measures[startIndex]) {
+					measures[startIndex]!.lyricsHint = hint
+				}
+			})
+		} else {
+			const limit = Math.min(lyricsHints.length, measures.length)
+			for (let index = 0; index < limit; index += 1) {
+				measures[index]!.lyricsHint = lyricsHints[index]
+			}
+		}
+	}
+
+	return measures
+}
+
+export function ensureGridMeasures(song: ParsedSong): ParsedSong {
+	const sections = song.sections.map(section => {
+		if (section.content.kind !== 'grid') return section
+		const grid = section.content as GridSection
+		if (grid.measures && grid.measures.length > 0) return section
+		const rows = collectGridRows(grid)
+		const measures = buildMeasuresFromRows(rows, grid.lyricsHints)
+		return {
+			...section,
+			content: {
+				...grid,
+				rows,
+				measures
+			}
+		}
+	})
+
+	return {
+		...song,
+		sections
+	}
+}
+
+export function parseChordProToExtended(content: string): ParsedSong {
+	const parsed = parseChordPro(content)
+	const beatsPerMeasure = parseBeatsPerMeasure(parsed.time)
+	const normalized = autoAssignMeasures(parsed, beatsPerMeasure)
+	return ensureGridMeasures(normalized)
+}
 
 /**
  * ChordPro parser

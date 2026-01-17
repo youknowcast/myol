@@ -5,7 +5,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { parseChordPro, generateChordPro } from '@/lib/chordpro/parser'
+import { parseChordProToExtended, generateChordPro } from '@/lib/chordpro/parser'
 import type { ParsedSong, GridSection, GridCell, Measure, GridRow } from '@/lib/chordpro/types'
 
 // Bar line types
@@ -187,7 +187,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 	// Actions
 	function loadDocument(content: string) {
 		originalContent.value = content
-		document.value = parseChordPro(content)
+		document.value = parseChordProToExtended(content)
 		selectedSectionIndex.value = null
 		selectedMeasureIndex.value = null
 	}

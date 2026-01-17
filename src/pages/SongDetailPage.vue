@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
-import { parseChordPro } from '@/lib/chordpro/parser'
+import { parseChordProToExtended } from '@/lib/chordpro/parser'
 import { extractUniqueChords } from '@/lib/chords/dictionary'
 import { usePlaybackState } from '@/composables/usePlaybackState'
 import type { GridSection } from '@/lib/chordpro/types'
@@ -22,7 +22,7 @@ const loading = computed(() => songsStore.loading)
 
 const parsedSong = computed(() => {
   if (!song.value) return null
-  return parseChordPro(song.value.content)
+  return parseChordProToExtended(song.value.content)
 })
 
 const uniqueChords = computed(() => {
