@@ -130,6 +130,7 @@ function getCellDisplay(cell: GridCell): string {
       v-if="measure.lyricsHint"
       class="lyrics-hint"
       :title="measure.lyricsHint"
+      @click="emit('select', measureIndex)"
     >
       {{ measure.lyricsHint }}
     </div>
