@@ -34,15 +34,46 @@ const { rowHints, cellsWithMeasures } = useGridViewState({
 
 
 const { getCellDisplay } = useGridCellDisplay()
-const { getGridViewCellClass } = useGridCellHighlight()
+const { getGridViewCellClass, isBarCell } = useGridCellHighlight()
+
+interface MeasureGroup {
+  measureIndex: number
+  cells: CellWithMeasure[]
+  isCurrent: boolean
+}
+
+const measureRows = computed(() =>
+  cellsWithMeasures.value.map((row) => {
+    const groups: MeasureGroup[] = []
+
+    row.forEach((cell) => {
+      if (isBarCell(cell)) return
+      const lastGroup = groups[groups.length - 1]
+      if (!lastGroup || lastGroup.measureIndex !== cell.measureIndex) {
+        groups.push({
+          measureIndex: cell.measureIndex,
+          cells: [cell],
+          isCurrent: cell.isCurrentMeasure
+        })
+        return
+      }
+      lastGroup.cells.push(cell)
+      if (cell.isCurrentMeasure) {
+        lastGroup.isCurrent = true
+      }
+    })
+
+    return groups
+  })
+)
 
 function getCellClass(cell: CellWithMeasure): string[] {
   return getGridViewCellClass(cell)
 }
 
-function getRowMeasureIndex(row: CellWithMeasure[]): number {
+function getRowMeasureIndex(row: MeasureGroup[]): number {
   if (row.length === 0) return props.measureOffset
-  return row.reduce((min, cell) => Math.min(min, cell.measureIndex), row[0]!.measureIndex)
+  return Math.min(...row.map((group) => group.measureIndex))
 }
 </script>
 
@@ -54,19 +85,26 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
       <div class="chord-grid">
         <!-- Each row contains chords and optional lyrics underneath -->
         <div
-          v-for="(row, rowIndex) in cellsWithMeasures"
+          v-for="(row, rowIndex) in measureRows"
           :key="rowIndex"
           class="grid-row-group"
           @click="emit('seek', getRowMeasureIndex(row))"
         >
           <div class="grid-row">
             <div
-              v-for="(cell, cellIndex) in row"
-              :key="cellIndex"
-              class="grid-cell"
-              :class="getCellClass(cell)"
+              v-for="group in row"
+              :key="group.measureIndex"
+              class="grid-measure"
+              :class="{ 'is-current-measure': group.isCurrent }"
             >
-              <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+              <div
+                v-for="(cell, cellIndex) in group.cells"
+                :key="cellIndex"
+                class="grid-cell"
+                :class="getCellClass(cell)"
+              >
+                <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+              </div>
             </div>
           </div>
 
@@ -123,9 +161,24 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
   font-family: var(--font-mono);
 }
 
-.grid-row-group:has(.current-measure) .grid-lyrics-row {
+.grid-row-group:has(.is-current-measure) .grid-lyrics-row {
   color: var(--color-primary);
   font-weight: 500;
+}
+
+.grid-measure {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.grid-measure.is-current-measure {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .grid-lyrics-row {
@@ -141,12 +194,10 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg-secondary);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  min-height: 2.75rem;
-  border: 1px solid transparent;
-  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  min-width: 1.5rem;
+  min-height: 2rem;
 }
 
 .grid-cell-text {
@@ -177,14 +228,9 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
   color: white !important;
 }
 
-.grid-cell:has(.current-measure) {
-  border-color: rgba(99, 102, 241, 0.6);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
-}
-
 @media (min-width: 768px) {
   .grid-cell {
-    min-width: 3.5rem;
+    min-width: 1.75rem;
     font-size: 1rem;
   }
   .grid-lyrics-row {
@@ -194,7 +240,7 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
 
 @media (min-width: 1024px) {
   .grid-cell {
-    min-width: 4rem;
+    min-width: 2rem;
   }
 }
 </style>
