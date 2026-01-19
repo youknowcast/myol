@@ -15,14 +15,12 @@ describe('useGridViewState', () => {
 	it('builds row hints from measures', () => {
 		const currentMeasure = ref(0)
 		const measureOffset = ref(0)
-		const isPlaying = ref(false)
-
 		const { rowHints } = useGridViewState({
 			grid,
 			currentMeasure,
-			measureOffset,
-			isPlaying
+			measureOffset
 		})
+
 
 		expect(rowHints.value[0]).toBe('Hello World')
 	})
@@ -30,13 +28,10 @@ describe('useGridViewState', () => {
 	it('marks current measure cells', () => {
 		const currentMeasure = ref(1)
 		const measureOffset = ref(0)
-		const isPlaying = ref(false)
-
 		const { cellsWithMeasures, currentRowIndex } = useGridViewState({
 			grid,
 			currentMeasure,
-			measureOffset,
-			isPlaying
+			measureOffset
 		})
 
 		expect(cellsWithMeasures.value[0]?.some(cell => cell.isCurrentMeasure)).toBe(true)
@@ -46,13 +41,10 @@ describe('useGridViewState', () => {
 	it('applies measure offset to current measure', () => {
 		const currentMeasure = ref(2)
 		const measureOffset = ref(2)
-		const isPlaying = ref(false)
-
 		const { cellsWithMeasures } = useGridViewState({
 			grid,
 			currentMeasure,
-			measureOffset,
-			isPlaying
+			measureOffset
 		})
 
 		const hasCurrent = cellsWithMeasures.value[0]?.some(cell => cell.isCurrentMeasure)

@@ -13,13 +13,10 @@ export interface UseGridViewStateOptions {
 	grid: GridSection
 	currentMeasure: Ref<number>
 	measureOffset: Ref<number>
-	isPlaying: Ref<boolean>
-	rowHeight?: number
 }
 
 export function useGridViewState(options: UseGridViewStateOptions) {
-	const rowHeight = options.rowHeight ?? 72
-	const measuresPerRow = 4
+	const measuresPerRow = 2
 
 	const rowHints = computed(() => {
 		if (options.grid.measures.length === 0) {
@@ -88,22 +85,9 @@ export function useGridViewState(options: UseGridViewStateOptions) {
 		return 0
 	})
 
-	const contentTransform = computed(() => {
-		if (!options.isPlaying.value) return 'translateY(0)'
-
-		const totalRows = cellsWithMeasures.value.length
-		if (totalRows === 0) return 'translateY(0)'
-
-		const centerOffset = rowHeight * 1.5
-		const translateY = -(currentRowIndex.value * rowHeight) + centerOffset
-
-		return `translateY(${translateY}px)`
-	})
-
 	return {
 		rowHints,
 		cellsWithMeasures,
-		currentRowIndex,
-		contentTransform
+		currentRowIndex
 	}
 }

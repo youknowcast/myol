@@ -9,7 +9,6 @@ import { useSongDetailViewState } from '@/composables/useSongDetailViewState'
 import { useSongDetailNavigation } from '@/composables/useSongDetailNavigation'
 import { useSongChords } from '@/composables/useSongChords'
 import GridView from '@/components/song/GridView.vue'
-import SongKaraokeView from '@/components/song/SongKaraokeView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
 import SpeedControl from '@/components/player/SpeedControl.vue'
 
@@ -22,7 +21,7 @@ const song = computed(() => songsStore.currentSong)
 const loading = computed(() => songsStore.loading)
 
 const songContent = computed(() => song.value?.content ?? '')
-const { parsedSong, beatsPerMeasure, totalMeasures, sectionMeasureOffsets, karaokeRows } = useChordProDocument({
+const { parsedSong, beatsPerMeasure, totalMeasures, sectionMeasureOffsets } = useChordProDocument({
   content: songContent
 })
 
@@ -135,7 +134,6 @@ onUnmounted(() => {
           ref="contentRef"
           class="song-content"
           @scroll="handleScroll"
-          @click="isPlaying && togglePlay()"
         >
           <!-- Chord diagrams (tablet/desktop) -->
           <aside class="chord-diagrams-sidebar" v-if="uniqueChords.length > 0">
@@ -148,18 +146,8 @@ onUnmounted(() => {
             </div>
           </aside>
 
-          <!-- Song sections (Unified Karaoke View when playing) -->
-          <div v-if="isPlaying" class="song-sections-karaoke">
-            <SongKaraokeView
-              v-if="parsedSong"
-              :rows="karaokeRows"
-              :currentMeasure="currentMeasure"
-              :isPlaying="isPlaying"
-            />
-          </div>
-
-          <!-- Song sections (Static View when stopped) -->
-          <div v-else class="song-sections">
+          <!-- Song sections -->
+          <div class="song-sections">
             <template v-for="(section, index) in parsedSong.sections" :key="index">
               <!-- Grid sections -->
               <GridView
@@ -167,7 +155,7 @@ onUnmounted(() => {
                 :section="section"
                 :currentMeasure="currentMeasure"
                 :measureOffset="sectionMeasureOffsets[index] || 0"
-                :isPlaying="false"
+                :isPlaying="isPlaying"
                 @seek="handleSeekToMeasure"
               />
 

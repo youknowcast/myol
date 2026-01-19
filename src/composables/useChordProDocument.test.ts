@@ -27,13 +27,10 @@ describe('useChordProDocument', () => {
 
 	it('calculates total measures and offsets', () => {
 		const content = ref(sampleGridContent)
-	const { totalMeasures, sectionMeasureOffsets, karaokeRows } = useChordProDocument({ content })
+		const { totalMeasures, sectionMeasureOffsets } = useChordProDocument({ content })
 
-	expect(totalMeasures.value).toBe(3)
-	expect(sectionMeasureOffsets.value).toEqual([0, 2])
-	expect(karaokeRows.value.length).toBeGreaterThan(0)
-	expect(karaokeRows.value[0]?.startMeasure).toBe(0)
-
+		expect(totalMeasures.value).toBe(3)
+		expect(sectionMeasureOffsets.value).toEqual([0, 2])
 	})
 
 	it('auto-assigns measures into content', () => {

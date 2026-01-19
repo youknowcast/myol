@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
 import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
 import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
@@ -25,15 +25,11 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const gridContent = props.section.content as GridSection
-const gridRef = ref<HTMLElement | null>(null)
-const rowHeight = 72 // Matches .grid-row-group height in CSS
 
-const { rowHints, cellsWithMeasures, contentTransform } = useGridViewState({
+const { rowHints, cellsWithMeasures } = useGridViewState({
   grid: gridContent,
-  currentMeasure: computed(() => props.currentMeasure),
-  measureOffset: computed(() => props.measureOffset),
-  isPlaying: computed(() => props.isPlaying),
-  rowHeight
+  currentMeasure: computed(() => (props.isPlaying ? props.currentMeasure : -1)),
+  measureOffset: computed(() => props.measureOffset)
 })
 
 
@@ -44,11 +40,6 @@ function getCellClass(cell: CellWithMeasure): string[] {
   return getGridViewCellClass(cell)
 }
 
-// Check if any cell in this row is the current measure
-function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
-  return row.some(cell => cell.isCurrentMeasure)
-}
-
 function getRowMeasureIndex(row: CellWithMeasure[]): number {
   if (row.length === 0) return props.measureOffset
   return row.reduce((min, cell) => Math.min(min, cell.measureIndex), row[0]!.measureIndex)
@@ -56,32 +47,29 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
 </script>
 
 <template>
-  <div ref="gridRef" class="grid-section" :class="{ 'karaoke-mode': isPlaying }">
-    <div v-if="section.label && !isPlaying" class="section-label">{{ section.label }}</div>
+  <div class="grid-section">
+    <div v-if="section.label" class="section-label">{{ section.label }}</div>
 
     <div class="chord-grid-container">
-      <div class="chord-grid" :style="{ transform: contentTransform }">
+      <div class="chord-grid">
         <!-- Each row contains chords and optional lyrics underneath -->
         <div
           v-for="(row, rowIndex) in cellsWithMeasures"
           :key="rowIndex"
           class="grid-row-group"
-          :class="{ 'has-current': rowHasCurrentMeasure(row) }"
           @click="emit('seek', getRowMeasureIndex(row))"
         >
-          <!-- Chord row -->
           <div class="grid-row">
-            <span
+            <div
               v-for="(cell, cellIndex) in row"
               :key="cellIndex"
               class="grid-cell"
               :class="getCellClass(cell)"
             >
-              {{ getCellDisplay(cell) }}
-            </span>
+              <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+            </div>
           </div>
 
-          <!-- Lyrics row (if available for this row) -->
           <div
             v-if="rowHints[rowIndex]"
             class="grid-lyrics-row"
@@ -109,59 +97,39 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
 
 .chord-grid-container {
   position: relative;
-  overflow: hidden;
-  height: 400px; /* Show about 4-5 rows */
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-lg);
   background: rgba(0, 0, 0, 0.2);
-}
-
-.karaoke-mode .chord-grid-container {
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 20%,
-    black 80%,
-    transparent 100%
-  );
+  padding: var(--spacing-md);
 }
 
 .chord-grid {
-  transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1);
-  padding: 20px;
-}
-
-.karaoke-mode .chord-grid {
-  /* This ensures we can always center the first and last rows */
-  padding-top: 160px; /* Half container height minus half row height */
-  padding-bottom: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .grid-row-group {
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-secondary);
-  transition: all var(--transition-fast);
-  height: 72px; /* Fixed height to match rowHeight in script */
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  box-sizing: border-box;
+  gap: var(--spacing-xs);
   cursor: pointer;
 }
 
 .grid-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-sm);
   font-family: var(--font-mono);
 }
 
+.grid-row-group:has(.current-measure) .grid-lyrics-row {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
 .grid-lyrics-row {
-  margin-top: 2px;
-  padding-left: var(--spacing-sm);
+  padding-left: var(--spacing-xs);
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -169,33 +137,25 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
   text-overflow: ellipsis;
 }
 
-.grid-row-group:has(.current-measure),
-.grid-row-group.has-current {
-  background: rgba(99, 102, 241, 0.1);
-  box-shadow: inset 0 0 0 1px var(--color-primary);
-}
-
-.grid-row-group.has-current .grid-lyrics-row {
-  color: var(--color-primary);
-  font-weight: 500;
-}
-
 .grid-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 3rem;
-  height: 2.5rem;
-  padding: var(--spacing-xs) 2px;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.grid-cell-text {
+  white-space: nowrap;
 }
 
 .grid-bar {
   color: var(--color-grid-bar);
   font-weight: 600;
-  min-width: 1.5rem;
-  padding: var(--spacing-xs) 2px;
 }
 
 .grid-chord {
@@ -215,8 +175,11 @@ function getRowMeasureIndex(row: CellWithMeasure[]): number {
 .current-measure {
   background: var(--color-primary);
   color: white !important;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
-  transform: scale(1.05);
+}
+
+.grid-cell:has(.current-measure) {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 @media (min-width: 768px) {
