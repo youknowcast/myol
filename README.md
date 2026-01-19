@@ -25,7 +25,7 @@ cp .env.example .env
 
 | 変数 | 説明 |
 |------|------|
-| `VITE_AUTH_PASSWORD` | 4桁ログインパスワード |
+| `VITE_AUTH_USERS` | user:hash をカンマ区切りで指定 |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 
 ## Lambda デプロイ

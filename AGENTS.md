@@ -60,7 +60,7 @@ scripts/                # ユーティリティスクリプト
 
 | 変数 | 用途 |
 |------|------|
-| `VITE_AUTH_PASSWORD` | ログインパスワード (4桁) |
+| `VITE_AUTH_USERS` | user:hash をカンマ区切りで指定 |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 | `LAMBDA_ROLE_ARN` | Lambda デプロイ時の IAM ロール ARN |
 
