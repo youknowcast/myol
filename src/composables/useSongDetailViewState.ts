@@ -1,15 +1,11 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import type { PlaybackState } from './usePlaybackState'
-
-export type ViewMode = 'lyrics' | 'grid'
 
 export interface UseSongDetailViewStateOptions {
 	playback: PlaybackState
 }
 
 export function useSongDetailViewState(options: UseSongDetailViewStateOptions) {
-	const viewMode = ref<ViewMode>('lyrics')
-
 	const isPlaying = options.playback.isPlaying
 	const currentTime = options.playback.currentTime
 	const currentMeasure = options.playback.currentMeasure
@@ -35,7 +31,6 @@ export function useSongDetailViewState(options: UseSongDetailViewStateOptions) {
 	const formattedTotalDuration = computed(() => formatTime(totalDuration.value))
 
 	return {
-		viewMode,
 		isPlaying,
 		currentTime,
 		currentMeasure,

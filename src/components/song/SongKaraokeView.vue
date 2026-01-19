@@ -10,7 +10,6 @@ interface Props {
   rows: KaraokeRow[]
   currentMeasure: number
   isPlaying: boolean
-  viewMode: 'lyrics' | 'grid'
 }
 
 const props = defineProps<Props>()
@@ -18,7 +17,7 @@ const props = defineProps<Props>()
 const rowHeight = 72
 const containerHeight = 450
 
-const karaokeRows = computed(() => props.rows)
+const karaokeRows = computed(() => props.rows.filter((row) => row.type !== 'lyrics'))
 
 const { activeRowIndex, contentTransform } = useKaraokeScroll({
   rows: karaokeRows,
@@ -57,7 +56,7 @@ function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
           ]"
         >
           <!-- Grid Row -->
-          <template v-if="row.type === 'grid' && viewMode === 'grid'">
+          <template v-if="row.type === 'grid'">
             <div class="grid-display">
               <div class="grid-cells">
                 <span
@@ -71,32 +70,6 @@ function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
               </div>
               <div v-if="row.content?.hint" class="grid-hint">
                 {{ row.content.hint }}
-              </div>
-            </div>
-          </template>
-
-          <!-- Lyrics Row -->
-          <template v-if="row.type === 'lyrics' && viewMode === 'lyrics'">
-            <div class="lyrics-display">
-              <div class="lyrics-chords">
-                <template v-for="(seg, sIdx) in row.content?.segments ?? []" :key="sIdx">
-                  <span v-if="seg.chord" class="chord">{{ seg.chord }}</span>
-                  <span v-else class="chord-space">&nbsp;</span>
-                  <span class="chord-spacer" :style="{ width: `${seg.text.length}ch` }"></span>
-                </template>
-              </div>
-              <div class="lyrics-text">
-                <template v-for="(seg, sIdx) in row.content?.segments ?? []" :key="sIdx">
-                  <span>{{ seg.text }}</span>
-                </template>
-              </div>
-            </div>
-          </template>
-
-          <template v-else-if="row.type === 'grid' && viewMode === 'lyrics'">
-            <div v-if="row.content?.hint" class="lyrics-display">
-              <div class="lyrics-text">
-                <span>{{ row.content.hint }}</span>
               </div>
             </div>
           </template>
@@ -215,28 +188,6 @@ function getCellClass(cell: GridCell, row: KaraokeRow): string[] {
   font-weight: 500;
 }
 
-/* Lyrics Display */
-.lyrics-chords {
-  display: flex;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--color-chord);
-  min-height: 1.2em;
-}
-
-.is-active .lyrics-chords {
-  color: var(--color-primary);
-}
-
-.lyrics-text {
-  font-size: 1.1rem;
-}
-
-.is-active .lyrics-text {
-  font-weight: 600;
-}
-
-.chord-spacer { display: inline-block; }
 
 /* Labels & Spacers */
 .section-label {

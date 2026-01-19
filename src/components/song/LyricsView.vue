@@ -10,11 +10,17 @@ interface Props {
   isPlaying?: boolean
 }
 
+interface Emits {
+  (e: 'seek', value: number): void
+}
+
 const props = withDefaults(defineProps<Props>(), {
   currentMeasure: 0,
   measureOffset: 0,
   isPlaying: false
 })
+
+const emit = defineEmits<Emits>()
 
 const lyricsContent = props.section.content as LyricsSection
 const rowHeight = 60 // Estimated line height for lyrics
@@ -39,6 +45,7 @@ const { currentLineIndex, contentTransform } = useLyricsHighlight({
         :key="lineIndex"
         class="lyrics-line"
         :class="{ 'current-line': lineIndex === currentLineIndex }"
+        @click="emit('seek', lineIndex + measureOffset)"
       >
         <!-- Chord row -->
         <div class="lyrics-chord-row">
@@ -115,6 +122,7 @@ const { currentLineIndex, contentTransform } = useLyricsHighlight({
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .lyrics-line.current-line {

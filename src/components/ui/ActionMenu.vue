@@ -13,7 +13,7 @@ interface Props {
   align?: 'left' | 'right'
 }
 
-const props = withDefaults(defineProps<Props>(), {
+const { align } = withDefaults(defineProps<Props>(), {
   align: 'right'
 })
 

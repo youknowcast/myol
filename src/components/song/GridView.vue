@@ -12,11 +12,17 @@ interface Props {
   isPlaying?: boolean
 }
 
+interface Emits {
+  (e: 'seek', value: number): void
+}
+
 const props = withDefaults(defineProps<Props>(), {
   currentMeasure: 0,
   measureOffset: 0,
   isPlaying: false
 })
+
+const emit = defineEmits<Emits>()
 
 const gridContent = props.section.content as GridSection
 const gridRef = ref<HTMLElement | null>(null)
@@ -42,6 +48,11 @@ function getCellClass(cell: CellWithMeasure): string[] {
 function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
   return row.some(cell => cell.isCurrentMeasure)
 }
+
+function getRowMeasureIndex(row: CellWithMeasure[]): number {
+  if (row.length === 0) return props.measureOffset
+  return row.reduce((min, cell) => Math.min(min, cell.measureIndex), row[0]!.measureIndex)
+}
 </script>
 
 <template>
@@ -56,6 +67,7 @@ function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
           :key="rowIndex"
           class="grid-row-group"
           :class="{ 'has-current': rowHasCurrentMeasure(row) }"
+          @click="emit('seek', getRowMeasureIndex(row))"
         >
           <!-- Chord row -->
           <div class="grid-row">
@@ -136,6 +148,7 @@ function rowHasCurrentMeasure(row: CellWithMeasure[]): boolean {
   flex-direction: column;
   justify-content: center;
   box-sizing: border-box;
+  cursor: pointer;
 }
 
 .grid-row {

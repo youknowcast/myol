@@ -21,7 +21,7 @@ interface Emits {
   (e: 'delete-chords'): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 function getCellClass(cell: GridCell): string {

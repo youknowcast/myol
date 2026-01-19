@@ -5,12 +5,9 @@ import { useSongsStore } from '@/stores/songs'
 import { usePlaybackState } from '@/composables/usePlaybackState'
 import { usePlaybackSync } from '@/composables/usePlaybackSync'
 import { useChordProDocument } from '@/composables/useChordProDocument'
-import { useGridMeasureHints } from '@/composables/useGridMeasureHints'
 import { useSongDetailViewState } from '@/composables/useSongDetailViewState'
 import { useSongDetailNavigation } from '@/composables/useSongDetailNavigation'
 import { useSongChords } from '@/composables/useSongChords'
-import type { GridSection } from '@/lib/chordpro/types'
-import LyricsView from '@/components/song/LyricsView.vue'
 import GridView from '@/components/song/GridView.vue'
 import SongKaraokeView from '@/components/song/SongKaraokeView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
@@ -31,14 +28,11 @@ const { parsedSong, beatsPerMeasure, totalMeasures, sectionMeasureOffsets, karao
 
 const { uniqueChords } = useSongChords(parsedSong)
 
-const { getGridMeasureHints } = useGridMeasureHints()
-
 // Playback state (using composable)
 const playback = usePlaybackState()
 const contentRef = ref<HTMLElement | null>(null)
 
 const {
-  viewMode,
   isPlaying,
   currentMeasure,
   progress,
@@ -71,6 +65,10 @@ const { handleSeek, handleScroll } = usePlaybackSync({
   totalDuration,
   seek: playback.seek
 })
+
+function handleSeekToMeasure(measureIndex: number) {
+  playback.seekToMeasure(measureIndex)
+}
 
 const { goBack, goToEdit } = useSongDetailNavigation({ router, songId })
 
@@ -129,24 +127,6 @@ onUnmounted(() => {
             {{ parsedSong.time }}
           </span>
         </div>
-
-          <!-- View mode selector -->
-          <div class="view-selector">
-            <button
-              class="mode-btn"
-              :class="{ active: viewMode === 'lyrics' }"
-              @click="viewMode = 'lyrics'"
-            >
-              歌詞
-            </button>
-            <button
-              class="mode-btn"
-              :class="{ active: viewMode === 'grid' }"
-              @click="viewMode = 'grid'"
-            >
-              Grid
-            </button>
-          </div>
       </div>
 
       <!-- Main content -->
@@ -175,7 +155,6 @@ onUnmounted(() => {
               :rows="karaokeRows"
               :currentMeasure="currentMeasure"
               :isPlaying="isPlaying"
-              :viewMode="viewMode"
             />
           </div>
 
@@ -184,36 +163,12 @@ onUnmounted(() => {
             <template v-for="(section, index) in parsedSong.sections" :key="index">
               <!-- Grid sections -->
               <GridView
-                v-if="section.content.kind === 'grid' && viewMode === 'grid'"
+                v-if="section.content.kind === 'grid'"
                 :section="section"
                 :currentMeasure="currentMeasure"
                 :measureOffset="sectionMeasureOffsets[index] || 0"
                 :isPlaying="false"
-              />
-
-              <!-- Grid section lyrics hints (shown in lyrics mode as well if needed, but per user request, Grid covers it) -->
-              <div
-                v-if="section.content.kind === 'grid' && viewMode === 'lyrics' && getGridMeasureHints(section.content as GridSection).length"
-                class="grid-lyrics-section"
-              >
-                <div v-if="section.label" class="section-label">{{ section.label }}</div>
-                <div
-                  v-for="(hint, hintIndex) in getGridMeasureHints(section.content as GridSection)"
-                  :key="hintIndex"
-                  class="lyrics-hint-line"
-                  :class="{ 'current-line': hintIndex === (currentMeasure - (sectionMeasureOffsets[index] || 0)) }"
-                >
-                  {{ hint }}
-                </div>
-              </div>
-
-              <!-- Lyrics sections -->
-              <LyricsView
-                v-if="section.content.kind === 'lyrics' && viewMode === 'lyrics'"
-                :section="section"
-                :currentMeasure="currentMeasure"
-                :measureOffset="sectionMeasureOffsets[index] || 0"
-                :isPlaying="false"
+                @seek="handleSeekToMeasure"
               />
 
               <!-- Tab sections (already handles tab mode separately) -->
@@ -300,26 +255,6 @@ onUnmounted(() => {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-bg-secondary);
   border-bottom: 1px solid var(--color-border);
-}
-
-.view-mode-toggle {
-  display: flex;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-md);
-  padding: 2px;
-}
-
-.mode-btn {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
-}
-
-.mode-btn.active {
-  background: var(--color-primary);
-  color: white;
 }
 
 .song-content-wrapper {
@@ -484,29 +419,4 @@ onUnmounted(() => {
   font-family: var(--font-mono);
 }
 
-.grid-lyrics-section {
-  margin-bottom: var(--spacing-xl);
-}
-
-.lyrics-hint-line {
-  padding: var(--spacing-sm) 0;
-  font-size: 1rem;
-  line-height: 1.8;
-  color: var(--color-text);
-  border-bottom: 1px solid var(--color-border);
-  transition: all var(--transition-fast);
-}
-
-.lyrics-hint-line:last-child {
-  border-bottom: none;
-}
-
-.lyrics-hint-line.current-line {
-  background: var(--color-primary);
-  color: white;
-  padding-left: var(--spacing-md);
-  padding-right: var(--spacing-md);
-  margin: 0 calc(-1 * var(--spacing-md));
-  border-radius: var(--radius-sm);
-}
 </style>

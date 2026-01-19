@@ -78,6 +78,8 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 		for (const section of parsedSong.value.sections) {
 			if (section.content.kind === 'grid') {
 				count += countMeasuresInGrid(section.content as GridSection)
+			} else if (section.content.kind === 'lyrics') {
+				count += (section.content as LyricsSection).lines.length
 			}
 		}
 		return Math.max(count, 1)
@@ -92,6 +94,8 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 			offsets.push(offset)
 			if (section.content.kind === 'grid') {
 				offset += countMeasuresInGrid(section.content as GridSection)
+			} else if (section.content.kind === 'lyrics') {
+				offset += (section.content as LyricsSection).lines.length
 			}
 		}
 
