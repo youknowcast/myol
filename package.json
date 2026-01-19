@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --ext .ts,.vue"
+    "lint": "eslint . --ext .ts,.vue",
+    "hash:passcode": "node -e \"const bcrypt=require('bcryptjs');const pass=process.argv[1];if(!pass){console.error('passcode required');process.exit(1);}console.log(bcrypt.hashSync(pass,10));\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
