@@ -12,17 +12,17 @@ const grid: GridSection = {
 }
 
 describe('useGridViewState', () => {
-	it('builds row hints from measures', () => {
+	it('builds measure hints from measures', () => {
 		const currentMeasure = ref(0)
 		const measureOffset = ref(0)
-		const { rowHints } = useGridViewState({
+		const { measureHints } = useGridViewState({
 			grid,
 			currentMeasure,
 			measureOffset
 		})
 
-
-		expect(rowHints.value[0]).toBe('Hello World')
+		expect(measureHints.value[0]).toBe('Hello')
+		expect(measureHints.value[1]).toBe('World')
 	})
 
 	it('marks current measure cells', () => {

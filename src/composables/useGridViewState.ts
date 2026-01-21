@@ -18,23 +18,9 @@ export interface UseGridViewStateOptions {
 export function useGridViewState(options: UseGridViewStateOptions) {
 	const measuresPerRow = 2
 
-	const rowHints = computed(() => {
-		if (options.grid.measures.length === 0) {
-			return []
-		}
-
-		const hints: string[] = []
-		for (let index = 0; index < options.grid.measures.length; index += measuresPerRow) {
-			const rowHint = options.grid.measures
-				.slice(index, index + measuresPerRow)
-				.map(measure => measure.lyricsHint)
-				.filter((hint): hint is string => Boolean(hint && hint.trim()))
-				.join(' ')
-			hints.push(rowHint)
-		}
-
-		return hints
-	})
+	const measureHints = computed(() =>
+		options.grid.measures.map((measure) => measure.lyricsHint?.trim() ?? '')
+	)
 
 	const cellsWithMeasures: ComputedRef<CellWithMeasure[][]> = computed(() => {
 		let measureIndex = 0
@@ -86,7 +72,7 @@ export function useGridViewState(options: UseGridViewStateOptions) {
 	})
 
 	return {
-		rowHints,
+		measureHints,
 		cellsWithMeasures,
 		currentRowIndex
 	}

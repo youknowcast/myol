@@ -26,7 +26,7 @@ const emit = defineEmits<Emits>()
 
 const gridContent = props.section.content as GridSection
 
-const { rowHints, cellsWithMeasures } = useGridViewState({
+const { measureHints, cellsWithMeasures } = useGridViewState({
   grid: gridContent,
   currentMeasure: computed(() => (props.isPlaying ? props.currentMeasure : -1)),
   measureOffset: computed(() => props.measureOffset)
@@ -40,6 +40,7 @@ interface MeasureGroup {
   measureIndex: number
   cells: CellWithMeasure[]
   isCurrent: boolean
+  hint: string
 }
 
 const measureRows = computed(() =>
@@ -50,10 +51,13 @@ const measureRows = computed(() =>
       if (isBarCell(cell)) return
       const lastGroup = groups[groups.length - 1]
       if (!lastGroup || lastGroup.measureIndex !== cell.measureIndex) {
+        const hintIndex = cell.measureIndex - props.measureOffset
+        const hint = measureHints.value[hintIndex] || ''
         groups.push({
           measureIndex: cell.measureIndex,
           cells: [cell],
-          isCurrent: cell.isCurrentMeasure
+          isCurrent: cell.isCurrentMeasure,
+          hint
         })
         return
       }
@@ -95,24 +99,22 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
               v-for="group in row"
               :key="group.measureIndex"
               class="grid-measure"
-              :class="{ 'is-current-measure': group.isCurrent }"
+              :class="{ 'is-current-measure': group.isCurrent, 'is-empty': !group.cells.length }"
             >
-              <div
-                v-for="(cell, cellIndex) in group.cells"
-                :key="cellIndex"
-                class="grid-cell"
-                :class="getCellClass(cell)"
-              >
-                <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+              <div class="grid-measure-body">
+                <div
+                  v-for="(cell, cellIndex) in group.cells"
+                  :key="cellIndex"
+                  class="grid-cell"
+                  :class="getCellClass(cell)"
+                >
+                  <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+                </div>
+              </div>
+              <div v-if="group.hint" class="grid-lyrics-row">
+                {{ group.hint }}
               </div>
             </div>
-          </div>
-
-          <div
-            v-if="rowHints[rowIndex]"
-            class="grid-lyrics-row"
-          >
-            {{ rowHints[rowIndex] }}
           </div>
         </div>
       </div>
@@ -156,23 +158,32 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
 
 .grid-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, max-content);
+  justify-content: start;
   gap: var(--spacing-sm);
   font-family: var(--font-mono);
 }
 
-.grid-row-group:has(.is-current-measure) .grid-lyrics-row {
-  color: var(--color-primary);
-  font-weight: 500;
-}
-
 .grid-measure {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-xs);
   padding: var(--spacing-sm);
   background: var(--color-bg-secondary);
   border-radius: var(--radius-md);
   border: 1px solid transparent;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.grid-measure-body,
+.grid-lyrics-row {
+  width: fit-content;
+}
+
+.grid-measure.is-empty {
+  opacity: 0.6;
 }
 
 .grid-measure.is-current-measure {
@@ -182,12 +193,20 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
 }
 
 .grid-lyrics-row {
-  padding-left: var(--spacing-xs);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--color-text-secondary);
+  text-align: left;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.grid-measure.is-current-measure .grid-lyrics-row {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.grid-measure-body {
+  display: flex;
+  gap: var(--spacing-xs);
 }
 
 .grid-cell {
