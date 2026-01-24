@@ -10,6 +10,16 @@ export interface UseGridMeasureEditorOptions {
 	selectedMeasureIndex: Ref<number | null>
 }
 
+export interface MoveCellAcrossMeasuresPayload {
+	fromSectionIndex: number
+	toSectionIndex: number
+	fromMeasureIndex: number
+	toMeasureIndex: number
+	movedCellId: string | null
+	oldIndex: number | null
+	newIndex: number | null
+}
+
 function cloneMeasures(measures: Measure[]): Measure[] {
 	return measures.map(measure => ({
 		cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
@@ -26,7 +36,7 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		return options.measures.value.map((measure, index) => ({
 			...measure,
 			cells: measure.cells.map((cell, cellIndex) => ({
-				id: `${index}-${cellIndex}`,
+				id: `${index}-${cellIndex}-${cell.type === 'chord' ? cell.value ?? 'chord' : cell.type}`,
 				...cell
 			}))
 		}))
@@ -177,6 +187,61 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		return next
 	}
 
+	function moveCellAcrossMeasures(payload: MoveCellAcrossMeasuresPayload): Measure[] {
+		const { fromSectionIndex, toSectionIndex, fromMeasureIndex, toMeasureIndex, movedCellId, newIndex } = payload
+		if (movedCellId === null) return cloneMeasures(options.measures.value)
+		if (fromSectionIndex !== toSectionIndex) return cloneMeasures(options.measures.value)
+		if (fromMeasureIndex === toMeasureIndex) return cloneMeasures(options.measures.value)
+
+		const sourceMeasure = displayMeasures.value[fromMeasureIndex]
+		const targetMeasure = displayMeasures.value[toMeasureIndex]
+		if (!sourceMeasure || !targetMeasure) return cloneMeasures(options.measures.value)
+
+		const sourceCells: GridCell[] = sourceMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
+		const targetCells: GridCell[] = targetMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
+
+		const sourceIndex = sourceMeasure.cells.findIndex(cell => cell.id === movedCellId)
+		if (sourceIndex === -1) return cloneMeasures(options.measures.value)
+
+		const movedCell = sourceCells[sourceIndex]
+		if (!movedCell || movedCell.type === 'empty') return cloneMeasures(options.measures.value)
+
+		sourceCells.splice(sourceIndex, 1)
+		if (sourceCells.length === 0) {
+			sourceCells.push({ type: 'empty' as const })
+		}
+
+		const emptyIndices = targetCells
+			.map((cell, index) => (cell.type === 'empty' ? index : null))
+			.filter((index): index is number => index !== null)
+
+		if (emptyIndices.length > 0) {
+			const fallbackIndex = emptyIndices[0] ?? 0
+			const replaceIndex = typeof newIndex === 'number'
+				? emptyIndices.reduce((closest, index) =>
+					(Math.abs(index - newIndex) < Math.abs(closest - newIndex) ? index : closest), fallbackIndex)
+				: fallbackIndex
+			targetCells.splice(replaceIndex, 1, { ...movedCell })
+		} else {
+			let insertIndex = typeof newIndex === 'number' ? newIndex : targetCells.length
+			if (insertIndex < 0) insertIndex = 0
+			if (insertIndex > targetCells.length) insertIndex = targetCells.length
+			targetCells.splice(insertIndex, 0, { ...movedCell })
+		}
+
+		const next = cloneMeasures(options.measures.value)
+		next[fromMeasureIndex] = {
+			cells: sourceCells.map(cell => ({ ...cell })),
+			lyricsHint: next[fromMeasureIndex]?.lyricsHint
+		}
+		next[toMeasureIndex] = {
+			cells: targetCells.map(cell => ({ ...cell })),
+			lyricsHint: next[toMeasureIndex]?.lyricsHint
+		}
+
+		return next
+	}
+
 	return {
 		displayMeasures,
 		addMeasure,
@@ -186,6 +251,7 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		deleteChords,
 		swapMeasure,
 		mergeLyrics,
-		reorderCells
+		reorderCells,
+		moveCellAcrossMeasures
 	}
 }

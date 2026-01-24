@@ -7,6 +7,7 @@ interface Props {
   measure: EditableMeasure
   measureIndex: number
   measuresLength: number
+  sectionIndex: number
   selected: boolean
 }
 
@@ -21,7 +22,7 @@ interface Emits {
   (e: 'delete-chords'): void
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 function getCellClass(cell: GridCell): string {
@@ -73,6 +74,7 @@ function getCellDisplay(cell: GridCell): string {
     <div
       class="measure-cells"
       :data-measure-index="measureIndex"
+      :data-section-index="sectionIndex"
       @click="emit('select', measureIndex)"
     >
       <div
@@ -133,7 +135,11 @@ function getCellDisplay(cell: GridCell): string {
   text-align: center;
 }
 
-.editable-cell:hover {
+.editable-cell.cell-empty {
+  cursor: default;
+}
+
+.editable-cell:hover:not(.cell-empty) {
   transform: scale(1.05);
 }
 

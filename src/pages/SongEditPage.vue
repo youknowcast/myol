@@ -3,12 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
-import { useBeatSignature } from '@/composables/useBeatSignature'
+import { useBeatSignature } from '@/pages/song-edit/composables/useBeatSignature'
 import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useChordProEditorSync } from '@/composables/useChordProEditorSync'
-import { useSongEditForm } from '@/composables/useSongEditForm'
-import { useGridSectionManager } from '@/composables/useGridSectionManager'
-import { useSongEditNavigation } from '@/composables/useSongEditNavigation'
+import { useSongEditForm } from '@/pages/song-edit/composables/useSongEditForm'
+import { useGridSectionManager } from '@/pages/song-edit/composables/useGridSectionManager'
+import { useSongEditNavigation } from '@/pages/song-edit/composables/useSongEditNavigation'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
@@ -95,6 +95,85 @@ const {
   canSplit,
   setSelectedMeasure
 } = useGridSectionManager(editorStore)
+
+function handleMoveAcrossSections(payload: {
+  fromSectionIndex: number
+  toSectionIndex: number
+  fromMeasureIndex: number
+  toMeasureIndex: number
+  movedCellId: string | null
+  oldIndex: number | null
+  newIndex: number | null
+}) {
+  const fromSection = gridSections.value.find(item => item.index === payload.fromSectionIndex)
+  const toSection = gridSections.value.find(item => item.index === payload.toSectionIndex)
+  if (!fromSection || !toSection) return
+  if (fromSection.section.content.kind !== 'grid' || toSection.section.content.kind !== 'grid') return
+
+  const fromGrid = fromSection.section.content as GridSection
+  const toGrid = toSection.section.content as GridSection
+  const sourceMeasure = fromGrid.measures[payload.fromMeasureIndex]
+  const targetMeasure = toGrid.measures[payload.toMeasureIndex]
+  if (!sourceMeasure || !targetMeasure) return
+
+  const sourceCells = sourceMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
+  const targetCells = targetMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
+
+  let sourceIndex = -1
+  if (payload.movedCellId) {
+    const parts = payload.movedCellId.split('-')
+    const parsedIndex = Number.parseInt(parts[1] ?? '', 10)
+    if (!Number.isNaN(parsedIndex)) {
+      sourceIndex = parsedIndex
+    }
+  }
+  if (sourceIndex < 0 && typeof payload.oldIndex === 'number') {
+    sourceIndex = payload.oldIndex
+  }
+  if (sourceIndex < 0 || sourceIndex >= sourceCells.length) return
+  const movedCell = sourceCells[sourceIndex]
+  if (!movedCell || movedCell.type === 'empty') return
+
+  sourceCells.splice(sourceIndex, 1)
+  if (sourceCells.length === 0) {
+    sourceCells.push({ type: 'empty' as const })
+  }
+
+  const emptyIndices = targetCells
+    .map((cell, index) => (cell.type === 'empty' ? index : null))
+    .filter((index): index is number => index !== null)
+
+  if (emptyIndices.length > 0) {
+    const fallbackIndex = emptyIndices[0] ?? 0
+    const replaceIndex = typeof payload.newIndex === 'number'
+      ? emptyIndices.reduce((closest, index) =>
+        (Math.abs(index - payload.newIndex!) < Math.abs(closest - payload.newIndex!) ? index : closest), fallbackIndex)
+      : fallbackIndex
+    targetCells.splice(replaceIndex, 1, { ...movedCell })
+  } else {
+    let insertIndex = typeof payload.newIndex === 'number' ? payload.newIndex : targetCells.length
+    if (insertIndex < 0) insertIndex = 0
+    if (insertIndex > targetCells.length) insertIndex = targetCells.length
+    targetCells.splice(insertIndex, 0, { ...movedCell })
+  }
+
+  const updatedFrom: GridSection = {
+    ...fromGrid,
+    measures: fromGrid.measures.map((measure, index) => index === payload.fromMeasureIndex
+      ? { cells: sourceCells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint }
+      : { cells: measure.cells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint })
+  }
+
+  const updatedTo: GridSection = {
+    ...toGrid,
+    measures: toGrid.measures.map((measure, index) => index === payload.toMeasureIndex
+      ? { cells: targetCells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint }
+      : { cells: measure.cells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint })
+  }
+
+  updateGridSection(payload.fromSectionIndex, updatedFrom)
+  updateGridSection(payload.toSectionIndex, updatedTo)
+}
 
 const isLabelDialogOpen = ref(false)
 const labelDraft = ref('')
@@ -319,8 +398,10 @@ function commitLabelDialog() {
               </div>
               <GridEditor
                 :model-value="(section.content as GridSection)"
+                :section-index="index"
                 @update:model-value="(val) => updateGridSection(index, val)"
                 @select-measure="(val) => setSelectedMeasure(index, val)"
+                @move-cell-across-section="handleMoveAcrossSections"
               />
             </div>
           </div>

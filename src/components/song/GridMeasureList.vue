@@ -8,6 +8,7 @@ interface Props {
   measures: EditableMeasure[]
   measuresLength: number
   selectedMeasureIndex: number | null
+  sectionIndex: number
 }
 
 interface Emits {
@@ -20,6 +21,17 @@ interface Emits {
   (e: 'delete-lyrics'): void
   (e: 'delete-chords'): void
   (e: 'reorder', measureIndex: number, orderedCellIds: string[]): void
+  (e: 'move-cell', payload: {
+    fromSectionIndex: number
+    toSectionIndex: number
+    fromMeasureIndex: number
+    toMeasureIndex: number
+    fromOrder: string[]
+    toOrder: string[]
+    movedCellId: string | null
+    oldIndex: number | null
+    newIndex: number | null
+  }): void
 }
 
 const props = defineProps<Props>()
@@ -28,7 +40,23 @@ const emit = defineEmits<Emits>()
 const containerRef = ref<HTMLElement | null>(null)
 
 const { init: initSortable, destroy: destroySortable } = useSortableGrid({
-  onReorder: (measureIndex, orderedCellIds) => emit('reorder', measureIndex, orderedCellIds)
+  onReorder: (payload) => {
+    if (payload.fromMeasureIndex === payload.toMeasureIndex && payload.fromSectionIndex === payload.toSectionIndex) {
+      emit('reorder', payload.toMeasureIndex, payload.toOrder)
+      return
+    }
+    emit('move-cell', {
+      fromSectionIndex: payload.fromSectionIndex,
+      toSectionIndex: payload.toSectionIndex,
+      fromMeasureIndex: payload.fromMeasureIndex,
+      toMeasureIndex: payload.toMeasureIndex,
+      fromOrder: payload.fromOrder,
+      toOrder: payload.toOrder,
+      movedCellId: payload.movedCellId,
+      oldIndex: payload.oldIndex,
+      newIndex: payload.newIndex
+    })
+  }
 })
 
 function refreshSortable() {
@@ -56,6 +84,7 @@ onUnmounted(() => {
         :measure="measure"
         :measure-index="measureIndex"
         :measures-length="measuresLength"
+        :section-index="sectionIndex"
         :selected="selectedMeasureIndex === measureIndex"
         @select="(index) => emit('select', index)"
         @add-measure="(position) => emit('add-measure', position)"

@@ -6,11 +6,23 @@ import GridMeasureList from '@/components/song/GridMeasureList.vue'
 
 interface Props {
   modelValue: GridSection
+  sectionIndex: number
 }
 
 interface Emits {
   (e: 'update:modelValue', value: GridSection): void
   (e: 'select-measure', value: number | null): void
+  (e: 'move-cell-across-section', payload: {
+    fromSectionIndex: number
+    toSectionIndex: number
+    fromMeasureIndex: number
+    toMeasureIndex: number
+    fromOrder: string[]
+    toOrder: string[]
+    movedCellId: string | null
+    oldIndex: number | null
+    newIndex: number | null
+  }): void
 }
 
 const props = defineProps<Props>()
@@ -20,24 +32,44 @@ const emit = defineEmits<Emits>()
 const selectedMeasureIndex = ref<number | null>(null)
 const modelValue = computed(() => props.modelValue)
 
-const {
-  measures,
-  displayMeasures,
-  selectMeasure,
-  handleAddMeasure,
-  handleCopyMeasure,
-  handleDeleteMeasure,
-  handleDeleteLyrics,
-  handleDeleteChords,
-  handleSwapMeasure,
-  handleMergeLyrics,
-  handleReorder
-} = useGridMeasureActions({
-  modelValue,
-  selectedMeasureIndex,
-  onUpdate: (section) => emit('update:modelValue', section),
-  onSelect: (index) => emit('select-measure', index)
-})
+  const {
+    measures,
+    displayMeasures,
+    selectMeasure,
+    handleAddMeasure,
+    handleCopyMeasure,
+    handleDeleteMeasure,
+    handleDeleteLyrics,
+    handleDeleteChords,
+    handleSwapMeasure,
+    handleMergeLyrics,
+    handleReorder,
+    handleMoveAcrossMeasures
+  } = useGridMeasureActions({
+    modelValue,
+    selectedMeasureIndex,
+    onUpdate: (section) => emit('update:modelValue', section),
+    onSelect: (index) => emit('select-measure', index)
+  })
+
+  function handleMoveCell(payload: {
+    fromSectionIndex: number
+    toSectionIndex: number
+    fromMeasureIndex: number
+    toMeasureIndex: number
+    fromOrder: string[]
+    toOrder: string[]
+    movedCellId: string | null
+    oldIndex: number | null
+    newIndex: number | null
+  }) {
+    if (payload.fromSectionIndex !== payload.toSectionIndex) {
+      emit('move-cell-across-section', payload)
+      return
+    }
+    handleMoveAcrossMeasures(payload)
+  }
+
 </script>
 
 <template>
@@ -50,6 +82,7 @@ const {
       :measures="displayMeasures"
       :measures-length="measures.length"
       :selected-measure-index="selectedMeasureIndex"
+      :section-index="sectionIndex"
       @select="selectMeasure"
       @add-measure="handleAddMeasure"
       @copy="handleCopyMeasure"
@@ -59,6 +92,7 @@ const {
       @delete-lyrics="handleDeleteLyrics"
       @delete-chords="handleDeleteChords"
       @reorder="handleReorder"
+      @move-cell="handleMoveCell"
     />
 
     <div class="editor-hint">

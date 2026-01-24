@@ -21,19 +21,39 @@ describe('useSortableGrid', () => {
 		}
 
 		const { init } = useSortableGrid({ onReorder, createSortable })
+		const source = createMeasureContainer(0, ['a', 'b'])
+		const target = createMeasureContainer(1, ['c'])
+		const makeSectionContainer = (sectionIndex: number) => ({
+			getAttribute: (name: string) => (name === 'data-section-index' ? String(sectionIndex) : null)
+		})
 		const container = {
-			querySelectorAll: () => [
-				createMeasureContainer(0, ['a', 'b']),
-				createMeasureContainer(1, ['c'])
-			]
+			querySelectorAll: (selector: string) => (selector === '.measure-cells'
+				? [source, target]
+				: [])
 		} as unknown as HTMLElement
 
 		init(container)
 		expect(created.length).toBe(2)
 
 		const onEnd = created[0]?.options.onEnd
-		onEnd({ to: created[0]?.element })
+		onEnd({
+			from: { ...source, getAttribute: (name: string) => (name === 'data-section-index' ? '2' : null) },
+			to: { ...target, getAttribute: (name: string) => (name === 'data-section-index' ? '2' : null) },
+			item: { getAttribute: () => 'a', closest: () => makeSectionContainer(2) },
+			oldIndex: 0,
+			newIndex: 1
+		})
 
-		expect(onReorder).toHaveBeenCalledWith(0, ['a', 'b'])
+		expect(onReorder).toHaveBeenCalledWith({
+			fromSectionIndex: 2,
+			toSectionIndex: 2,
+			fromMeasureIndex: 0,
+			toMeasureIndex: 1,
+			fromOrder: ['a', 'b'],
+			toOrder: ['c'],
+			movedCellId: 'a',
+			oldIndex: 0,
+			newIndex: 1
+		})
 	})
 })

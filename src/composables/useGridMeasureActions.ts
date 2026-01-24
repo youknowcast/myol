@@ -21,7 +21,8 @@ export function useGridMeasureActions(options: UseGridMeasureActionsOptions) {
     deleteChords,
     swapMeasure,
     mergeLyrics,
-    reorderCells
+    reorderCells,
+    moveCellAcrossMeasures
   } = useGridMeasureEditor({
     measures,
     selectedMeasureIndex: options.selectedMeasureIndex
@@ -75,6 +76,18 @@ export function useGridMeasureActions(options: UseGridMeasureActionsOptions) {
     emitUpdate(reorderCells(measureIndex, orderedCellIds))
   }
 
+  function handleMoveAcrossMeasures(payload: {
+    fromSectionIndex: number
+    toSectionIndex: number
+    fromMeasureIndex: number
+    toMeasureIndex: number
+    movedCellId: string | null
+    oldIndex: number | null
+    newIndex: number | null
+  }) {
+    emitUpdate(moveCellAcrossMeasures(payload))
+  }
+
   return {
     measures,
     displayMeasures,
@@ -86,6 +99,8 @@ export function useGridMeasureActions(options: UseGridMeasureActionsOptions) {
     handleDeleteChords,
     handleSwapMeasure,
     handleMergeLyrics,
-    handleReorder
+    handleReorder,
+    handleMoveAcrossMeasures
   }
 }
+

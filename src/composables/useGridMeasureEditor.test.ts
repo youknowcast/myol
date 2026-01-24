@@ -61,6 +61,73 @@ describe('useGridMeasureEditor', () => {
 		expect(next[0]?.cells[0]?.value).toBe('G')
 	})
 
+	it('moves a cell across measures and keeps a single empty cell', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'A' }] },
+			{ cells: [{ type: 'empty' }] }
+		])
+		const { displayMeasures, moveCellAcrossMeasures } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const movedCellId = displayMeasures.value[0]?.cells[0]?.id ?? null
+		const next = moveCellAcrossMeasures({
+			fromSectionIndex: 0,
+			toSectionIndex: 0,
+			fromMeasureIndex: 0,
+			toMeasureIndex: 1,
+			movedCellId,
+			oldIndex: 0,
+			newIndex: 0
+		})
+
+		expect(next[0]?.cells[0]?.type).toBe('empty')
+		expect(next[1]?.cells[0]?.value).toBe('A')
+	})
+
+	it('replaces empty target cells when moving across measures', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'A' }] },
+			{ cells: [{ type: 'chord', value: 'B' }, { type: 'empty' }] }
+		])
+		const { displayMeasures, moveCellAcrossMeasures } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const movedCellId = displayMeasures.value[0]?.cells[0]?.id ?? null
+		const next = moveCellAcrossMeasures({
+			fromSectionIndex: 0,
+			toSectionIndex: 0,
+			fromMeasureIndex: 0,
+			toMeasureIndex: 1,
+			movedCellId,
+			oldIndex: 0,
+			newIndex: 1
+		})
+
+		expect(next[1]?.cells.map(cell => cell.value ?? '')).toEqual(['B', 'A'])
+	})
+
+	it('inserts when no empty target cells exist', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'A' }] },
+			{ cells: [{ type: 'chord', value: 'B' }] }
+		])
+		const { displayMeasures, moveCellAcrossMeasures } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const movedCellId = displayMeasures.value[0]?.cells[0]?.id ?? null
+		const next = moveCellAcrossMeasures({
+			fromSectionIndex: 0,
+			toSectionIndex: 0,
+			fromMeasureIndex: 0,
+			toMeasureIndex: 1,
+			movedCellId,
+			oldIndex: 0,
+			newIndex: 1
+		})
+
+		expect(next[1]?.cells.map(cell => cell.value)).toEqual(['B', 'A'])
+	})
+
 	it('merges lyrics to the left and clears current', () => {
 		const selectedMeasureIndex = ref<number | null>(1)
 		const measures = computed<Measure[]>(() => [
