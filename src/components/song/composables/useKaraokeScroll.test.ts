@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ref, computed } from 'vue'
-import { useKaraokeScroll } from './useKaraokeScroll'
-import type { KaraokeRow } from './useChordProDocument'
+import { useKaraokeScroll, type KaraokeRow } from './useKaraokeScroll'
 
 describe('useKaraokeScroll', () => {
 	const rows = computed<KaraokeRow[]>(() => [

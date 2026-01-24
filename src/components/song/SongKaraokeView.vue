@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useKaraokeScroll } from '@/composables/useKaraokeScroll'
+import { useKaraokeScroll } from '@/components/song/composables/useKaraokeScroll'
 import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
 import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
 import type { GridCell } from '@/lib/chordpro/types'
-import type { KaraokeRow } from '@/composables/useChordProDocument'
+import type { KaraokeRow } from '@/components/song/composables/useKaraokeScroll'
 
 interface Props {
   rows: KaraokeRow[]

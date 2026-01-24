@@ -1,5 +1,12 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import type { KaraokeRow } from './useChordProDocument'
+export interface KaraokeRow {
+	type: string
+	sectionIndex: number
+	rowIndex: number
+	startMeasure: number
+	endMeasure: number
+	content: any
+}
 
 export interface UseKaraokeScrollOptions {
 	rows: ComputedRef<KaraokeRow[]>

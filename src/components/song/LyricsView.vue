@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useLyricsHighlight } from '@/composables/useLyricsHighlight'
+import { useLyricsHighlight } from '@/components/song/composables/useLyricsHighlight'
 import type { Section, LyricsSection } from '@/lib/chordpro/types'
 
 interface Props {

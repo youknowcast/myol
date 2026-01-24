@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useGridViewState, type CellWithMeasure } from '@/composables/useGridViewState'
+import { useGridViewState, type CellWithMeasure } from '@/components/song/composables/useGridViewState'
 import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
 import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
 import type { Section, GridSection } from '@/lib/chordpro/types'

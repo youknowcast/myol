@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import type { PlaybackState } from '@/composables/usePlaybackState'
+import type { PlaybackState } from '@/pages/song-detail/composables/usePlaybackState'
 
 export interface UseSongDetailViewStateOptions {
 	playback: PlaybackState

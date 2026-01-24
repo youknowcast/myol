@@ -1,6 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import type { GridSection, Measure } from '@/lib/chordpro/types'
-import { useGridMeasureEditor } from '@/composables/useGridMeasureEditor'
+import { useGridMeasureEditor } from '@/components/song/composables/useGridMeasureEditor'
 
 interface UseGridMeasureActionsOptions {
   modelValue: ComputedRef<GridSection>

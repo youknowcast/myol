@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useGridMeasureActions } from '@/composables/useGridMeasureActions'
+import { useGridMeasureActions } from '@/components/song/composables/useGridMeasureActions'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridMeasureList from '@/components/song/GridMeasureList.vue'
 
