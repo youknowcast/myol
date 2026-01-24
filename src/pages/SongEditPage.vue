@@ -175,6 +175,46 @@ function handleMoveAcrossSections(payload: {
   updateGridSection(payload.toSectionIndex, updatedTo)
 }
 
+function handleMoveMeasureAcrossSections(payload: {
+  fromSectionIndex: number
+  toSectionIndex: number
+  fromMeasureIndex: number
+}) {
+  const fromSection = gridSections.value.find(item => item.index === payload.fromSectionIndex)
+  const toSection = gridSections.value.find(item => item.index === payload.toSectionIndex)
+  if (!fromSection || !toSection) return
+  if (fromSection.section.content.kind !== 'grid' || toSection.section.content.kind !== 'grid') return
+
+  const fromGrid = fromSection.section.content as GridSection
+  const toGrid = toSection.section.content as GridSection
+  const movedMeasure = fromGrid.measures[payload.fromMeasureIndex]
+  if (!movedMeasure) return
+
+  const nextFromMeasures = fromGrid.measures.filter((_, idx) => idx !== payload.fromMeasureIndex)
+  if (nextFromMeasures.length === 0) {
+    nextFromMeasures.push({ cells: [{ type: 'empty' as const }] })
+  }
+
+  const insertIndex = payload.toSectionIndex > payload.fromSectionIndex
+    ? 0
+    : toGrid.measures.length
+
+  const nextToMeasures = [...toGrid.measures]
+  nextToMeasures.splice(insertIndex, 0, {
+    cells: movedMeasure.cells.map(cell => ({ ...cell })),
+    lyricsHint: movedMeasure.lyricsHint
+  })
+
+  updateGridSection(payload.fromSectionIndex, {
+    ...fromGrid,
+    measures: nextFromMeasures
+  })
+  updateGridSection(payload.toSectionIndex, {
+    ...toGrid,
+    measures: nextToMeasures
+  })
+}
+
 const isLabelDialogOpen = ref(false)
 const labelDraft = ref('')
 const labelTargetIndex = ref<number | null>(null)
@@ -342,7 +382,7 @@ function commitLabelDialog() {
             <div v-if="gridSections.length === 0" class="no-grids-message">
               Gridセクションがありません。「小節を自動割り振り」を使ってコードをGridに変換してください。
             </div>
-            <div v-for="{ section, index, displayLabel } in gridSections" :key="index" class="grid-editor-wrapper">
+            <div v-for="({ section, index, displayLabel }, gridIndex) in gridSections" :key="index" class="grid-editor-wrapper">
               <div class="grid-section-header">
                 <div class="grid-section-title">
                   <span>{{ section.label ?? displayLabel }}</span>
@@ -399,9 +439,12 @@ function commitLabelDialog() {
               <GridEditor
                 :model-value="(section.content as GridSection)"
                 :section-index="index"
+                :prev-section-index="gridSections[gridIndex - 1]?.index ?? null"
+                :next-section-index="gridSections[gridIndex + 1]?.index ?? null"
                 @update:model-value="(val) => updateGridSection(index, val)"
                 @select-measure="(val) => setSelectedMeasure(index, val)"
                 @move-cell-across-section="handleMoveAcrossSections"
+                @move-measure-across-section="handleMoveMeasureAcrossSections"
               />
             </div>
           </div>

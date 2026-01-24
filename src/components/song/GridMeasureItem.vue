@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
 import type { EditableMeasure } from '@/components/song/composables/useGridMeasureEditor'
 import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
@@ -8,6 +9,8 @@ interface Props {
   measureIndex: number
   measuresLength: number
   sectionIndex: number
+  canMovePrevSection: boolean
+  canMoveNextSection: boolean
   selected: boolean
 }
 
@@ -20,10 +23,16 @@ interface Emits {
   (e: 'delete-measure'): void
   (e: 'delete-lyrics'): void
   (e: 'delete-chords'): void
+  (e: 'move-section', direction: 'prev' | 'next', measureIndex: number): void
 }
+
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const toolboxAlign = computed(() => (
+  props.measureIndex >= Math.max(1, props.measuresLength - 2) ? 'right' : 'left'
+))
 
 function getCellClass(cell: GridCell): string {
   switch (cell.type) {
@@ -62,6 +71,9 @@ function getCellDisplay(cell: GridCell): string {
       v-if="selected"
       :measure-index="measureIndex"
       :measures-length="measuresLength"
+      :can-move-prev-section="canMovePrevSection"
+      :can-move-next-section="canMoveNextSection"
+      :align="toolboxAlign"
       :has-lyrics="Boolean(measure.lyricsHint)"
       @add-measure="(position) => emit('add-measure', position)"
       @copy="() => emit('copy')"
@@ -70,6 +82,7 @@ function getCellDisplay(cell: GridCell): string {
       @delete-measure="() => emit('delete-measure')"
       @delete-lyrics="() => emit('delete-lyrics')"
       @delete-chords="() => emit('delete-chords')"
+      @move-section="(direction) => emit('move-section', direction, measureIndex)"
     />
     <div
       class="measure-cells"

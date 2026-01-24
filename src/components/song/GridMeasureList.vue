@@ -9,6 +9,8 @@ interface Props {
   measuresLength: number
   selectedMeasureIndex: number | null
   sectionIndex: number
+  canMovePrevSection: boolean
+  canMoveNextSection: boolean
 }
 
 interface Emits {
@@ -32,6 +34,7 @@ interface Emits {
     oldIndex: number | null
     newIndex: number | null
   }): void
+  (e: 'move-section', payload: { direction: 'prev' | 'next'; measureIndex: number }): void
 }
 
 const props = defineProps<Props>()
@@ -85,6 +88,8 @@ onUnmounted(() => {
         :measure-index="measureIndex"
         :measures-length="measuresLength"
         :section-index="sectionIndex"
+        :can-move-prev-section="canMovePrevSection"
+        :can-move-next-section="canMoveNextSection"
         :selected="selectedMeasureIndex === measureIndex"
         @select="(index) => emit('select', index)"
         @add-measure="(position) => emit('add-measure', position)"
@@ -94,6 +99,7 @@ onUnmounted(() => {
         @delete-measure="() => emit('delete-measure')"
         @delete-lyrics="() => emit('delete-lyrics')"
         @delete-chords="() => emit('delete-chords')"
+        @move-section="(direction, idx) => emit('move-section', { direction, measureIndex: idx })"
       />
       <div class="bar-line">{{ measureIndex === measuresLength - 1 ? '║' : '│' }}</div>
     </template>

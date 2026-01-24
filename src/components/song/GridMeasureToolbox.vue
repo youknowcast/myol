@@ -6,6 +6,9 @@ interface Props {
   measureIndex: number
   measuresLength: number
   hasLyrics: boolean
+  canMovePrevSection: boolean
+  canMoveNextSection: boolean
+  align: 'left' | 'right'
 }
 
 interface Emits {
@@ -16,6 +19,7 @@ interface Emits {
   (e: 'delete-measure'): void
   (e: 'delete-lyrics'): void
   (e: 'delete-chords'): void
+  (e: 'move-section', direction: 'prev' | 'next'): void
 }
 
 const props = defineProps<Props>()
@@ -42,7 +46,7 @@ const deleteMenuItems = computed(() => [
 </script>
 
 <template>
-  <div class="measure-toolbox" @click.stop>
+  <div class="measure-toolbox" :class="`align-${align}`" @click.stop>
     <div class="tool-group">
       <button class="toolbar-btn" @click.stop="emit('add-measure', 'before')" title="前に挿入">
         ➕⬅
@@ -55,6 +59,24 @@ const deleteMenuItems = computed(() => [
       </button>
       <button class="toolbar-btn" @click.stop="emit('copy')" title="コピー">
         📋
+      </button>
+    </div>
+    <div class="tool-group">
+      <button
+        class="toolbar-btn"
+        @click.stop="emit('move-section', 'prev')"
+        :disabled="!canMovePrevSection"
+        title="前のセクションへ移動"
+      >
+        ⬅Section
+      </button>
+      <button
+        class="toolbar-btn"
+        @click.stop="emit('move-section', 'next')"
+        :disabled="!canMoveNextSection"
+        title="次のセクションへ移動"
+      >
+        Section➡
       </button>
     </div>
     <div class="tool-group">
@@ -107,7 +129,6 @@ const deleteMenuItems = computed(() => [
 .measure-toolbox {
   position: absolute;
   top: -44px;
-  left: 0;
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -117,6 +138,14 @@ const deleteMenuItems = computed(() => [
   padding: var(--spacing-xs);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   z-index: 20;
+}
+
+.measure-toolbox.align-left {
+  left: 0;
+}
+
+.measure-toolbox.align-right {
+  right: 0;
 }
 
 .tool-group {
