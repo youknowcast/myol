@@ -4,9 +4,14 @@
 
 set -e
 
-BUCKET="myol.daycrift.net-data"
-REGION="us-west-2"
-PREFIX="songs"
+BUCKET="${MYOL_DATA_BUCKET:-}"
+REGION="${MYOL_AWS_REGION:-${AWS_REGION:-${AWS_DEFAULT_REGION:-us-west-2}}}"
+PREFIX="${MYOL_SONGS_PREFIX:-songs}"
+
+if [ -z "$BUCKET" ]; then
+  echo "環境変数 MYOL_DATA_BUCKET を設定してください" >&2
+  exit 1
+fi
 
 upload_file() {
   local file="$1"

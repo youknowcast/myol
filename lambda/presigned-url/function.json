@@ -9,7 +9,7 @@
 	],
 	"Environment": {
 		"Variables": {
-			"S3_BUCKET": "myol.daycrift.net-data"
+			"S3_BUCKET": "{{ must_env `MYOL_DATA_BUCKET` }}"
 		}
 	},
 	"Role": "{{ must_env `LAMBDA_ROLE_ARN` }}"

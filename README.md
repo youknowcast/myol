@@ -41,62 +41,44 @@ npm run hash:passcode:b64 -- ABC123
 # VITE_AUTH_USERS=youknow:b64:...
 ```
 
-## Lambda デプロイ
+## リリース (env + awscli)
 
-### 1. IAM ロール作成 (初回のみ)
+`scripts/release.sh` は以下を冪等に実行します。
 
-```bash
-cd infra
-./setup.sh
-```
+- S3 バケットの作成確認/作成 (`MYOL_WEB_BUCKET`, `MYOL_DATA_BUCKET`)
+- データバケット CORS を本番 Origin のみに設定
+- Lambda 関数の作成/更新 (コード + 設定)
+- Lambda Function URL の作成/更新とパーミッション付与
+- フロントエンド build と `MYOL_WEB_BUCKET` への同期
 
-### 2. Lambda デプロイ
+必要コマンド: `aws`, `npm`, `zip`, `jq`
 
-```bash
-# Role ARN を取得して環境変数に設定
-export LAMBDA_ROLE_ARN=$(aws iam get-role --role-name myol-lambda-role --query 'Role.Arn' --output text)
-
-# デプロイ
-cd lambda/presigned-url
-npm install
-npm run deploy
-```
-
-### 3. Lambda 関数 URL 有効化
-
-AWS Console または:
+必須環境変数:
 
 ```bash
-export FRONTEND_ORIGIN=https://myol.daycrift.net
+export MYOL_AWS_REGION=us-west-2
+export MYOL_WEB_BUCKET=myol.daycrift.net
+export MYOL_DATA_BUCKET=myol.daycrift.net-data
+export MYOL_FRONTEND_ORIGIN=https://myol.daycrift.net
+export MYOL_LAMBDA_FUNCTION_NAME=myol-presigned-url
+export MYOL_LAMBDA_ROLE_ARN=arn:aws:iam::<ACCOUNT_ID>:role/myol-lambda-role
+export MYOL_CLOUDFRONT_DISTRIBUTION_ID=<distribution-id>
 
-aws lambda create-function-url-config \
-  --function-name myol-presigned-url \
-  --auth-type NONE \
-  --cors "AllowOrigins=${FRONTEND_ORIGIN},AllowMethods=POST,AllowHeaders=Content-Type" \
-  --region us-west-2
+# 必要な場合のみ (例: /myol 配下に配置する場合)
+# export MYOL_CLOUDFRONT_ORIGIN_PATH=/myol
 ```
 
-既存の Function URL に設定済みの CORS を更新する場合:
+実行:
 
 ```bash
-export FRONTEND_ORIGIN=https://myol.daycrift.net
-
-aws lambda update-function-url-config \
-  --function-name myol-presigned-url \
-  --cors "AllowOrigins=${FRONTEND_ORIGIN},AllowMethods=POST,AllowHeaders=Content-Type" \
-  --region us-west-2
+./scripts/release.sh
 ```
 
-`AllowOrigins=*` は使わず、localhost を含めない本番 Origin のみを設定する。
+前提:
 
-### 4. 関数 URL 取得
-
-```bash
-aws lambda get-function-url-config \
-  --function-name myol-presigned-url \
-  --region us-west-2 \
-  --query 'FunctionUrl' \
-  --output text
-```
-
-取得した URL を `.env` の `VITE_API_ENDPOINT` に設定。
+- `scripts/release.sh` は `MYOL_FRONTEND_ORIGIN` のホスト名を手がかりに
+  既存 Origin を検索し、見つかれば `MYOL_WEB_BUCKET` 向け S3 Origin に更新する
+- 見つからない場合は CloudFront Origin を自動追加する
+- Origin の OAC を自動作成/関連付けし、Web バケットポリシーへ
+  Distribution 限定の `s3:GetObject` を冪等に反映する
+- Cache Behavior がその Origin を参照していない場合は warning を表示する

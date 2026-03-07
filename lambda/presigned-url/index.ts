@@ -3,8 +3,15 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 
 const s3 = new S3Client({ region: 'us-west-2' })
-const BUCKET = process.env.S3_BUCKET || 'myol.daycrift.net-data'
+const BUCKET = process.env.S3_BUCKET
 const PRESIGNED_EXPIRY = 3600 // 1 hour
+
+function getBucketName(): string {
+	if (!BUCKET) {
+		throw new Error('S3_BUCKET is not set')
+	}
+	return BUCKET
+}
 
 interface RequestBody {
 	operation: 'list' | 'get' | 'put' | 'delete'
@@ -62,7 +69,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
 async function listSongs(): Promise<APIGatewayProxyResult> {
 	const command = new ListObjectsV2Command({
-		Bucket: BUCKET,
+		Bucket: getBucketName(),
 		Prefix: 'songs/',
 		MaxKeys: 1000
 	})
@@ -100,12 +107,12 @@ async function getPresignedUrl(
 	let command
 	if (operation === 'get') {
 		command = new GetObjectCommand({
-			Bucket: BUCKET,
+			Bucket: getBucketName(),
 			Key: fullKey
 		})
 	} else {
 		command = new PutObjectCommand({
-			Bucket: BUCKET,
+			Bucket: getBucketName(),
 			Key: fullKey,
 			ContentType: contentType || 'text/plain; charset=utf-8'
 		})
@@ -128,7 +135,7 @@ async function deleteSong(key: string): Promise<APIGatewayProxyResult> {
 	const fullKey = key.startsWith('songs/') ? key : `songs/${key}`
 
 	const command = new DeleteObjectCommand({
-		Bucket: BUCKET,
+		Bucket: getBucketName(),
 		Key: fullKey
 	})
 
