@@ -4,10 +4,30 @@ import bcrypt from 'bcryptjs'
 
 const AUTH_USERS = import.meta.env.VITE_AUTH_USERS || ''
 const AUTH_KEY = 'myol_authenticated'
+const B64_PREFIX = 'b64:'
 
 interface AuthUser {
 	username: string
 	hash: string
+}
+
+function decodeBase64Url(value: string): string {
+	const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+	const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+	try {
+		return atob(padded)
+	} catch {
+		return ''
+	}
+}
+
+function normalizeHash(rawHash: string): string {
+	const trimmed = rawHash.trim()
+	if (!trimmed) return ''
+	if (trimmed.startsWith(B64_PREFIX)) {
+		return decodeBase64Url(trimmed.slice(B64_PREFIX.length))
+	}
+	return trimmed
 }
 
 function parseAuthUsers(raw: string): AuthUser[] {
@@ -48,7 +68,15 @@ export const useAuthStore = defineStore('auth', () => {
 		const user = users.find(entry => entry.username.toLowerCase() === normalizedUsername)
 		if (!user) return false
 
-		const matches = await bcrypt.compare(normalizedPasscode, user.hash)
+		const storedHash = normalizeHash(user.hash)
+		if (!storedHash) return false
+
+		let matches = false
+		try {
+			matches = await bcrypt.compare(normalizedPasscode, storedHash)
+		} catch {
+			return false
+		}
 		if (matches) {
 			authenticated.value = true
 			localStorage.setItem(AUTH_KEY, 'true')

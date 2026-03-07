@@ -25,8 +25,21 @@ cp .env.example .env
 
 | 変数 | 説明 |
 |------|------|
-| `VITE_AUTH_USERS` | user:hash をカンマ区切りで指定 |
+| `VITE_AUTH_USERS` | user:hash をカンマ区切りで指定 (bcrypt そのまま / `b64:` で base64url 化) |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
+
+パスコードはハッシュ化前に `trim + uppercase` で正規化されます。
+
+`b64:` 形式は `$` のエスケープが不要:
+
+```bash
+# bcrypt 生文字列で使う場合
+npm run hash:passcode -- ABC123
+
+# .env で扱いやすい b64 形式
+npm run hash:passcode:b64 -- ABC123
+# VITE_AUTH_USERS=youknow:b64:...
+```
 
 ## Lambda デプロイ
 
