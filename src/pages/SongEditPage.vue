@@ -9,7 +9,7 @@ import { useChordProEditorSync } from '@/pages/song-edit/composables/useChordPro
 import { useSongEditForm } from '@/pages/song-edit/composables/useSongEditForm'
 import { useGridSectionManager } from '@/pages/song-edit/composables/useGridSectionManager'
 import { useSongEditNavigation } from '@/pages/song-edit/composables/useSongEditNavigation'
-import type { GridSection } from '@/lib/chordpro/types'
+import type { GridCell, GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
@@ -116,8 +116,8 @@ function handleMoveAcrossSections(payload: {
   const targetMeasure = toGrid.measures[payload.toMeasureIndex]
   if (!sourceMeasure || !targetMeasure) return
 
-  const sourceCells = sourceMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
-  const targetCells = targetMeasure.cells.map(cell => ({ type: cell.type, value: cell.value }))
+  const sourceCells: GridCell[] = sourceMeasure.cells.map(cell => ({ ...cell }))
+  const targetCells: GridCell[] = targetMeasure.cells.map(cell => ({ ...cell }))
 
   let sourceIndex = -1
   if (payload.movedCellId) {

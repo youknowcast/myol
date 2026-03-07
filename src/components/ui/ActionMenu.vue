@@ -13,7 +13,7 @@ interface Props {
   align?: 'left' | 'right'
 }
 
-const { align } = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   align: 'right'
 })
 
@@ -39,9 +39,9 @@ function handleSelect(item: ActionMenuItem) {
     <button class="action-menu-trigger" @click.stop="toggleMenu">
       <slot name="trigger">⋯</slot>
     </button>
-    <div v-if="isOpen" class="action-menu-list" :class="`align-${align}`">
+    <div v-if="isOpen" class="action-menu-list" :class="`align-${props.align}`">
       <button
-        v-for="item in items"
+        v-for="item in props.items"
         :key="item.id"
         class="action-menu-item"
         :disabled="item.disabled"

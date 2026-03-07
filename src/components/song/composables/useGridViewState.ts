@@ -1,10 +1,8 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
-import type { GridSection } from '@/lib/chordpro/types'
+import type { GridCell, GridSection } from '@/lib/chordpro/types'
 
-export interface CellWithMeasure {
-	type: string
-	value?: string
+export interface CellWithMeasure extends GridCell {
 	measureIndex: number
 	isCurrentMeasure: boolean
 }
