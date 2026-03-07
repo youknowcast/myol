@@ -37,8 +37,22 @@ describe('useSortableGrid', () => {
 
 		const onEnd = created[0]?.options.onEnd
 		onEnd({
-			from: { ...source, getAttribute: (name: string) => (name === 'data-section-index' ? '2' : null) },
-			to: { ...target, getAttribute: (name: string) => (name === 'data-section-index' ? '2' : null) },
+			from: {
+				...source,
+				getAttribute: (name: string) => {
+					if (name === 'data-section-index') return '2'
+					if (name === 'data-measure-index') return '0'
+					return null
+				}
+			},
+			to: {
+				...target,
+				getAttribute: (name: string) => {
+					if (name === 'data-section-index') return '2'
+					if (name === 'data-measure-index') return '1'
+					return null
+				}
+			},
 			item: { getAttribute: () => 'a', closest: () => makeSectionContainer(2) },
 			oldIndex: 0,
 			newIndex: 1
