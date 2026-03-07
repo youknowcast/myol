@@ -67,12 +67,27 @@ npm run deploy
 AWS Console または:
 
 ```bash
+export FRONTEND_ORIGIN=https://myol.daycrift.net
+
 aws lambda create-function-url-config \
   --function-name myol-presigned-url \
   --auth-type NONE \
-  --cors 'AllowOrigins=*,AllowMethods=*,AllowHeaders=*' \
+  --cors "AllowOrigins=${FRONTEND_ORIGIN},AllowMethods=POST,AllowHeaders=Content-Type" \
   --region us-west-2
 ```
+
+既存の Function URL に設定済みの CORS を更新する場合:
+
+```bash
+export FRONTEND_ORIGIN=https://myol.daycrift.net
+
+aws lambda update-function-url-config \
+  --function-name myol-presigned-url \
+  --cors "AllowOrigins=${FRONTEND_ORIGIN},AllowMethods=POST,AllowHeaders=Content-Type" \
+  --region us-west-2
+```
+
+`AllowOrigins=*` は使わず、localhost を含めない本番 Origin のみを設定する。
 
 ### 4. 関数 URL 取得
 

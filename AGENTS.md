@@ -156,4 +156,4 @@ lambroll + esbuild 使用時、出力が `dist/index.js` の場合:
 
 - 認証はビルド時埋め込み (本番環境では強化を検討)
 - S3 バケットは us-west-2 リージョン
-- Lambda 関数 URL は CORS `*` を許可 (ローカル開発用)
+- Lambda 関数 URL の CORS は本番 Origin のみ許可 (`AllowOrigins=*` は使わない)
