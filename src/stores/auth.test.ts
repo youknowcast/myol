@@ -25,6 +25,8 @@ class LocalStorageMock {
 async function createAuthStore(users: string) {
 	vi.resetModules()
 	vi.stubEnv('VITE_AUTH_USERS', users)
+	vi.stubEnv('VITE_API_ENDPOINT', '')
+	vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth-users.json')
 	const { useAuthStore } = await import('./auth')
 	return useAuthStore()
 }
@@ -39,6 +41,7 @@ function toBase64Url(value: string): string {
 describe('auth store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia())
+		vi.restoreAllMocks()
 		vi.unstubAllEnvs()
 		Object.defineProperty(globalThis, 'localStorage', {
 			value: new LocalStorageMock(),
@@ -74,5 +77,42 @@ describe('auth store', () => {
 
 		expect(ok).toBe(false)
 		expect(authStore.isAuthenticated).toBe(false)
+	})
+
+	it('loads auth users from remote config when API is configured', async () => {
+		vi.resetModules()
+		vi.stubEnv('VITE_AUTH_USERS', '')
+		vi.stubEnv('VITE_API_ENDPOINT', 'https://example.lambda-url.us-west-2.on.aws')
+		vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth-users.json')
+
+		const hash = bcrypt.hashSync('ABC123', 10)
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ url: 'https://signed.example.com/config' })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				text: async () => JSON.stringify({
+					users: [
+						{ username: 'youknow', hash }
+					]
+				})
+			})
+
+		Object.defineProperty(globalThis, 'fetch', {
+			value: fetchMock,
+			configurable: true,
+			writable: true
+		})
+
+		const { useAuthStore } = await import('./auth')
+		const authStore = useAuthStore()
+
+		const ok = await authStore.login('youknow', 'ABC123')
+
+		expect(ok).toBe(true)
+		expect(authStore.isAuthenticated).toBe(true)
+		expect(fetchMock).toHaveBeenCalledTimes(2)
 	})
 })

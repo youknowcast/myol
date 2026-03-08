@@ -25,7 +25,8 @@ cp .env.example .env
 
 | 変数 | 説明 |
 |------|------|
-| `VITE_AUTH_USERS` | user:hash をカンマ区切りで指定 (bcrypt そのまま / `b64:` で base64url 化) |
+| `VITE_AUTH_USERS` | 開発用フォールバック (未設定可) |
+| `VITE_AUTH_CONFIG_KEY` | 認証設定を保存する S3 キー (既定: `config/auth-users.json`) |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 
 パスコードはハッシュ化前に `trim + uppercase` で正規化されます。
@@ -41,12 +42,29 @@ npm run hash:passcode:b64 -- ABC123
 # VITE_AUTH_USERS=youknow:b64:...
 ```
 
+本番は `VITE_AUTH_USERS` 埋め込みではなく、S3 上の認証設定を読み込みます。
+
+`config/auth-users.json` の例:
+
+```json
+{
+  "users": [
+    {
+      "username": "youknow",
+      "hash": "b64:..."
+    }
+  ]
+}
+```
+
 ## リリース (env + awscli)
 
 `scripts/release.sh` は以下を冪等に実行します。
 
 - S3 バケットの作成確認/作成 (`MYOL_WEB_BUCKET`, `MYOL_DATA_BUCKET`)
 - データバケット CORS を本番 Origin のみに設定
+- CloudFront Distribution の作成または更新 (myol 専用前提)
+- CloudFront OAC の作成/関連付けと Web バケットポリシー設定
 - Lambda 関数の作成/更新 (コード + 設定)
 - Lambda Function URL の作成/更新とパーミッション付与
 - フロントエンド build と `MYOL_WEB_BUCKET` への同期
@@ -60,12 +78,15 @@ export MYOL_AWS_REGION=us-west-2
 export MYOL_WEB_BUCKET=myol.daycrift.net
 export MYOL_DATA_BUCKET=myol.daycrift.net-data
 export MYOL_FRONTEND_ORIGIN=https://myol.daycrift.net
+export MYOL_ACM_CERT_ARN=arn:aws:acm:us-east-1:<ACCOUNT_ID>:certificate/<CERT_ID>
 export MYOL_LAMBDA_FUNCTION_NAME=myol-presigned-url
 export MYOL_LAMBDA_ROLE_ARN=arn:aws:iam::<ACCOUNT_ID>:role/myol-lambda-role
-export MYOL_CLOUDFRONT_DISTRIBUTION_ID=<distribution-id>
 
-# 必要な場合のみ (例: /myol 配下に配置する場合)
-# export MYOL_CLOUDFRONT_ORIGIN_PATH=/myol
+# 既存 Distribution を使う場合のみ
+# export MYOL_CLOUDFRONT_DISTRIBUTION_ID=<distribution-id>
+
+# 任意 (デフォルト: PriceClass_200)
+# export MYOL_CLOUDFRONT_PRICE_CLASS=PriceClass_200
 ```
 
 実行:
@@ -74,11 +95,24 @@ export MYOL_CLOUDFRONT_DISTRIBUTION_ID=<distribution-id>
 ./scripts/release.sh
 ```
 
-前提:
+補足:
 
-- `scripts/release.sh` は `MYOL_FRONTEND_ORIGIN` のホスト名を手がかりに
-  既存 Origin を検索し、見つかれば `MYOL_WEB_BUCKET` 向け S3 Origin に更新する
-- 見つからない場合は CloudFront Origin を自動追加する
-- Origin の OAC を自動作成/関連付けし、Web バケットポリシーへ
-  Distribution 限定の `s3:GetObject` を冪等に反映する
-- Cache Behavior がその Origin を参照していない場合は warning を表示する
+- `MYOL_CLOUDFRONT_DISTRIBUTION_ID` 未指定時は myol 専用 Distribution を新規作成する
+- 指定時はその Distribution を myol 用設定に更新する
+
+## GitHub Actions デプロイ
+
+`.github/workflows/deploy.yml` は `main` への push でデプロイします。
+
+設定が必要な `Repository Variables`:
+
+- `MYOL_AWS_REGION`
+- `MYOL_WEB_BUCKET`
+- `MYOL_DATA_BUCKET`
+- `MYOL_API_ENDPOINT` (Lambda Function URL)
+
+設定が必要な `Repository Secrets`:
+
+- `AWS_DEPLOY_ROLE_ARN` (GitHub OIDC で Assume するロール)
+- `MYOL_CLOUDFRONT_DISTRIBUTION_ID`
+- `MYOL_AUTH_USERS_CONFIG_JSON` (任意: 設定すると `config/auth-users.json` を自動更新)

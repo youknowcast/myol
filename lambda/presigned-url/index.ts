@@ -101,8 +101,8 @@ async function getPresignedUrl(
 	operation: 'get' | 'put',
 	contentType?: string
 ): Promise<APIGatewayProxyResult> {
-	// Ensure key has proper prefix
-	const fullKey = key.startsWith('songs/') ? key : `songs/${key}`
+	const hasExplicitPrefix = key.includes('/')
+	const fullKey = hasExplicitPrefix ? key : `songs/${key}`
 
 	let command
 	if (operation === 'get') {
