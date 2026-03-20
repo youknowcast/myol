@@ -13,7 +13,7 @@ myol はギタータブ譜・コード譜を表示・編集する PWA。ChordPro
 - **ルーティング**: Vue Router (認証ガード付き)
 - **PWA**: vite-plugin-pwa
 - **バックエンド**: AWS Lambda (Node.js 22.x) + S3
-- **デプロイ**: lambroll
+- **デプロイ**: GitHub Actions (`.github/workflows/deploy.yml`)
 
 ## ディレクトリ構造
 
@@ -66,16 +66,10 @@ scripts/                # ユーティリティスクリプト
 
 ## デプロイ
 
-詳細は README.md を参照。
+デプロイ経路は GitHub Actions に一本化。
 
-```bash
-# フロントエンド
-npm run build
-
-# Lambda
-export LAMBDA_ROLE_ARN=$(aws iam get-role --role-name myol-lambda-role --query 'Role.Arn' --output text)
-cd lambda/presigned-url && npm run deploy
-```
+- `main` への push で `.github/workflows/deploy.yml` が実行される
+- 必要な Variables/Secrets は README.md の「デプロイ (CI)」を参照
 
 ---
 
