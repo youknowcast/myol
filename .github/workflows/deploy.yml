@@ -23,6 +23,7 @@ jobs:
       MYOL_DATA_BUCKET: ${{ vars.MYOL_DATA_BUCKET }}
       VITE_API_ENDPOINT: ${{ vars.MYOL_API_ENDPOINT }}
       MYOL_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.MYOL_CLOUDFRONT_DISTRIBUTION_ID }}
+      AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
       MYOL_AUTH_CONFIG_JSON: ${{ secrets.MYOL_AUTH_CONFIG_JSON }}
       MYOL_AUTH_USERS_CONFIG_JSON: ${{ secrets.MYOL_AUTH_USERS_CONFIG_JSON }}
       VITE_AUTH_CONFIG_KEY: config/auth.json
@@ -49,30 +50,36 @@ jobs:
         run: |
           npm run build
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.MYOL_AWS_REGION }}
-
       - name: Validate required deployment env
         run: |
-          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_DATA_BUCKET VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID; do
+          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_DATA_BUCKET VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID AWS_DEPLOY_ROLE_ARN; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required value: $name" >&2
               exit 1
             fi
           done
 
+          if [ -z "${MYOL_AUTH_CONFIG_JSON:-}" ] && [ -z "${MYOL_AUTH_USERS_CONFIG_JSON:-}" ]; then
+            echo "Missing auth config secret. Set MYOL_AUTH_CONFIG_JSON." >&2
+            exit 1
+          fi
+
+      - name: Validate auth config JSON
+        run: |
+          AUTH_CONFIG_JSON="${MYOL_AUTH_CONFIG_JSON:-$MYOL_AUTH_USERS_CONFIG_JSON}"
+          AUTH_CONFIG_JSON="$AUTH_CONFIG_JSON" node -e "const raw=process.env.AUTH_CONFIG_JSON||''; let parsed; try { parsed=JSON.parse(raw); } catch { console.error('Auth config is not valid JSON'); process.exit(1); } if (!parsed || typeof parsed.passcodeHash !== 'string' || parsed.passcodeHash.trim() === '') { console.error('Auth config must contain a non-empty passcodeHash string'); process.exit(1); }"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.MYOL_AWS_REGION }}
+
       - name: Upload auth config to S3
-        if: ${{ env.MYOL_AUTH_CONFIG_JSON != '' || env.MYOL_AUTH_USERS_CONFIG_JSON != '' }}
         run: |
           tmp_file="$(mktemp -t myol-auth-config.XXXXXX.json)"
-          if [ -n "$MYOL_AUTH_CONFIG_JSON" ]; then
-            printf '%s' "$MYOL_AUTH_CONFIG_JSON" > "$tmp_file"
-          else
-            printf '%s' "$MYOL_AUTH_USERS_CONFIG_JSON" > "$tmp_file"
-          fi
+          AUTH_CONFIG_JSON="${MYOL_AUTH_CONFIG_JSON:-$MYOL_AUTH_USERS_CONFIG_JSON}"
+          printf '%s' "$AUTH_CONFIG_JSON" > "$tmp_file"
           aws s3 cp "$tmp_file" "s3://${MYOL_DATA_BUCKET}/config/auth.json" \
             --content-type "application/json; charset=utf-8" \
             --region "$MYOL_AWS_REGION"

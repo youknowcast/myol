@@ -132,4 +132,48 @@ describe('auth store', () => {
     expect(authStore.isAuthenticated).toBe(false)
     expect(storage.getItem('myol_auth_session')).toBeNull()
   })
+
+  it('invalidates session when auth config version changes', async () => {
+    const storage = new LocalStorageMock()
+    storage.setItem('myol_auth_session', JSON.stringify({
+      authenticatedAt: Date.now(),
+      version: 1
+    }))
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: storage,
+      configurable: true
+    })
+
+    vi.resetModules()
+    vi.stubEnv('VITE_API_ENDPOINT', 'https://example.lambda-url.us-west-2.on.aws')
+    vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth.json')
+
+    const hash = bcrypt.hashSync('123456', 10)
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'https://signed.example.com/config' })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ passcodeHash: hash, version: 2 })
+      })
+
+    Object.defineProperty(globalThis, 'fetch', {
+      value: fetchMock,
+      configurable: true,
+      writable: true
+    })
+
+    const { useAuthStore } = await import('./auth')
+    const authStore = useAuthStore()
+
+    const active = await authStore.ensureAuthenticated()
+
+    expect(active).toBe(false)
+    expect(authStore.isAuthenticated).toBe(false)
+    expect(storage.getItem('myol_auth_session')).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

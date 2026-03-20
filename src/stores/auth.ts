@@ -191,6 +191,35 @@ export const useAuthStore = defineStore('auth', () => {
     return /^\d{6}$/.test(passcode)
   }
 
+  function clearInvalidSession() {
+    session.value = null
+    clearSession()
+  }
+
+  async function ensureAuthenticated(): Promise<boolean> {
+    if (!isSessionActive(session.value)) {
+      if (session.value) {
+        clearInvalidSession()
+      }
+      return false
+    }
+
+    const currentSession = session.value
+    if (!currentSession) return false
+
+    const config = await getAuthConfig()
+    if (!config || config.version === null || currentSession.version === null) {
+      return true
+    }
+
+    if (config.version !== currentSession.version) {
+      clearInvalidSession()
+      return false
+    }
+
+    return true
+  }
+
   async function login(passcode: string): Promise<boolean> {
     const normalizedPasscode = passcode.trim()
     if (!isPasscodeFormatValid(normalizedPasscode)) return false
@@ -219,12 +248,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    session.value = null
-    clearSession()
+    clearInvalidSession()
   }
 
   return {
     isAuthenticated,
+    ensureAuthenticated,
     login,
     logout
   }

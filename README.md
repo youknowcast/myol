@@ -76,5 +76,8 @@ npm run hash:passcode -- 123456
 
 - `AWS_DEPLOY_ROLE_ARN` (GitHub OIDC で Assume するロール)
 - `MYOL_CLOUDFRONT_DISTRIBUTION_ID`
-- `MYOL_AUTH_CONFIG_JSON` (推奨。`config/auth.json` を自動更新)
+- `MYOL_AUTH_CONFIG_JSON` (`config/auth.json` を自動更新。`passcodeHash` を含む JSON が必須)
 - `MYOL_AUTH_USERS_CONFIG_JSON` (互換用。未設定なら無視される)
+
+CI では `MYOL_AUTH_CONFIG_JSON` または `MYOL_AUTH_USERS_CONFIG_JSON` のどちらか1つが必須です。
+どちらを使う場合でも、`{"passcodeHash":"..."}` 形式の JSON を設定してください。

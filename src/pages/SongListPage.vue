@@ -2,12 +2,14 @@
 import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
+import { useAuthStore } from '@/stores/auth'
 import SongCard from '@/components/song/SongCard.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import type { SongMeta } from '@/lib/chordpro/types'
 
 const router = useRouter()
 const songsStore = useSongsStore()
+const authStore = useAuthStore()
 
 const songs = computed(() => songsStore.sortedSongs)
 const loading = computed(() => songsStore.loading)
@@ -56,6 +58,11 @@ function cancelDelete() {
   showDeleteConfirm.value = false
   songToDelete.value = null
 }
+
+function logout() {
+  authStore.logout()
+  router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -66,6 +73,9 @@ function cancelDelete() {
         <span>myol</span>
       </h1>
       <div class="header-actions">
+        <button class="btn btn-ghost" @click="logout">
+          ログアウト
+        </button>
         <button class="btn btn-primary" @click="goToNewSong">
           <span>＋</span>
           <span class="btn-text">追加</span>
