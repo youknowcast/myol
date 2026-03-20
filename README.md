@@ -25,37 +25,39 @@ cp .env.example .env
 
 | 変数 | 説明 |
 |------|------|
-| `VITE_AUTH_USERS` | 開発用フォールバック (未設定可) |
-| `VITE_AUTH_CONFIG_KEY` | 認証設定を保存する S3 キー (既定: `config/auth-users.json`) |
+| `VITE_AUTH_CONFIG_KEY` | 認証設定を保存する S3 キー (既定: `config/auth.json`) |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 
-パスコードはハッシュ化前に `trim + uppercase` で正規化されます。
+## 認証仕様 (移行中)
 
-`b64:` 形式は `$` のエスケープが不要:
+認証は次の仕様に統一予定です。
 
-```bash
-# bcrypt 生文字列で使う場合
-npm run hash:passcode -- ABC123
+- ログイン入力は **6桁数字のみ** (`/^\d{6}$/`)
+- フロントは S3 上の認証設定 (`config/auth.json`) を取得して照合
+- 照合は `bcrypt.compare` を使う
+- `VITE_AUTH_USERS` による埋め込み認証は廃止予定
 
-# .env で扱いやすい b64 形式
-npm run hash:passcode:b64 -- ABC123
-# VITE_AUTH_USERS=youknow:b64:...
-```
-
-本番は `VITE_AUTH_USERS` 埋め込みではなく、S3 上の認証設定を読み込みます。
-
-`config/auth-users.json` の例:
+`config/auth.json` の例:
 
 ```json
 {
-  "users": [
-    {
-      "username": "youknow",
-      "hash": "b64:..."
-    }
-  ]
+  "passcodeHash": "$2b$10$...",
+  "version": 1
 }
 ```
+
+`passcodeHash` は以下のスクリプトで生成できます。
+
+```bash
+npm run hash:passcode -- 123456
+```
+
+`version` は任意ですが、セッション失効判定に使えるため付与を推奨します。
+
+### ローカル開発時の扱い
+
+ローカルでのログインスキップは検討中です。現在は本番仕様優先で、
+`VITE_API_ENDPOINT` と S3 上の認証設定を前提に動作確認してください。
 
 ## リリース (env + awscli)
 
@@ -115,4 +117,4 @@ export MYOL_LAMBDA_ROLE_ARN=arn:aws:iam::<ACCOUNT_ID>:role/myol-lambda-role
 
 - `AWS_DEPLOY_ROLE_ARN` (GitHub OIDC で Assume するロール)
 - `MYOL_CLOUDFRONT_DISTRIBUTION_ID`
-- `MYOL_AUTH_USERS_CONFIG_JSON` (任意: 設定すると `config/auth-users.json` を自動更新)
+- `MYOL_AUTH_USERS_CONFIG_JSON` (現行。移行後は `config/auth.json` 用の secret 名に変更予定)
