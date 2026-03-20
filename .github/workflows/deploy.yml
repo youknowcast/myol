@@ -21,6 +21,7 @@ jobs:
       MYOL_AWS_REGION: ${{ vars.MYOL_AWS_REGION }}
       MYOL_WEB_BUCKET: ${{ vars.MYOL_WEB_BUCKET }}
       MYOL_DATA_BUCKET: ${{ vars.MYOL_DATA_BUCKET }}
+      MYOL_LAMBDA_FUNCTION_NAME: ${{ vars.MYOL_LAMBDA_FUNCTION_NAME }}
       VITE_API_ENDPOINT: ${{ vars.MYOL_API_ENDPOINT }}
       MYOL_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.MYOL_CLOUDFRONT_DISTRIBUTION_ID }}
       AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
@@ -52,7 +53,7 @@ jobs:
 
       - name: Validate required deployment env
         run: |
-          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_DATA_BUCKET VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID AWS_DEPLOY_ROLE_ARN; do
+          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_DATA_BUCKET MYOL_LAMBDA_FUNCTION_NAME VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID AWS_DEPLOY_ROLE_ARN; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required value: $name" >&2
               exit 1
@@ -74,6 +75,25 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.MYOL_AWS_REGION }}
+
+      - name: Install Lambda dependencies
+        run: npm --prefix lambda/presigned-url ci
+
+      - name: Build Lambda
+        run: npm --prefix lambda/presigned-url run build
+
+      - name: Deploy Lambda code
+        run: |
+          tmp_dir="$(mktemp -d -t myol-lambda.XXXXXX)"
+          zip_path="$tmp_dir/lambda.zip"
+          (cd lambda/presigned-url && zip -q "$zip_path" dist/index.js)
+          aws lambda update-function-code \
+            --function-name "$MYOL_LAMBDA_FUNCTION_NAME" \
+            --zip-file "fileb://$zip_path" \
+            --region "$MYOL_AWS_REGION" >/dev/null
+          aws lambda wait function-updated \
+            --function-name "$MYOL_LAMBDA_FUNCTION_NAME" \
+            --region "$MYOL_AWS_REGION"
 
       - name: Upload auth config to S3
         run: |

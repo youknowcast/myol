@@ -70,6 +70,7 @@ npm run hash:passcode -- 123456
 - `MYOL_AWS_REGION`
 - `MYOL_WEB_BUCKET`
 - `MYOL_DATA_BUCKET`
+- `MYOL_LAMBDA_FUNCTION_NAME`
 - `MYOL_API_ENDPOINT` (Lambda Function URL)
 
 設定が必要な `Repository Secrets`:

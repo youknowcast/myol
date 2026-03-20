@@ -26,6 +26,17 @@ interface SongMeta {
 	size?: number
 }
 
+function resolveObjectKey(key: string): string {
+	const normalized = key.trim().replace(/^\/+/, '')
+	if (normalized.startsWith('songs/') || normalized.startsWith('config/')) {
+		return normalized
+	}
+	if (normalized.endsWith('.cho')) {
+		return `songs/${normalized}`
+	}
+	return normalized
+}
+
 // Note: CORS headers are handled by Lambda Function URL configuration
 // Do NOT add CORS headers here to avoid duplication
 const responseHeaders = {
@@ -101,8 +112,7 @@ async function getPresignedUrl(
 	operation: 'get' | 'put',
 	contentType?: string
 ): Promise<APIGatewayProxyResult> {
-	const hasExplicitPrefix = key.includes('/')
-	const fullKey = hasExplicitPrefix ? key : `songs/${key}`
+	const fullKey = resolveObjectKey(key)
 
 	let command
 	if (operation === 'get') {
@@ -132,7 +142,7 @@ async function getPresignedUrl(
 }
 
 async function deleteSong(key: string): Promise<APIGatewayProxyResult> {
-	const fullKey = key.startsWith('songs/') ? key : `songs/${key}`
+	const fullKey = resolveObjectKey(key)
 
 	const command = new DeleteObjectCommand({
 		Bucket: getBucketName(),
