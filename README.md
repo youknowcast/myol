@@ -117,4 +117,5 @@ export MYOL_LAMBDA_ROLE_ARN=arn:aws:iam::<ACCOUNT_ID>:role/myol-lambda-role
 
 - `AWS_DEPLOY_ROLE_ARN` (GitHub OIDC で Assume するロール)
 - `MYOL_CLOUDFRONT_DISTRIBUTION_ID`
-- `MYOL_AUTH_USERS_CONFIG_JSON` (現行。移行後は `config/auth.json` 用の secret 名に変更予定)
+- `MYOL_AUTH_CONFIG_JSON` (推奨。`config/auth.json` を自動更新)
+- `MYOL_AUTH_USERS_CONFIG_JSON` (互換用。未設定なら無視される)

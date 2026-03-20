@@ -2,213 +2,230 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import bcrypt from 'bcryptjs'
 
-const AUTH_USERS = import.meta.env.VITE_AUTH_USERS || ''
 const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT || ''
-const AUTH_CONFIG_KEY = import.meta.env.VITE_AUTH_CONFIG_KEY || 'config/auth-users.json'
-const AUTH_KEY = 'myol_authenticated'
+const AUTH_CONFIG_KEY = import.meta.env.VITE_AUTH_CONFIG_KEY || 'config/auth.json'
+const AUTH_SESSION_KEY = 'myol_auth_session'
+const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000
 const B64_PREFIX = 'b64:'
 
-interface AuthUser {
-	username: string
-	hash: string
+interface AuthConfig {
+  passcodeHash: string
+  version: number | null
 }
 
 interface PresignedUrlResponse {
-	url: string
+  url: string
 }
 
 interface RemoteAuthConfig {
-	users?: Array<{ username?: string; hash?: string }>
-	authUsers?: string
+  passcodeHash?: string
+  version?: unknown
+}
+
+interface AuthSession {
+  authenticatedAt: number
+  version: number | null
 }
 
 function decodeBase64Url(value: string): string {
-	const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
-	const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
-	try {
-		return atob(padded)
-	} catch {
-		return ''
-	}
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+  try {
+    return atob(padded)
+  } catch {
+    return ''
+  }
 }
 
 function normalizeHash(rawHash: string): string {
-	const trimmed = rawHash.trim()
-	if (!trimmed) return ''
-	if (trimmed.startsWith(B64_PREFIX)) {
-		return decodeBase64Url(trimmed.slice(B64_PREFIX.length))
-	}
-	return trimmed
+  const trimmed = rawHash.trim()
+  if (!trimmed) return ''
+  if (trimmed.startsWith(B64_PREFIX)) {
+    return decodeBase64Url(trimmed.slice(B64_PREFIX.length))
+  }
+  return trimmed
 }
 
-function parseAuthUsers(raw: string): AuthUser[] {
-	if (!raw) return []
-
-	return raw
-		.split(',')
-		.map(entry => entry.trim())
-		.filter(Boolean)
-		.map((entry) => {
-			const separatorIndex = entry.indexOf(':')
-			if (separatorIndex <= 0) {
-				return { username: '', hash: '' }
-			}
-			return {
-				username: entry.slice(0, separatorIndex).trim(),
-				hash: entry.slice(separatorIndex + 1).trim()
-			}
-		})
-		.filter(user => user.username && user.hash)
+function toVersion(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+    return value
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    return Number.parseInt(value.trim(), 10)
+  }
+  return null
 }
 
-function parseRemoteAuthConfig(raw: string): AuthUser[] {
-	const trimmed = raw.trim()
-	if (!trimmed) return []
+function parseRemoteAuthConfig(raw: string): AuthConfig | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
 
-	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-		return parseAuthUsers(trimmed)
-	}
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    const passcodeHash = normalizeHash(trimmed)
+    if (!passcodeHash) return null
+    return {
+      passcodeHash,
+      version: null
+    }
+  }
 
-	try {
-		const parsed = JSON.parse(trimmed) as RemoteAuthConfig | Array<{ username?: string; hash?: string }>
-		if (Array.isArray(parsed)) {
-			return parsed
-				.map(user => ({
-					username: (user.username || '').trim(),
-					hash: (user.hash || '').trim()
-				}))
-				.filter(user => user.username && user.hash)
-		}
+  try {
+    const parsed = JSON.parse(trimmed) as RemoteAuthConfig
+    if (typeof parsed.passcodeHash !== 'string') return null
 
-		if (typeof parsed.authUsers === 'string') {
-			return parseAuthUsers(parsed.authUsers)
-		}
+    const passcodeHash = normalizeHash(parsed.passcodeHash)
+    if (!passcodeHash) return null
 
-		if (Array.isArray(parsed.users)) {
-			return parsed.users
-				.map(user => ({
-					username: (user.username || '').trim(),
-					hash: (user.hash || '').trim()
-				}))
-				.filter(user => user.username && user.hash)
-		}
-	} catch {
-		return []
-	}
-
-	return []
+    return {
+      passcodeHash,
+      version: toVersion(parsed.version)
+    }
+  } catch {
+    return null
+  }
 }
 
-async function fetchRemoteAuthUsers(): Promise<AuthUser[]> {
-	if (!API_ENDPOINT || !AUTH_CONFIG_KEY) return []
+async function fetchRemoteAuthConfig(): Promise<AuthConfig | null> {
+  if (!API_ENDPOINT || !AUTH_CONFIG_KEY) return null
 
-	let apiResponse: Response
-	try {
-		apiResponse = await fetch(API_ENDPOINT, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ operation: 'get', key: AUTH_CONFIG_KEY })
-		})
-	} catch {
-		return []
-	}
+  let apiResponse: Response
+  try {
+    apiResponse = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ operation: 'get', key: AUTH_CONFIG_KEY })
+    })
+  } catch {
+    return null
+  }
 
-	if (!apiResponse.ok) return []
+  if (!apiResponse.ok) return null
 
-	let payload: PresignedUrlResponse
-	try {
-		payload = await apiResponse.json() as PresignedUrlResponse
-	} catch {
-		return []
-	}
+  let payload: PresignedUrlResponse
+  try {
+    payload = await apiResponse.json() as PresignedUrlResponse
+  } catch {
+    return null
+  }
 
-	if (!payload.url) return []
+  if (!payload.url) return null
 
-	let configResponse: Response
-	try {
-		configResponse = await fetch(payload.url)
-	} catch {
-		return []
-	}
+  let configResponse: Response
+  try {
+    configResponse = await fetch(payload.url)
+  } catch {
+    return null
+  }
 
-	if (!configResponse.ok) return []
+  if (!configResponse.ok) return null
 
-	let text = ''
-	try {
-		text = await configResponse.text()
-	} catch {
-		return []
-	}
+  let text = ''
+  try {
+    text = await configResponse.text()
+  } catch {
+    return null
+  }
 
-	return parseRemoteAuthConfig(text)
+  return parseRemoteAuthConfig(text)
 }
 
-let cachedUsers: AuthUser[] | null = null
-let usersPromise: Promise<AuthUser[]> | null = null
+let cachedConfig: AuthConfig | null = null
+let configPromise: Promise<AuthConfig | null> | null = null
 
-async function getAuthUsers(): Promise<AuthUser[]> {
-	if (cachedUsers) return cachedUsers
-	if (usersPromise) return usersPromise
+async function getAuthConfig(): Promise<AuthConfig | null> {
+  if (cachedConfig) return cachedConfig
+  if (configPromise) return configPromise
 
-	const envUsers = parseAuthUsers(AUTH_USERS)
+  configPromise = (async () => {
+    const resolved = await fetchRemoteAuthConfig()
+    cachedConfig = resolved
+    return resolved
+  })()
 
-	usersPromise = (async () => {
-		const remoteUsers = await fetchRemoteAuthUsers()
-		const resolved = remoteUsers.length > 0 ? remoteUsers : envUsers
-		cachedUsers = resolved
-		return resolved
-	})()
+  const resolved = await configPromise
+  configPromise = null
+  return resolved
+}
 
-	const resolved = await usersPromise
-	usersPromise = null
-	return resolved
+function loadSession(): AuthSession | null {
+  const raw = localStorage.getItem(AUTH_SESSION_KEY)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<AuthSession>
+    if (typeof parsed.authenticatedAt !== 'number') return null
+    return {
+      authenticatedAt: parsed.authenticatedAt,
+      version: typeof parsed.version === 'number' ? parsed.version : null
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(AUTH_SESSION_KEY)
+}
+
+function isSessionActive(session: AuthSession | null): boolean {
+  if (!session) return false
+  const age = Date.now() - session.authenticatedAt
+  return age >= 0 && age < AUTH_SESSION_TTL_MS
 }
 
 export const useAuthStore = defineStore('auth', () => {
-	const authenticated = ref(localStorage.getItem(AUTH_KEY) === 'true')
+  const session = ref<AuthSession | null>(loadSession())
 
-	const isAuthenticated = computed(() => authenticated.value)
+  const isAuthenticated = computed(() => {
+    const active = isSessionActive(session.value)
+    if (!active && session.value) {
+      session.value = null
+      clearSession()
+    }
+    return active
+  })
 
-	function isPasscodeFormatValid(passcode: string): boolean {
-		return /^[A-Z0-9]{6}$/.test(passcode)
-	}
+  function isPasscodeFormatValid(passcode: string): boolean {
+    return /^\d{6}$/.test(passcode)
+  }
 
-	async function login(username: string, passcode: string): Promise<boolean> {
-		const normalizedUsername = username.trim().toLowerCase()
-		const normalizedPasscode = passcode.trim().toUpperCase()
-		if (!isPasscodeFormatValid(normalizedPasscode)) return false
+  async function login(passcode: string): Promise<boolean> {
+    const normalizedPasscode = passcode.trim()
+    if (!isPasscodeFormatValid(normalizedPasscode)) return false
 
-		const users = await getAuthUsers()
-		const user = users.find(entry => entry.username.toLowerCase() === normalizedUsername)
-		if (!user) return false
+    const config = await getAuthConfig()
+    if (!config) return false
 
-		const storedHash = normalizeHash(user.hash)
-		if (!storedHash) return false
+    const storedHash = normalizeHash(config.passcodeHash)
+    if (!storedHash) return false
 
-		let matches = false
-		try {
-			matches = await bcrypt.compare(normalizedPasscode, storedHash)
-		} catch {
-			return false
-		}
-		if (matches) {
-			authenticated.value = true
-			localStorage.setItem(AUTH_KEY, 'true')
-			return true
-		}
-		return false
-	}
+    let matches = false
+    try {
+      matches = await bcrypt.compare(normalizedPasscode, storedHash)
+    } catch {
+      return false
+    }
 
-	function logout() {
-		authenticated.value = false
-		localStorage.removeItem(AUTH_KEY)
-	}
+    if (!matches) return false
 
-	return {
-		isAuthenticated,
-		login,
-		logout
-	}
+    session.value = {
+      authenticatedAt: Date.now(),
+      version: config.version
+    }
+    localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session.value))
+    return true
+  }
+
+  function logout() {
+    session.value = null
+    clearSession()
+  }
+
+  return {
+    isAuthenticated,
+    login,
+    logout
+  }
 })

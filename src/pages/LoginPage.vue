@@ -6,23 +6,20 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const username = ref('')
 const passcode = ref('')
 const error = ref(false)
 const inputRefs = ref<HTMLInputElement[]>([])
-const usernameRef = ref<HTMLInputElement | null>(null)
 const isSubmitting = ref(false)
 
 const passcodeChars = computed(() => passcode.value.split(''))
 const isPasscodeComplete = computed(() => passcode.value.length === 6)
-const hasUsername = computed(() => username.value.trim().length > 0)
 
 onMounted(() => {
-  usernameRef.value?.focus()
+  inputRefs.value[0]?.focus()
 })
 
 function normalizePasscode(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6)
+  return value.replace(/\D/g, '').slice(0, 6)
 }
 
 function handleInput(index: number, event: Event) {
@@ -59,7 +56,7 @@ function handleKeydown(index: number, event: KeyboardEvent) {
     return
   }
 
-  if (event.key.length === 1 && /[a-zA-Z0-9]/.test(event.key)) {
+  if (event.key.length === 1 && /[0-9]/.test(event.key)) {
     event.preventDefault()
     const characters = passcode.value.split('')
     characters[index] = event.key
@@ -96,7 +93,7 @@ async function attemptLogin() {
   if (!canSubmit.value) return
 
   isSubmitting.value = true
-  const success = await authStore.login(username.value, passcode.value)
+  const success = await authStore.login(passcode.value)
   isSubmitting.value = false
 
   if (success) {
@@ -115,7 +112,7 @@ function setInputRef(el: HTMLInputElement | null, index: number) {
   }
 }
 
-const canSubmit = computed(() => hasUsername.value && isPasscodeComplete.value && !isSubmitting.value)
+const canSubmit = computed(() => isPasscodeComplete.value && !isSubmitting.value)
 </script>
 
 <template>
@@ -125,29 +122,18 @@ const canSubmit = computed(() => hasUsername.value && isPasscodeComplete.value &
         <img src="/icon-192.png" alt="myol" class="logo-icon" />
       </div>
 
-      <p class="login-subtitle">ユーザー名とパスコードを入力</p>
+      <p class="login-subtitle">6桁の数字パスコードを入力</p>
 
-      <label class="login-label" for="username">ユーザー名</label>
-      <input
-        id="username"
-        v-model.trim="username"
-        type="text"
-        autocomplete="username"
-        class="login-input"
-        placeholder="username"
-        ref="usernameRef"
-      />
-
-      <label class="login-label" for="passcode">パスコード (6桁英数)</label>
+      <label class="login-label" for="passcode">パスコード (6桁数字)</label>
       <div class="pin-input-container" :class="{ 'has-error': error }">
         <input
           v-for="(_, index) in 6"
           :key="index"
           :value="passcodeChars[index] ?? ''"
           type="text"
-          inputmode="text"
+          inputmode="numeric"
+          pattern="[0-9]*"
           maxlength="1"
-          autocapitalize="characters"
           autocomplete="one-time-code"
           class="pin-input"
           :class="{ filled: passcodeChars[index] }"
@@ -168,7 +154,7 @@ const canSubmit = computed(() => hasUsername.value && isPasscodeComplete.value &
       </button>
 
       <p v-if="error" class="error-message">
-        ユーザー名またはパスコードが違います
+        パスコードが違います
       </p>
     </div>
   </div>

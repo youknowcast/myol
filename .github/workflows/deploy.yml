@@ -23,8 +23,9 @@ jobs:
       MYOL_DATA_BUCKET: ${{ vars.MYOL_DATA_BUCKET }}
       VITE_API_ENDPOINT: ${{ vars.MYOL_API_ENDPOINT }}
       MYOL_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.MYOL_CLOUDFRONT_DISTRIBUTION_ID }}
+      MYOL_AUTH_CONFIG_JSON: ${{ secrets.MYOL_AUTH_CONFIG_JSON }}
       MYOL_AUTH_USERS_CONFIG_JSON: ${{ secrets.MYOL_AUTH_USERS_CONFIG_JSON }}
-      VITE_AUTH_CONFIG_KEY: config/auth-users.json
+      VITE_AUTH_CONFIG_KEY: config/auth.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,11 +65,15 @@ jobs:
           done
 
       - name: Upload auth config to S3
-        if: ${{ env.MYOL_AUTH_USERS_CONFIG_JSON != '' }}
+        if: ${{ env.MYOL_AUTH_CONFIG_JSON != '' || env.MYOL_AUTH_USERS_CONFIG_JSON != '' }}
         run: |
           tmp_file="$(mktemp -t myol-auth-config.XXXXXX.json)"
-          printf '%s' "$MYOL_AUTH_USERS_CONFIG_JSON" > "$tmp_file"
-          aws s3 cp "$tmp_file" "s3://${MYOL_DATA_BUCKET}/config/auth-users.json" \
+          if [ -n "$MYOL_AUTH_CONFIG_JSON" ]; then
+            printf '%s' "$MYOL_AUTH_CONFIG_JSON" > "$tmp_file"
+          else
+            printf '%s' "$MYOL_AUTH_USERS_CONFIG_JSON" > "$tmp_file"
+          fi
+          aws s3 cp "$tmp_file" "s3://${MYOL_DATA_BUCKET}/config/auth.json" \
             --content-type "application/json; charset=utf-8" \
             --region "$MYOL_AWS_REGION"
 
