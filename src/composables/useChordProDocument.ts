@@ -1,9 +1,7 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 import {
-	autoAssignMeasures,
 	generateChordPro,
 	parseBeatsPerMeasure,
-	parseChordPro,
 	parseChordProToExtended
 } from '@/lib/chordpro/parser'
 import type { ParsedSong, GridSection, LyricsSection } from '@/lib/chordpro/types'
@@ -21,7 +19,6 @@ export interface UseChordProDocument {
 	sectionMeasureOffsets: ComputedRef<number[]>
 	serialize: () => string
 	setContent: (next: string) => void
-	autoAssignMeasuresToContent: (beatsPerMeasure?: number) => void
 }
 
 
@@ -82,22 +79,12 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 		options.content.value = next
 	}
 
-	function autoAssignMeasuresToContent(beatsPerMeasure?: number) {
-		const source = options.content.value
-		if (!source) return
-		const parsed = parseChordPro(source)
-		const resolvedBeats = beatsPerMeasure ?? parseBeatsPerMeasure(parsed.time)
-		const processed = autoAssignMeasures(parsed, resolvedBeats)
-		options.content.value = generateChordPro(processed)
-	}
-
 	return {
 		parsedSong,
 		beatsPerMeasure,
 		totalMeasures,
 		sectionMeasureOffsets,
 		serialize,
-		setContent,
-		autoAssignMeasuresToContent
+		setContent
 	}
 }
