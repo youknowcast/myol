@@ -86,9 +86,13 @@ async function save() {
     editorStore.loadDocument(content.value)
   }
   editorStore.updateMetadata(collectMetadata())
-  const song = await saveSong(editorStore.serialize())
-  if (song) {
-    router.push({ name: 'song-detail', params: { id: song.id } })
+  try {
+    const song = await saveSong(editorStore.serialize())
+    if (song) {
+      router.push({ name: 'song-detail', params: { id: song.id } })
+    }
+  } catch {
+    // songsStore.error に詳細が入る。ここでは遷移しないことが本質
   }
 }
 
@@ -160,6 +164,10 @@ function commitLabelDialog() {
         </button>
       </div>
     </header>
+
+    <div v-if="songsStore.error" class="save-error" role="alert">
+      保存に失敗しました: {{ songsStore.error }}
+    </div>
 
     <main class="edit-content">
       <ConfirmModal
@@ -373,6 +381,16 @@ function commitLabelDialog() {
   background: var(--color-bg);
   display: flex;
   flex-direction: column;
+}
+
+.save-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md) 0;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
 }
 
 .edit-content {
