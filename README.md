@@ -45,7 +45,6 @@ cp .env.example .env
 
 - `MYOL_AWS_REGION`
 - `MYOL_WEB_BUCKET`
-- `MYOL_DATA_BUCKET`
 - `MYOL_LAMBDA_FUNCTION_NAME`
 - `MYOL_API_ENDPOINT` (Lambda Function URL)
 
