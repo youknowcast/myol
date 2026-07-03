@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordPro, parseChordProToExtended, ensureGridMeasures, generateChordPro } from './parser'
+import { parseChordPro, parseChordProToExtended, generateChordPro } from './parser'
 import type { GridSection, ParsedSong } from './types'
 
 describe('parseChordProToExtended', () => {
@@ -92,27 +92,6 @@ describe('parseChordProToExtended', () => {
 		expect(grid.measures?.length).toBe(3)
 		expect(grid.measures?.[0]?.lyricsHint).toBe('First')
 		expect(grid.measures?.[1]?.lyricsHint).toBeUndefined()
-	})
-
-	it('does not overwrite existing measures', () => {
-		const song: ParsedSong = {
-			title: 'Test',
-			artist: '',
-			sections: [
-				{
-					type: 'grid',
-					content: {
-						kind: 'grid',
-						measures: [{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'keep' }]
-					}
-				}
-			]
-		}
-
-		const normalized = ensureGridMeasures(song)
-		const grid = normalized.sections[0]!.content as GridSection
-		expect(grid.measures?.length).toBe(1)
-		expect(grid.measures?.[0]?.lyricsHint).toBe('keep')
 	})
 
 	it('parses / as a no-chord cell', () => {

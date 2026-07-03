@@ -51,17 +51,12 @@ export interface LyricsSegment {
 export interface GridSection {
 	kind: 'grid'
 	shape?: string
-	measures: Measure[]  // 新形式: 小節ごとに歌詞を持つ
+	measures: Measure[]
 }
 
-export interface GridRow {
-	cells: GridCell[]
-}
-
-// Measure: 小節。歌詞・境界バーを直接保持する（唯一の構造単位）
 export interface Measure {
 	cells: GridCell[]
-	lyricsHint?: string  // この小節に対応する歌詞
+	lyricsHint?: string
 	startBar?: 'repeatStart'
 	endBar?: 'repeatEnd' | 'barEnd'
 }

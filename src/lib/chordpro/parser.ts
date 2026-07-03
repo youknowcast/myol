@@ -7,7 +7,6 @@ import type {
 	LyricsSection,
 	GridSection,
 	TabSection,
-	GridRow,
 	GridCell,
 	Measure
 } from './types'
@@ -191,15 +190,10 @@ function lyricsLineToMeasures(
 }
 
 
-export function ensureGridMeasures(song: ParsedSong): ParsedSong {
-	return song
-}
-
 export function parseChordProToExtended(content: string): ParsedSong {
 	const parsed = parseChordPro(content)
 	const beatsPerMeasure = parseBeatsPerMeasure(parsed.time)
-	const normalized = autoAssignMeasures(parsed, beatsPerMeasure)
-	return ensureGridMeasures(normalized)
+	return autoAssignMeasures(parsed, beatsPerMeasure)
 }
 
 /**
@@ -479,81 +473,7 @@ export function parseLyricsLine(line: string): LyricsLine {
 	return { segments }
 }
 
-export function parseGridRow(line: string): GridRow {
-	const cells: GridCell[] = []
-	const tokens = line.split(/\s+/).filter(t => t)
 
-	for (const token of tokens) {
-		// Bar lines
-		if (token === '||') {
-			cells.push({ type: 'barDouble' })
-		} else if (token === '|.') {
-			cells.push({ type: 'barEnd' })
-		} else if (token === '|:') {
-			cells.push({ type: 'repeatStart' })
-		} else if (token === ':|') {
-			cells.push({ type: 'repeatEnd' })
-		} else if (token === ':|:') {
-			cells.push({ type: 'repeatBoth' })
-		} else if (token === '|') {
-			cells.push({ type: 'bar' })
-		}
-		// Empty beat
-		else if (token === '.') {
-			cells.push({ type: 'empty' })
-		}
-		// No chord (rhythmic hit)
-		else if (token === '/') {
-			cells.push({ type: 'noChord' })
-		}
-		// Repeat measure
-		else if (token === '%' || token === '%%') {
-			cells.push({ type: 'repeat', value: token })
-		}
-		// Chord
-		else {
-			cells.push({ type: 'chord', value: token })
-		}
-	}
-
-	return { cells }
-}
-
-
-
-export function gridRowsFromMeasures(measures: Measure[], measuresPerRow: number = 4): GridRow[] {
-	const rows: GridRow[] = []
-	let currentRowCells: GridCell[] = []
-	let measureCount = 0
-	let isFirst = true
-
-	for (const measure of measures) {
-		if (isFirst) {
-			currentRowCells.push({ type: 'barDouble' })
-			isFirst = false
-		} else {
-			currentRowCells.push({ type: 'bar' })
-		}
-
-		currentRowCells.push(...measure.cells.map(cell => ({ ...cell })))
-		measureCount++
-
-		if (measureCount >= measuresPerRow) {
-			currentRowCells.push({ type: 'barDouble' })
-			rows.push({ cells: currentRowCells })
-			currentRowCells = []
-			measureCount = 0
-			isFirst = true
-		}
-	}
-
-	if (currentRowCells.length > 0) {
-		currentRowCells.push({ type: 'barDouble' })
-		rows.push({ cells: currentRowCells })
-	}
-
-	return rows
-}
 
 export function autoAssignMeasures(
 	song: ParsedSong,
