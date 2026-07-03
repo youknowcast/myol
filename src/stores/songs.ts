@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Song, SongMeta } from '@/lib/chordpro/types'
-import { parseChordPro } from '@/lib/chordpro/parser'
+import { extractSongMeta } from '@/lib/chordpro/parser'
 import * as s3Api from '@/lib/s3/client'
 
 export const useSongsStore = defineStore('songs', () => {
@@ -105,12 +105,12 @@ Than [G]when we'd [D]first be[G]gun
 						try {
 							// 各曲のメタデータを取得するため内容を読み込む
 							const content = await s3Api.getSongContent(s.key)
-							const parsed = parseChordPro(content)
+							const meta = extractSongMeta(content)
 							return {
 								id: s.id,
-								title: parsed.title || s.id,
-								artist: parsed.artist || '',
-								key: parsed.key
+								title: meta.title || s.id,
+								artist: meta.artist || '',
+								key: meta.key
 							}
 						} catch {
 							// メタデータ取得失敗時は ID だけ使用
@@ -152,15 +152,15 @@ Than [G]when we'd [D]first be[G]gun
 			if (s3Api.isApiConfigured()) {
 				// S3 から曲データを取得
 				const content = await s3Api.getSongContent(id)
-				const parsed = parseChordPro(content)
+				const meta = extractSongMeta(content)
 				currentSong.value = {
 					id,
-					title: parsed.title || id,
-					artist: parsed.artist || '',
-					key: parsed.key,
-					capo: parsed.capo,
-					tempo: parsed.tempo,
-					time: parsed.time,
+					title: meta.title || id,
+					artist: meta.artist || '',
+					key: meta.key,
+					capo: meta.capo,
+					tempo: meta.tempo,
+					time: meta.time,
 					content
 				}
 			} else {

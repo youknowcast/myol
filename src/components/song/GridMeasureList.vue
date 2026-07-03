@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useSortableGrid } from '@/components/song/composables/useSortableGrid'
-import type { EditableMeasure } from '@/components/song/composables/useGridMeasureEditor'
+import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureItem from '@/components/song/GridMeasureItem.vue'
 
 interface Props {

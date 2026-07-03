@@ -32,15 +32,4 @@ describe('useChordProDocument', () => {
 		expect(totalMeasures.value).toBe(3)
 		expect(sectionMeasureOffsets.value).toEqual([0, 2])
 	})
-
-	it('auto-assigns measures into content', () => {
-		const content = ref(`{start_of_verse}
-[C]Hello [G]world
-{end_of_verse}
-`)
-		const { autoAssignMeasuresToContent } = useChordProDocument({ content })
-
-		autoAssignMeasuresToContent(4)
-		expect(content.value.includes('{start_of_grid')).toBe(true)
-	})
 })

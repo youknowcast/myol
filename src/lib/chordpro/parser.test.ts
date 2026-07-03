@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordPro, parseChordProToExtended, generateChordPro } from './parser'
+import { parseChordPro, parseChordProToExtended, generateChordPro, extractSongMeta } from './parser'
 import type { GridSection, ParsedSong } from './types'
 
 describe('parseChordProToExtended', () => {
@@ -301,5 +301,22 @@ describe('generateChordPro (grid)', () => {
 		const text = generateChordPro(song)
 		expect(text).toContain('{lyrics_hint: a ｜ b}')
 		expect(text).toContain('|: G | C :|')
+	})
+})
+
+describe('extractSongMeta', () => {
+	it('returns metadata without sections', () => {
+		const meta = extractSongMeta(`{title: My Song}
+{artist: Me}
+{key: G}
+{capo: 2}
+{tempo: 96}
+{time: 3/4}
+
+{start_of_grid}
+|| G . . ||
+{end_of_grid}
+`)
+		expect(meta).toEqual({ title: 'My Song', artist: 'Me', key: 'G', capo: 2, tempo: 96, time: '3/4' })
 	})
 })

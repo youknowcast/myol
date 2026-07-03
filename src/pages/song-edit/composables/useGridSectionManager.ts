@@ -4,7 +4,6 @@ import type { GridSection, Section } from '@/lib/chordpro/types'
 export interface GridSectionManagerStore {
 	sections: Section[]
 	gridSections: Array<{ index: number; section: Section }>
-	updateSectionContent: (index: number, content: GridSection) => void
 	updateSectionLabel: (index: number, label: string | undefined) => void
 	addGridSection: (afterIndex?: number, label?: string) => void
 	removeSection: (index: number) => void
@@ -67,10 +66,6 @@ export function useGridSectionManager(store: GridSectionManagerStore) {
 		setSelectedMeasure(index + 1, null)
 	}
 
-	function updateGridSection(index: number, content: GridSection) {
-		store.updateSectionContent(index, content)
-	}
-
 	return {
 		gridSections,
 		selectedMeasureBySection,
@@ -81,7 +76,6 @@ export function useGridSectionManager(store: GridSectionManagerStore) {
 		addSection,
 		removeSection,
 		moveSection,
-		splitSection,
-		updateGridSection
+		splitSection
 	}
 }

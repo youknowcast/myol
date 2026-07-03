@@ -562,7 +562,8 @@ function gridMeasuresToLine(measures: Measure[]): string {
 		} else {
 			tokens.push(...boundaryTokens(measures[index - 1]!.endBar, measure.startBar))
 		}
-		tokens.push(...measure.cells.map(cellToString))
+		const cellTokens = measure.cells.length > 0 ? measure.cells.map(cellToString) : ['.']
+		tokens.push(...cellTokens)
 	})
 	const last = measures[measures.length - 1]
 	if (last?.endBar === 'repeatEnd') tokens.push(':|')
@@ -654,5 +655,27 @@ function sectionTypeToDirective(type: SectionType): string {
 		case 'intro': return 'intro'
 		case 'outro': return 'outro'
 		default: return 'verse'
+	}
+}
+
+/**
+ * Extract song metadata only (no section structure) — for list/meta use in stores.
+ */
+export function extractSongMeta(content: string): {
+	title: string
+	artist: string
+	key?: string
+	capo?: number
+	tempo?: number
+	time?: string
+} {
+	const parsed = parseChordPro(content)
+	return {
+		title: parsed.title,
+		artist: parsed.artist,
+		key: parsed.key,
+		capo: parsed.capo,
+		tempo: parsed.tempo,
+		time: parsed.time
 	}
 }

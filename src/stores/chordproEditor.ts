@@ -1,40 +1,52 @@
 /**
  * ChordPro Editor Store
- * Single Source of Truth for song editing state
+ * 編集の唯一の Source of Truth。全ミューテーションはここを経由する。
+ * parse/generate は loadDocument / serialize / autoAssign のみで実行される。
  */
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { generateChordPro, parseChordProToExtended } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection, GridCell, Measure } from '@/lib/chordpro/types'
+import {
+	generateChordPro,
+	parseChordProToExtended,
+	autoAssignMeasures as applyAutoAssignMeasures
+} from '@/lib/chordpro/parser'
+import {
+	addMeasure as opAddMeasure,
+	copyMeasure as opCopyMeasure,
+	deleteMeasure as opDeleteMeasure,
+	clearLyrics as opClearLyrics,
+	clearChords as opClearChords,
+	swapMeasure as opSwapMeasure,
+	mergeLyrics as opMergeLyrics,
+	reorderCells as opReorderCells,
+	moveCellWithinGrid,
+	moveCellAcrossGrids,
+	moveMeasureAcrossGrids
+} from '@/lib/chordpro/measureOps'
+import type { ParsedSong, GridSection, Measure } from '@/lib/chordpro/types'
 
-/**
- * Extract measures from grid section
- */
-function extractMeasuresFromGrid(grid: GridSection): Measure[] {
-	return grid.measures.map(measure => ({
-		...measure,
-		cells: measure.cells.map(cell => ({ ...cell }))
-	}))
+export interface MoveCellActionPayload {
+	fromSectionIndex: number
+	toSectionIndex: number
+	fromMeasureIndex: number
+	toMeasureIndex: number
+	sourceCellIndex: number
+	newIndex: number | null
 }
 
-/**
- * Convert measures back to GridSection format
- */
-function measuresToGridSection(measures: Measure[], shape?: string): GridSection {
-	return {
-		kind: 'grid',
-		shape,
-		measures
-	}
+export interface SongMetadataInput {
+	title: string
+	artist: string
+	key?: string
+	capo?: number
+	tempo?: number
+	time?: string
 }
 
 export const useChordProEditorStore = defineStore('chordproEditor', () => {
 	// State
 	const document = ref<ParsedSong | null>(null)
-	const originalContent = ref('')
-	const selectedSectionIndex = ref<number | null>(null)
-	const selectedMeasureIndex = ref<number | null>(null)
 
 	// Getters
 	const sections = computed(() => document.value?.sections ?? [])
@@ -45,174 +57,45 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 			.filter(({ section }) => section.content.kind === 'grid')
 	)
 
-	const currentSection = computed(() => {
-		if (selectedSectionIndex.value === null || !document.value) return null
-		return document.value.sections[selectedSectionIndex.value] ?? null
-	})
-
-	const currentGridSection = computed((): GridSection | null => {
-		const section = currentSection.value
+	// Internal helpers
+	function gridAt(sectionIndex: number): GridSection | null {
+		const section = document.value?.sections[sectionIndex]
 		if (!section || section.content.kind !== 'grid') return null
 		return section.content as GridSection
-	})
+	}
 
-	const currentMeasures = computed((): Measure[] => {
-		const grid = currentGridSection.value
-		if (!grid) return []
+	function setGridMeasures(sectionIndex: number, measures: Measure[]) {
+		const grid = gridAt(sectionIndex)
+		if (!grid || !document.value) return
+		document.value.sections[sectionIndex]!.content = { ...grid, measures }
+	}
 
-		// Use measures if available, otherwise extract from rows
-		if (grid.measures && grid.measures.length > 0) {
-			return grid.measures
-		}
-		return extractMeasuresFromGrid(grid)
-	})
-
-	// Total measures across all grid sections (for playback)
-	const totalMeasures = computed(() => {
-		if (!document.value) return 1
-		let count = 0
-
-		for (const section of document.value.sections) {
-			if (section.content.kind === 'grid') {
-				const grid = section.content as GridSection
-				count += grid.measures.length
-			}
-		}
-		return Math.max(count, 1)
-	})
-
-	const isDirty = computed(() => {
-		if (!document.value) return false
-		return generateChordPro(document.value) !== originalContent.value
-	})
-
-	// Actions
+	// Document actions
 	function loadDocument(content: string) {
-		originalContent.value = content
 		document.value = parseChordProToExtended(content)
-		selectedSectionIndex.value = null
-		selectedMeasureIndex.value = null
 	}
 
-	function selectSection(index: number | null) {
-		selectedSectionIndex.value = index
-		selectedMeasureIndex.value = null
+	function serialize(): string {
+		if (!document.value) return ''
+		return generateChordPro(document.value)
 	}
 
-	function selectMeasure(index: number | null) {
-		selectedMeasureIndex.value = index
+	function updateMetadata(meta: SongMetadataInput) {
+		if (!document.value) return
+		document.value.title = meta.title
+		document.value.artist = meta.artist
+		document.value.key = meta.key || undefined
+		document.value.capo = Number.isFinite(meta.capo) ? meta.capo : undefined
+		document.value.tempo = Number.isFinite(meta.tempo) ? meta.tempo : undefined
+		document.value.time = meta.time || undefined
 	}
 
-	function addMeasure(position: 'end' | 'before' | 'after') {
-		if (selectedSectionIndex.value === null || !document.value) return
-
-		const section = document.value.sections[selectedSectionIndex.value]
-		if (!section || section.content.kind !== 'grid') return
-
-		const grid = section.content as GridSection
-		const measures = grid.measures && grid.measures.length > 0
-			? [...grid.measures]
-			: extractMeasuresFromGrid(grid)
-
-		const newMeasure: Measure = {
-			cells: [{ type: 'empty' as const }],
-			lyricsHint: undefined
-		}
-
-		if (position === 'end') {
-			measures.push(newMeasure)
-		} else if (selectedMeasureIndex.value !== null) {
-			const insertIndex = position === 'before'
-				? selectedMeasureIndex.value
-				: selectedMeasureIndex.value + 1
-			measures.splice(insertIndex, 0, newMeasure)
-		}
-
-		// Update the grid section
-		const updated = measuresToGridSection(measures, grid.shape)
-		section.content = updated
+	function autoAssign(beatsPerMeasure: number) {
+		if (!document.value) return
+		document.value = applyAutoAssignMeasures(document.value, beatsPerMeasure)
 	}
 
-	function deleteMeasure(measureIndex?: number) {
-		const idx = measureIndex ?? selectedMeasureIndex.value
-		if (idx === null || selectedSectionIndex.value === null || !document.value) return
-
-		const section = document.value.sections[selectedSectionIndex.value]
-		if (!section || section.content.kind !== 'grid') return
-
-		const grid = section.content as GridSection
-		const measures = grid.measures && grid.measures.length > 0
-			? [...grid.measures]
-			: extractMeasuresFromGrid(grid)
-
-		// Prevent deletion if only one measure
-		if (measures.length <= 1) return
-
-		// Prevent deletion if has lyrics
-		const measure = measures[idx]
-		if (measure?.lyricsHint && measure.lyricsHint.trim() !== '') {
-			throw new Error('歌詞が付いている小節は削除できません')
-		}
-
-		measures.splice(idx, 1)
-
-		const updated = measuresToGridSection(measures, grid.shape)
-		section.content = updated
-
-		// Deselect if deleted
-		if (selectedMeasureIndex.value === idx) {
-			selectedMeasureIndex.value = null
-		}
-	}
-
-	function updateMeasureCells(measureIndex: number, cells: GridCell[]) {
-		if (selectedSectionIndex.value === null || !document.value) return
-
-		const section = document.value.sections[selectedSectionIndex.value]
-		if (!section || section.content.kind !== 'grid') return
-
-		const grid = section.content as GridSection
-		const measures = grid.measures && grid.measures.length > 0
-			? [...grid.measures]
-			: extractMeasuresFromGrid(grid)
-
-		const measure = measures[measureIndex]
-		if (!measure) return
-
-		measure.cells = cells.map(c => ({ ...c }))
-
-		const updated = measuresToGridSection(measures, grid.shape)
-		section.content = updated
-	}
-
-	function swapMeasures(index1: number, index2: number) {
-		if (selectedSectionIndex.value === null || !document.value) return
-
-		const section = document.value.sections[selectedSectionIndex.value]
-		if (!section || section.content.kind !== 'grid') return
-
-		const grid = section.content as GridSection
-		const measures = grid.measures && grid.measures.length > 0
-			? [...grid.measures]
-			: extractMeasuresFromGrid(grid)
-
-		if (index1 < 0 || index1 >= measures.length) return
-		if (index2 < 0 || index2 >= measures.length) return
-
-		// Swap including lyrics hints
-		const temp = measures[index1]
-		measures[index1] = measures[index2]!
-		measures[index2] = temp!
-
-		const updated = measuresToGridSection(measures, grid.shape)
-		section.content = updated
-	}
-
-	function updateSectionContent(index: number, content: GridSection) {
-		if (!document.value || !document.value.sections[index]) return
-		document.value.sections[index]!.content = content
-	}
-
+	// Section actions
 	function updateSectionLabel(index: number, label: string | undefined) {
 		if (!document.value || !document.value.sections[index]) return
 		document.value.sections[index]!.label = label
@@ -228,7 +111,6 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 				measures: [{ cells: [{ type: 'empty' as const }] }]
 			}
 		}
-
 		const insertIndex = afterIndex !== undefined ? afterIndex + 1 : document.value.sections.length
 		document.value.sections.splice(insertIndex, 0, newSection)
 	}
@@ -237,92 +119,139 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		if (!document.value) return
 		if (index < 0 || index >= document.value.sections.length) return
 		document.value.sections.splice(index, 1)
-		if (selectedSectionIndex.value === index) {
-			selectedSectionIndex.value = null
-			selectedMeasureIndex.value = null
-		}
 	}
 
 	function moveSection(index: number, direction: 'up' | 'down') {
 		if (!document.value) return
 		const targetIndex = direction === 'up' ? index - 1 : index + 1
 		if (targetIndex < 0 || targetIndex >= document.value.sections.length) return
-		const sections = document.value.sections
-		const temp = sections[index]
-		sections[index] = sections[targetIndex]!
-		sections[targetIndex] = temp!
+		const list = document.value.sections
+		const temp = list[index]
+		list[index] = list[targetIndex]!
+		list[targetIndex] = temp!
 	}
 
 	function splitGridSection(index: number, measureIndex: number, label?: string) {
 		if (!document.value) return
-		const section = document.value.sections[index]
-		if (!section || section.content.kind !== 'grid') return
-		const grid = section.content as GridSection
+		const grid = gridAt(index)
+		if (!grid) return
 		if (measureIndex < 0 || measureIndex >= grid.measures.length - 1) return
 
 		const leftMeasures = grid.measures.slice(0, measureIndex + 1)
 		const rightMeasures = grid.measures.slice(measureIndex + 1)
 
-		section.content = {
-			kind: 'grid',
-			shape: grid.shape,
-			measures: leftMeasures
-		}
-
-		const newSection = {
+		document.value.sections[index]!.content = { ...grid, measures: leftMeasures }
+		document.value.sections.splice(index + 1, 0, {
 			type: 'grid' as const,
 			label,
-			content: {
-				kind: 'grid' as const,
-				shape: grid.shape,
-				measures: rightMeasures
-			}
-		}
-
-		document.value.sections.splice(index + 1, 0, newSection)
+			content: { kind: 'grid' as const, shape: grid.shape, measures: rightMeasures }
+		})
 	}
 
-	function serialize(): string {
-		if (!document.value) return originalContent.value
-		return generateChordPro(document.value)
+	// Measure actions（不正インデックスは no-op）
+	function addMeasure(sectionIndex: number, position: 'end' | 'before' | 'after', anchorIndex: number | null) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opAddMeasure(grid.measures, position, anchorIndex))
 	}
 
-	function markAsSaved() {
-		if (document.value) {
-			originalContent.value = generateChordPro(document.value)
+	function copyMeasure(sectionIndex: number, measureIndex: number) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opCopyMeasure(grid.measures, measureIndex))
+	}
+
+	function deleteMeasure(sectionIndex: number, measureIndex: number) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opDeleteMeasure(grid.measures, measureIndex))
+	}
+
+	function clearLyrics(sectionIndex: number, measureIndex: number) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opClearLyrics(grid.measures, measureIndex))
+	}
+
+	function clearChords(sectionIndex: number, measureIndex: number) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opClearChords(grid.measures, measureIndex))
+	}
+
+	function swapMeasure(sectionIndex: number, measureIndex: number, direction: 'left' | 'right') {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opSwapMeasure(grid.measures, measureIndex, direction))
+	}
+
+	function mergeLyrics(sectionIndex: number, sourceIndex: number, direction: 'left' | 'right') {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opMergeLyrics(grid.measures, sourceIndex, direction))
+	}
+
+	function reorderCells(sectionIndex: number, measureIndex: number, newOrder: number[]) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opReorderCells(grid.measures, measureIndex, newOrder))
+	}
+
+	function moveCell(payload: MoveCellActionPayload) {
+		if (payload.fromSectionIndex === payload.toSectionIndex) {
+			const grid = gridAt(payload.fromSectionIndex)
+			if (!grid) return
+			setGridMeasures(payload.fromSectionIndex, moveCellWithinGrid(grid.measures, payload))
+			return
 		}
+		const fromGrid = gridAt(payload.fromSectionIndex)
+		const toGrid = gridAt(payload.toSectionIndex)
+		if (!fromGrid || !toGrid) return
+		const result = moveCellAcrossGrids(fromGrid.measures, toGrid.measures, payload)
+		if (!result) return
+		setGridMeasures(payload.fromSectionIndex, result.from)
+		setGridMeasures(payload.toSectionIndex, result.to)
+	}
+
+	function moveMeasureAcrossSections(fromSectionIndex: number, toSectionIndex: number, fromMeasureIndex: number) {
+		if (fromSectionIndex === toSectionIndex) return
+		const fromGrid = gridAt(fromSectionIndex)
+		const toGrid = gridAt(toSectionIndex)
+		if (!fromGrid || !toGrid) return
+		const insertAtStart = toSectionIndex > fromSectionIndex
+		const result = moveMeasureAcrossGrids(fromGrid.measures, toGrid.measures, fromMeasureIndex, insertAtStart)
+		if (!result) return
+		setGridMeasures(fromSectionIndex, result.from)
+		setGridMeasures(toSectionIndex, result.to)
 	}
 
 	return {
 		// State
 		document,
-		selectedSectionIndex,
-		selectedMeasureIndex,
-
 		// Getters
 		sections,
 		gridSections,
-		currentSection,
-		currentGridSection,
-		currentMeasures,
-		totalMeasures,
-		isDirty,
-
-		// Actions
+		// Document
 		loadDocument,
-		selectSection,
-		selectMeasure,
-		addMeasure,
-		deleteMeasure,
-		updateMeasureCells,
-		swapMeasures,
-		updateSectionContent,
+		serialize,
+		updateMetadata,
+		autoAssign,
+		// Sections
 		updateSectionLabel,
 		addGridSection,
 		removeSection,
 		moveSection,
 		splitGridSection,
-		serialize,
-		markAsSaved
+		// Measures
+		addMeasure,
+		copyMeasure,
+		deleteMeasure,
+		clearLyrics,
+		clearChords,
+		swapMeasure,
+		mergeLyrics,
+		reorderCells,
+		moveCell,
+		moveMeasureAcrossSections
 	}
 })

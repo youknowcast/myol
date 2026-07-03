@@ -4,12 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { useBeatSignature } from '@/pages/song-edit/composables/useBeatSignature'
-import { useChordProDocument } from '@/composables/useChordProDocument'
-import { useChordProEditorSync } from '@/pages/song-edit/composables/useChordProEditorSync'
 import { useSongEditForm } from '@/pages/song-edit/composables/useSongEditForm'
 import { useGridSectionManager } from '@/pages/song-edit/composables/useGridSectionManager'
 import { useSongEditNavigation } from '@/pages/song-edit/composables/useSongEditNavigation'
-import type { GridCell, GridSection } from '@/lib/chordpro/types'
+import type { GridSection } from '@/lib/chordpro/types'
 import GridEditor from '@/components/song/GridEditor.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 
@@ -52,20 +50,52 @@ const {
 `
 })
 
-const { autoAssignMeasuresToContent } = useChordProDocument({ content })
 const { beatsPerMeasure } = useBeatSignature(time)
 
-useChordProEditorSync({ content, editorStore })
+const saveError = ref<string | null>(null)
 
 onMounted(async () => {
   await loadSong()
+  editorStore.loadDocument(content.value)
 })
 
+type EditMode = 'text' | 'visual'
+const editMode = ref<EditMode>('visual')
+
+function setEditMode(mode: EditMode) {
+  if (mode === editMode.value) return
+  if (mode === 'text') {
+    content.value = editorStore.serialize()
+  } else {
+    editorStore.loadDocument(content.value)
+  }
+  editMode.value = mode
+}
+
+function collectMetadata() {
+  return {
+    title: title.value || 'Untitled',
+    artist: artist.value,
+    key: key.value,
+    capo: capo.value,
+    tempo: tempo.value,
+    time: time.value
+  }
+}
+
 async function save() {
-  const song = await saveSong()
-  if (song) {
-    editorStore.markAsSaved()
-    router.push({ name: 'song-detail', params: { id: song.id } })
+  saveError.value = null
+  if (editMode.value === 'text') {
+    editorStore.loadDocument(content.value)
+  }
+  editorStore.updateMetadata(collectMetadata())
+  try {
+    const song = await saveSong(editorStore.serialize())
+    if (song) {
+      router.push({ name: 'song-detail', params: { id: song.id } })
+    }
+  } catch {
+    saveError.value = songsStore.error ?? '不明なエラー'
   }
 }
 
@@ -76,144 +106,26 @@ const { goBack } = useSongEditNavigation({
 })
 
 function handleAutoAssignMeasures() {
-  autoAssignMeasuresToContent(beatsPerMeasure.value)
+  if (editMode.value === 'text') {
+    editorStore.loadDocument(content.value)
+  }
+  editorStore.autoAssign(beatsPerMeasure.value)
+  if (editMode.value === 'text') {
+    content.value = editorStore.serialize()
+  }
 }
-
-
-// Edit mode: 'text' or 'visual'
-type EditMode = 'text' | 'visual'
-const editMode = ref<EditMode>('visual')
 
 const {
   gridSections,
-  updateGridSection,
   updateLabel,
   addSection,
   removeSection,
   moveSection,
   splitSection,
   canSplit,
-  setSelectedMeasure
+  setSelectedMeasure,
+  getSelectedMeasure
 } = useGridSectionManager(editorStore)
-
-function handleMoveAcrossSections(payload: {
-  fromSectionIndex: number
-  toSectionIndex: number
-  fromMeasureIndex: number
-  toMeasureIndex: number
-  movedCellId: string | null
-  oldIndex: number | null
-  newIndex: number | null
-}) {
-  const fromSection = gridSections.value.find(item => item.index === payload.fromSectionIndex)
-  const toSection = gridSections.value.find(item => item.index === payload.toSectionIndex)
-  if (!fromSection || !toSection) return
-  if (fromSection.section.content.kind !== 'grid' || toSection.section.content.kind !== 'grid') return
-
-  const fromGrid = fromSection.section.content as GridSection
-  const toGrid = toSection.section.content as GridSection
-  const sourceMeasure = fromGrid.measures[payload.fromMeasureIndex]
-  const targetMeasure = toGrid.measures[payload.toMeasureIndex]
-  if (!sourceMeasure || !targetMeasure) return
-
-  const sourceCells: GridCell[] = sourceMeasure.cells.map(cell => ({ ...cell }))
-  const targetCells: GridCell[] = targetMeasure.cells.map(cell => ({ ...cell }))
-
-  let sourceIndex = -1
-  if (payload.movedCellId) {
-    const parts = payload.movedCellId.split('-')
-    const parsedIndex = Number.parseInt(parts[1] ?? '', 10)
-    if (!Number.isNaN(parsedIndex)) {
-      sourceIndex = parsedIndex
-    }
-  }
-  if (sourceIndex < 0 && typeof payload.oldIndex === 'number') {
-    sourceIndex = payload.oldIndex
-  }
-  if (sourceIndex < 0 || sourceIndex >= sourceCells.length) return
-  const movedCell = sourceCells[sourceIndex]
-  if (!movedCell || movedCell.type === 'empty') return
-
-  sourceCells.splice(sourceIndex, 1)
-  if (sourceCells.length === 0) {
-    sourceCells.push({ type: 'empty' as const })
-  }
-
-  const emptyIndices = targetCells
-    .map((cell, index) => (cell.type === 'empty' ? index : null))
-    .filter((index): index is number => index !== null)
-
-  if (emptyIndices.length > 0) {
-    const fallbackIndex = emptyIndices[0] ?? 0
-    const replaceIndex = typeof payload.newIndex === 'number'
-      ? emptyIndices.reduce((closest, index) =>
-        (Math.abs(index - payload.newIndex!) < Math.abs(closest - payload.newIndex!) ? index : closest), fallbackIndex)
-      : fallbackIndex
-    targetCells.splice(replaceIndex, 1, { ...movedCell })
-  } else {
-    let insertIndex = typeof payload.newIndex === 'number' ? payload.newIndex : targetCells.length
-    if (insertIndex < 0) insertIndex = 0
-    if (insertIndex > targetCells.length) insertIndex = targetCells.length
-    targetCells.splice(insertIndex, 0, { ...movedCell })
-  }
-
-  const updatedFrom: GridSection = {
-    ...fromGrid,
-    measures: fromGrid.measures.map((measure, index) => index === payload.fromMeasureIndex
-      ? { ...measure, cells: sourceCells.map(cell => ({ ...cell })) }
-      : { ...measure, cells: measure.cells.map(cell => ({ ...cell })) })
-  }
-
-  const updatedTo: GridSection = {
-    ...toGrid,
-    measures: toGrid.measures.map((measure, index) => index === payload.toMeasureIndex
-      ? { ...measure, cells: targetCells.map(cell => ({ ...cell })) }
-      : { ...measure, cells: measure.cells.map(cell => ({ ...cell })) })
-  }
-
-  updateGridSection(payload.fromSectionIndex, updatedFrom)
-  updateGridSection(payload.toSectionIndex, updatedTo)
-}
-
-function handleMoveMeasureAcrossSections(payload: {
-  fromSectionIndex: number
-  toSectionIndex: number
-  fromMeasureIndex: number
-}) {
-  const fromSection = gridSections.value.find(item => item.index === payload.fromSectionIndex)
-  const toSection = gridSections.value.find(item => item.index === payload.toSectionIndex)
-  if (!fromSection || !toSection) return
-  if (fromSection.section.content.kind !== 'grid' || toSection.section.content.kind !== 'grid') return
-
-  const fromGrid = fromSection.section.content as GridSection
-  const toGrid = toSection.section.content as GridSection
-  const movedMeasure = fromGrid.measures[payload.fromMeasureIndex]
-  if (!movedMeasure) return
-
-  const nextFromMeasures = fromGrid.measures.filter((_, idx) => idx !== payload.fromMeasureIndex)
-  if (nextFromMeasures.length === 0) {
-    nextFromMeasures.push({ cells: [{ type: 'empty' as const }] })
-  }
-
-  const insertIndex = payload.toSectionIndex > payload.fromSectionIndex
-    ? 0
-    : toGrid.measures.length
-
-  const nextToMeasures = [...toGrid.measures]
-  nextToMeasures.splice(insertIndex, 0, {
-    ...movedMeasure,
-    cells: movedMeasure.cells.map(cell => ({ ...cell }))
-  })
-
-  updateGridSection(payload.fromSectionIndex, {
-    ...fromGrid,
-    measures: nextFromMeasures
-  })
-  updateGridSection(payload.toSectionIndex, {
-    ...toGrid,
-    measures: nextToMeasures
-  })
-}
 
 const isLabelDialogOpen = ref(false)
 const labelDraft = ref('')
@@ -255,6 +167,10 @@ function commitLabelDialog() {
         </button>
       </div>
     </header>
+
+    <div v-if="saveError" class="save-error" role="alert">
+      保存に失敗しました: {{ saveError }}
+    </div>
 
     <main class="edit-content">
       <ConfirmModal
@@ -354,7 +270,7 @@ function commitLabelDialog() {
                 type="button"
                 class="mode-btn"
                 :class="{ active: editMode === 'visual' }"
-                @click="editMode = 'visual'"
+                @click="setEditMode('visual')"
               >
                 ビジュアル
               </button>
@@ -362,7 +278,7 @@ function commitLabelDialog() {
                 type="button"
                 class="mode-btn"
                 :class="{ active: editMode === 'text' }"
-                @click="editMode = 'text'"
+                @click="setEditMode('text')"
               >
                 テキスト(Professional)
               </button>
@@ -441,10 +357,8 @@ function commitLabelDialog() {
                 :section-index="index"
                 :prev-section-index="gridSections[gridIndex - 1]?.index ?? null"
                 :next-section-index="gridSections[gridIndex + 1]?.index ?? null"
-                @update:model-value="(val) => updateGridSection(index, val)"
+                :selected-measure-index="getSelectedMeasure(index)"
                 @select-measure="(val) => setSelectedMeasure(index, val)"
-                @move-cell-across-section="handleMoveAcrossSections"
-                @move-measure-across-section="handleMoveMeasureAcrossSections"
               />
             </div>
           </div>
@@ -470,6 +384,16 @@ function commitLabelDialog() {
   background: var(--color-bg);
   display: flex;
   flex-direction: column;
+}
+
+.save-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md) 0;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
 }
 
 .edit-content {

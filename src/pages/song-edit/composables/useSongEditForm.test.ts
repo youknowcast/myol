@@ -48,38 +48,20 @@ describe('useSongEditForm', () => {
 			initialTemplate: '{title: }'
 		})
 
-		await save()
+		await save('{title: Test}')
 		expect(savedId).toBe(formSong.value.id)
 	})
 
-	it('writes metadata into content on save', async () => {
-		let savedContent: string | null = null
-		const { save, title, artist, key, capo, tempo, time, content } = useSongEditForm({
+	it('sets content from finalContent parameter on save', async () => {
+		const { save, content } = useSongEditForm({
 			isNew: ref(true),
 			songId: ref(undefined),
-			songsStore: {
-				...mockStore(),
-				saveSong: async (song) => {
-					savedContent = song.content
-				}
-			},
+			songsStore: mockStore(),
 			initialTemplate: '{title: }'
 		})
 
-		title.value = 'My Song'
-		artist.value = 'My Band'
-		key.value = 'D'
-		capo.value = 2
-		tempo.value = 90
-		time.value = '6/8'
-		content.value = '{start_of_verse}\n[C]Hello\n{end_of_verse}'
-
-		await save()
-		expect(savedContent).toContain('{title: My Song}')
-		expect(savedContent).toContain('{artist: My Band}')
-		expect(savedContent).toContain('{key: D}')
-		expect(savedContent).toContain('{capo: 2}')
-		expect(savedContent).toContain('{tempo: 90}')
-		expect(savedContent).toContain('{time: 6/8}')
+		const finalContent = '{title: My Song}\n{artist: My Band}\n[C]Hello'
+		await save(finalContent)
+		expect(content.value).toBe(finalContent)
 	})
 })
