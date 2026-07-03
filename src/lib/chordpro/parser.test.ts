@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordPro, parseChordProToExtended, ensureGridMeasures } from './parser'
+import { parseChordPro, parseChordProToExtended, ensureGridMeasures, generateChordPro } from './parser'
 import type { GridSection, ParsedSong } from './types'
 
 describe('parseChordProToExtended', () => {
@@ -225,5 +225,85 @@ describe('measure annotations (new format)', () => {
 		const grid = parsed.sections[0]!.content as GridSection
 		expect(grid.measures.length).toBe(1)
 		expect(grid.measures[0]!.endBar).toBe('repeatEnd')
+	})
+})
+
+describe('generateChordPro (grid)', () => {
+	it('emits one hint line per grid row, |-separated per measure', () => {
+		const song: ParsedSong = {
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'one' },
+							{ cells: [{ type: 'chord', value: 'C' }] },
+							{ cells: [{ type: 'chord', value: 'Am' }], lyricsHint: 'three' },
+							{ cells: [{ type: 'chord', value: 'F' }] },
+							{ cells: [{ type: 'chord', value: 'D' }], lyricsHint: 'five' }
+						]
+					}
+				}
+			]
+		}
+
+		const text = generateChordPro(song)
+		const lines = text.split('\n').filter(line => line.trim())
+		expect(lines).toEqual([
+			'{start_of_grid}',
+			'{lyrics_hint: one |  | three}',
+			'|| G | C | Am | F ||',
+			'{lyrics_hint: five}',
+			'|| D ||',
+			'{end_of_grid}'
+		])
+	})
+
+	it('omits the hint line when a row has no hints', () => {
+		const song: ParsedSong = {
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }] },
+							{ cells: [{ type: 'chord', value: 'C' }] }
+						]
+					}
+				}
+			]
+		}
+
+		const text = generateChordPro(song)
+		expect(text).not.toContain('lyrics_hint')
+	})
+
+	it('restores boundary bars and sanitizes | in hints', () => {
+		const song: ParsedSong = {
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }], startBar: 'repeatStart', lyricsHint: 'a | b' },
+							{ cells: [{ type: 'chord', value: 'C' }], endBar: 'repeatEnd' }
+						]
+					}
+				}
+			]
+		}
+
+		const text = generateChordPro(song)
+		expect(text).toContain('{lyrics_hint: a ｜ b}')
+		expect(text).toContain('|: G | C :|')
 	})
 })

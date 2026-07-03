@@ -727,6 +727,48 @@ export function autoAssignMeasures(
 	}
 }
 
+const MEASURES_PER_LINE = 4
+
+function sanitizeAnnotationSegment(segment: string): string {
+	return segment.replace(/\|/g, '｜').trim()
+}
+
+function gridAnnotationLine(measures: Measure[]): string | null {
+	const segments = measures.map(measure => sanitizeAnnotationSegment(measure.lyricsHint ?? ''))
+	while (segments.length > 0 && segments[segments.length - 1] === '') {
+		segments.pop()
+	}
+	if (segments.length === 0) return null
+	return `{lyrics_hint: ${segments.join(' | ')}}`
+}
+
+function boundaryTokens(endBar: Measure['endBar'], startBar: Measure['startBar']): string[] {
+	if (endBar === 'repeatEnd' && startBar === 'repeatStart') return [':|:']
+	const tokens: string[] = []
+	if (endBar === 'repeatEnd') tokens.push(':|')
+	if (endBar === 'barEnd') tokens.push('|.')
+	if (startBar === 'repeatStart') tokens.push('|:')
+	if (tokens.length === 0) tokens.push('|')
+	return tokens
+}
+
+function gridMeasuresToLine(measures: Measure[]): string {
+	const tokens: string[] = []
+	measures.forEach((measure, index) => {
+		if (index === 0) {
+			tokens.push(measure.startBar === 'repeatStart' ? '|:' : '||')
+		} else {
+			tokens.push(...boundaryTokens(measures[index - 1]!.endBar, measure.startBar))
+		}
+		tokens.push(...measure.cells.map(cellToString))
+	})
+	const last = measures[measures.length - 1]
+	if (last?.endBar === 'repeatEnd') tokens.push(':|')
+	else if (last?.endBar === 'barEnd') tokens.push('|.')
+	else tokens.push('||')
+	return tokens.join(' ')
+}
+
 /**
  * Generate ChordPro content from a ParsedSong
  */
@@ -751,15 +793,12 @@ export function generateChordPro(song: ParsedSong): string {
 			const shapePart = section.content.shape ? ` shape="${section.content.shape}"` : ''
 			lines.push(`{start_of_grid${labelPart}${shapePart}}`)
 
-			const rows = gridRowsFromMeasures(section.content.measures)
-			for (const row of rows) {
-				lines.push(row.cells.map(cellToString).join(' '))
-			}
-			for (const measure of section.content.measures) {
-				const hint = measure.lyricsHint?.trim()
-				if (hint) {
-					lines.push(`{lyrics_hint: ${hint}}`)
-				}
+			const measures = section.content.measures
+			for (let start = 0; start < measures.length; start += MEASURES_PER_LINE) {
+				const chunk = measures.slice(start, start + MEASURES_PER_LINE)
+				const annotationLine = gridAnnotationLine(chunk)
+				if (annotationLine) lines.push(annotationLine)
+				lines.push(gridMeasuresToLine(chunk))
 			}
 			lines.push(`{end_of_grid}`)
 		} else if (section.content.kind === 'tab') {
