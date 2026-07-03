@@ -62,7 +62,7 @@ export interface Measure {
 }
 
 export interface GridCell {
-	type: 'chord' | 'noChord' | 'empty' | 'repeat' | 'bar' | 'barDouble' | 'barEnd' | 'repeatStart' | 'repeatEnd' | 'repeatBoth'
+	type: 'chord' | 'noChord' | 'empty' | 'repeat'
 	value?: string
 }
 

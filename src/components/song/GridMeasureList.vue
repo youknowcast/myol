@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useSortableGrid } from '@/components/song/composables/useSortableGrid'
+import { gridBarGlyphs } from '@/lib/chordpro/cellDisplay'
 import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureItem from '@/components/song/GridMeasureItem.vue'
 
@@ -42,6 +43,8 @@ const emit = defineEmits<Emits>()
 
 const containerRef = ref<HTMLElement | null>(null)
 
+const barGlyphs = computed(() => gridBarGlyphs(props.measures))
+
 const { init: initSortable, destroy: destroySortable } = useSortableGrid({
   onReorder: (payload) => {
     if (payload.fromMeasureIndex === payload.toMeasureIndex && payload.fromSectionIndex === payload.toSectionIndex) {
@@ -82,7 +85,7 @@ onUnmounted(() => {
 <template>
   <div ref="containerRef" class="measures-container">
     <template v-for="(measure, measureIndex) in measures" :key="measureIndex">
-      <div class="bar-line" v-if="measureIndex === 0">║</div>
+      <div class="bar-line">{{ barGlyphs[measureIndex] }}</div>
       <GridMeasureItem
         :measure="measure"
         :measure-index="measureIndex"
@@ -101,8 +104,8 @@ onUnmounted(() => {
         @delete-chords="() => emit('delete-chords')"
         @move-section="(direction, idx) => emit('move-section', { direction, measureIndex: idx })"
       />
-      <div class="bar-line">{{ measureIndex === measuresLength - 1 ? '║' : '│' }}</div>
     </template>
+    <div class="bar-line" v-if="measures.length > 0">{{ barGlyphs[measures.length] }}</div>
   </div>
 </template>
 

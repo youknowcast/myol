@@ -12,17 +12,17 @@ const grid: GridSection = {
 }
 
 describe('useGridViewState', () => {
-	it('builds measure hints from measures', () => {
+	it('builds lyrics hints from measures', () => {
 		const currentMeasure = ref(0)
 		const measureOffset = ref(0)
-		const { measureHints } = useGridViewState({
+		const { lyricsHints } = useGridViewState({
 			grid,
 			currentMeasure,
 			measureOffset
 		})
 
-		expect(measureHints.value[0]).toBe('Hello')
-		expect(measureHints.value[1]).toBe('World')
+		expect(lyricsHints.value[0]).toBe('Hello')
+		expect(lyricsHints.value[1]).toBe('World')
 	})
 
 	it('marks current measure cells', () => {
@@ -70,7 +70,8 @@ describe('useGridViewState', () => {
 		expect(cellsWithMeasures.value.length).toBe(2)
 		expect(cellsWithMeasures.value[0]!.map(cell => cell.measureIndex)).toEqual([10, 10, 11])
 		expect(cellsWithMeasures.value[1]!.map(cell => cell.measureIndex)).toEqual([12])
-		const barTypes = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth']
-		expect(cellsWithMeasures.value.flat().some(cell => barTypes.includes(cell.type))).toBe(false)
+		// Verify no bar cells exist (bars are managed via Measure.startBar/endBar, not cells)
+		const cellTypes = cellsWithMeasures.value.flat().map(cell => cell.type)
+		expect(cellTypes.every(type => ['chord', 'noChord', 'empty', 'repeat'].includes(type))).toBe(true)
 	})
 })

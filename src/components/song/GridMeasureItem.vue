@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
+import { cellGlyph, cellKind } from '@/lib/chordpro/cellDisplay'
 import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
 
@@ -35,32 +36,7 @@ const toolboxAlign = computed(() => (
 ))
 
 function getCellClass(cell: GridCell): string {
-  switch (cell.type) {
-    case 'chord':
-      return 'cell-chord'
-    case 'noChord':
-    case 'empty':
-      return 'cell-empty'
-    case 'repeat':
-      return 'cell-repeat'
-    default:
-      return ''
-  }
-}
-
-function getCellDisplay(cell: GridCell): string {
-  switch (cell.type) {
-    case 'noChord':
-      return '/'
-    case 'empty':
-      return '·'
-    case 'repeat':
-      return cell.value || '%'
-    case 'chord':
-      return cell.value || ''
-    default:
-      return ''
-  }
+  return `cell-${cellKind(cell)}`
 }
 </script>
 
@@ -100,7 +76,7 @@ function getCellDisplay(cell: GridCell): string {
         class="editable-cell"
         :class="getCellClass(cell)"
       >
-        {{ getCellDisplay(cell) }}
+        {{ cellGlyph(cell) }}
       </div>
     </div>
     <div

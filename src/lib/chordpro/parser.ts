@@ -624,17 +624,10 @@ export function generateChordPro(song: ParsedSong): string {
 
 function cellToString(cell: GridCell): string {
 	switch (cell.type) {
-		case 'bar': return '|'
-		case 'barDouble': return '||'
-		case 'barEnd': return '|.'
-		case 'repeatStart': return '|:'
-		case 'repeatEnd': return ':|'
-		case 'repeatBoth': return ':|:'
 		case 'noChord': return '/'
 		case 'empty': return '.'
 		case 'repeat': return cell.value || '%'
 		case 'chord': return cell.value || ''
-		default: return ''
 	}
 }
 
