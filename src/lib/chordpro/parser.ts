@@ -562,7 +562,8 @@ function gridMeasuresToLine(measures: Measure[]): string {
 		} else {
 			tokens.push(...boundaryTokens(measures[index - 1]!.endBar, measure.startBar))
 		}
-		tokens.push(...measure.cells.map(cellToString))
+		const cellTokens = measure.cells.length > 0 ? measure.cells.map(cellToString) : ['.']
+		tokens.push(...cellTokens)
 	})
 	const last = measures[measures.length - 1]
 	if (last?.endBar === 'repeatEnd') tokens.push(':|')

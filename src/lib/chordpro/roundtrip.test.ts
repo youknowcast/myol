@@ -106,4 +106,29 @@ describe('chordpro round-trip', () => {
 			'hint0', 'hint1', 'hint2', 'hint3', 'hint4', 'hint5'
 		])
 	})
+
+	it('keeps an empty-cells measure alive as a placeholder beat', () => {
+		const text = generateChordPro({
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'C' }] },
+							{ cells: [], lyricsHint: 'ghost' },
+							{ cells: [{ type: 'chord', value: 'G' }] }
+						]
+					}
+				}
+			]
+		})
+
+		const measures = gridMeasures(text)
+		expect(measures.length).toBe(3)
+		expect(measures[1]!.cells).toEqual([{ type: 'empty' }])
+		expect(measures[1]!.lyricsHint).toBe('ghost')
+	})
 })
