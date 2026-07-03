@@ -50,4 +50,27 @@ describe('useGridViewState', () => {
 		const hasCurrent = cellsWithMeasures.value[0]?.some(cell => cell.isCurrentMeasure)
 		expect(hasCurrent).toBe(true)
 	})
+
+	it('derives measure indices from array position without bar cells', () => {
+		const wideGrid: GridSection = {
+			kind: 'grid',
+			measures: [
+				{ cells: [{ type: 'chord', value: 'C' }, { type: 'empty' }] },
+				{ cells: [{ type: 'chord', value: 'G' }] },
+				{ cells: [{ type: 'chord', value: 'Am' }] }
+			]
+		}
+		const { cellsWithMeasures } = useGridViewState({
+			grid: wideGrid,
+			currentMeasure: ref(-1),
+			measureOffset: ref(10)
+		})
+
+		// 2小節/行 → 行0 = 小節0,1 / 行1 = 小節2
+		expect(cellsWithMeasures.value.length).toBe(2)
+		expect(cellsWithMeasures.value[0]!.map(cell => cell.measureIndex)).toEqual([10, 10, 11])
+		expect(cellsWithMeasures.value[1]!.map(cell => cell.measureIndex)).toEqual([12])
+		const barTypes = ['bar', 'barDouble', 'barEnd', 'repeatStart', 'repeatEnd', 'repeatBoth']
+		expect(cellsWithMeasures.value.flat().some(cell => barTypes.includes(cell.type))).toBe(false)
+	})
 })
