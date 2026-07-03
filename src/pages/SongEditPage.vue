@@ -4,8 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useSongsStore } from '@/stores/songs'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { useBeatSignature } from '@/pages/song-edit/composables/useBeatSignature'
-import { useChordProDocument } from '@/composables/useChordProDocument'
-import { useChordProEditorSync } from '@/pages/song-edit/composables/useChordProEditorSync'
 import { useSongEditForm } from '@/pages/song-edit/composables/useSongEditForm'
 import { useGridSectionManager } from '@/pages/song-edit/composables/useGridSectionManager'
 import { useSongEditNavigation } from '@/pages/song-edit/composables/useSongEditNavigation'
@@ -52,17 +50,43 @@ const {
 `
 })
 
-const { autoAssignMeasuresToContent } = useChordProDocument({ content })
 const { beatsPerMeasure } = useBeatSignature(time)
-
-useChordProEditorSync({ content, editorStore })
 
 onMounted(async () => {
   await loadSong()
+  editorStore.loadDocument(content.value)
 })
 
+type EditMode = 'text' | 'visual'
+const editMode = ref<EditMode>('visual')
+
+function setEditMode(mode: EditMode) {
+  if (mode === editMode.value) return
+  if (mode === 'text') {
+    content.value = editorStore.serialize()
+  } else {
+    editorStore.loadDocument(content.value)
+  }
+  editMode.value = mode
+}
+
+function collectMetadata() {
+  return {
+    title: title.value || 'Untitled',
+    artist: artist.value,
+    key: key.value,
+    capo: capo.value,
+    tempo: tempo.value,
+    time: time.value
+  }
+}
+
 async function save() {
-  const song = await saveSong()
+  if (editMode.value === 'text') {
+    editorStore.loadDocument(content.value)
+  }
+  editorStore.updateMetadata(collectMetadata())
+  const song = await saveSong(editorStore.serialize())
   if (song) {
     router.push({ name: 'song-detail', params: { id: song.id } })
   }
@@ -75,13 +99,14 @@ const { goBack } = useSongEditNavigation({
 })
 
 function handleAutoAssignMeasures() {
-  autoAssignMeasuresToContent(beatsPerMeasure.value)
+  if (editMode.value === 'text') {
+    editorStore.loadDocument(content.value)
+  }
+  editorStore.autoAssign(beatsPerMeasure.value)
+  if (editMode.value === 'text') {
+    content.value = editorStore.serialize()
+  }
 }
-
-
-// Edit mode: 'text' or 'visual'
-type EditMode = 'text' | 'visual'
-const editMode = ref<EditMode>('visual')
 
 const {
   gridSections,
@@ -234,7 +259,7 @@ function commitLabelDialog() {
                 type="button"
                 class="mode-btn"
                 :class="{ active: editMode === 'visual' }"
-                @click="editMode = 'visual'"
+                @click="setEditMode('visual')"
               >
                 ビジュアル
               </button>
@@ -242,7 +267,7 @@ function commitLabelDialog() {
                 type="button"
                 class="mode-btn"
                 :class="{ active: editMode === 'text' }"
-                @click="editMode = 'text'"
+                @click="setEditMode('text')"
               >
                 テキスト(Professional)
               </button>
