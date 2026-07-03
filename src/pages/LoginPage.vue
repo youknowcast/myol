@@ -6,20 +6,21 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+const PASSCODE_LENGTH = 4
 const passcode = ref('')
 const error = ref(false)
 const inputRefs = ref<HTMLInputElement[]>([])
 const isSubmitting = ref(false)
 
 const passcodeChars = computed(() => passcode.value.split(''))
-const isPasscodeComplete = computed(() => passcode.value.length === 6)
+const isPasscodeComplete = computed(() => passcode.value.length === PASSCODE_LENGTH)
 
 onMounted(() => {
   inputRefs.value[0]?.focus()
 })
 
 function normalizePasscode(value: string): string {
-  return value.replace(/\D/g, '').slice(0, 6)
+  return value.replace(/\D/g, '').slice(0, PASSCODE_LENGTH)
 }
 
 function handleInput(index: number, event: Event) {
@@ -62,7 +63,7 @@ function handleKeydown(index: number, event: KeyboardEvent) {
     characters[index] = event.key
     passcode.value = normalizePasscode(characters.join(''))
     error.value = false
-    currentFocus(Math.min(index + 1, 5))
+    currentFocus(Math.min(index + 1, PASSCODE_LENGTH - 1))
     if (isPasscodeComplete.value) {
       attemptLogin()
     }
@@ -84,7 +85,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 function currentFocus(nextIndex: number) {
-  if (nextIndex >= 0 && nextIndex < 6) {
+  if (nextIndex >= 0 && nextIndex < PASSCODE_LENGTH) {
     inputRefs.value[nextIndex]?.focus()
   }
 }
@@ -122,13 +123,14 @@ const canSubmit = computed(() => isPasscodeComplete.value && !isSubmitting.value
         <img src="/icon-192.png" alt="myol" class="logo-icon" />
       </div>
 
-      <p class="login-subtitle">6桁の数字パスコードを入力</p>
+      <p class="login-subtitle">4桁の数字パスコードを入力</p>
 
-      <label class="login-label" for="passcode">パスコード (6桁数字)</label>
+      <label class="login-label" for="passcode">パスコード (4桁数字)</label>
       <div class="pin-input-container" :class="{ 'has-error': error }">
         <input
-          v-for="(_, index) in 6"
+          v-for="(_, index) in PASSCODE_LENGTH"
           :key="index"
+          :id="index === 0 ? 'passcode' : undefined"
           :value="passcodeChars[index] ?? ''"
           type="text"
           inputmode="numeric"

@@ -60,7 +60,6 @@ scripts/                # ユーティリティスクリプト
 
 | 変数 | 用途 |
 |------|------|
-| `VITE_AUTH_CONFIG_KEY` | 認証設定 JSON の S3 キー (既定: `config/auth.json`) |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 | `LAMBDA_ROLE_ARN` | Lambda デプロイ時の IAM ロール ARN |
 
@@ -148,6 +147,6 @@ lambroll + esbuild 使用時、出力が `dist/index.js` の場合:
 
 ## 一般的な注意事項
 
-- 認証は S3 上の `config/auth.json` を参照する方針 (6桁数字 + bcrypt 照合)
+- 認証はコード内の固定4桁パスコード照合（`src/stores/auth.ts` の `FIXED_PASSCODE`）。抑止目的のみの意図的なダウングレード（docs/superpowers/specs/2026-07-04-auth-simplification-design.md 参照）
 - S3 バケットは us-west-2 リージョン
 - Lambda 関数 URL の CORS は本番 Origin のみ許可 (`AllowOrigins=*` は使わない)

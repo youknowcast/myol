@@ -20,14 +20,10 @@ jobs:
     env:
       MYOL_AWS_REGION: ${{ vars.MYOL_AWS_REGION }}
       MYOL_WEB_BUCKET: ${{ vars.MYOL_WEB_BUCKET }}
-      MYOL_DATA_BUCKET: ${{ vars.MYOL_DATA_BUCKET }}
       MYOL_LAMBDA_FUNCTION_NAME: ${{ vars.MYOL_LAMBDA_FUNCTION_NAME }}
       VITE_API_ENDPOINT: ${{ vars.MYOL_API_ENDPOINT }}
       MYOL_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.MYOL_CLOUDFRONT_DISTRIBUTION_ID }}
       AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-      MYOL_AUTH_CONFIG_JSON: ${{ secrets.MYOL_AUTH_CONFIG_JSON }}
-      MYOL_AUTH_USERS_CONFIG_JSON: ${{ secrets.MYOL_AUTH_USERS_CONFIG_JSON }}
-      VITE_AUTH_CONFIG_KEY: config/auth.json
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,23 +49,12 @@ jobs:
 
       - name: Validate required deployment env
         run: |
-          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_DATA_BUCKET MYOL_LAMBDA_FUNCTION_NAME VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID AWS_DEPLOY_ROLE_ARN; do
+          for name in MYOL_AWS_REGION MYOL_WEB_BUCKET MYOL_LAMBDA_FUNCTION_NAME VITE_API_ENDPOINT MYOL_CLOUDFRONT_DISTRIBUTION_ID AWS_DEPLOY_ROLE_ARN; do
             if [ -z "${!name:-}" ]; then
               echo "Missing required value: $name" >&2
               exit 1
             fi
           done
-
-          if [ -z "${MYOL_AUTH_CONFIG_JSON:-}" ] && [ -z "${MYOL_AUTH_USERS_CONFIG_JSON:-}" ]; then
-            echo "Missing auth config secret. Set MYOL_AUTH_CONFIG_JSON." >&2
-            exit 1
-          fi
-
-      - name: Validate auth config JSON
-        run: |
-          AUTH_CONFIG_JSON="${MYOL_AUTH_CONFIG_JSON:-$MYOL_AUTH_USERS_CONFIG_JSON}"
-          AUTH_CONFIG_JSON="$AUTH_CONFIG_JSON" node -e "const raw=process.env.AUTH_CONFIG_JSON||''; let parsed; try { parsed=JSON.parse(raw); } catch { console.error('Auth config is not valid JSON'); process.exit(1); } if (!parsed || typeof parsed.passcodeHash !== 'string' || parsed.passcodeHash.trim() === '') { console.error('Auth config must contain a non-empty passcodeHash string'); process.exit(1); }"
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -93,15 +78,6 @@ jobs:
             --region "$MYOL_AWS_REGION" >/dev/null
           aws lambda wait function-updated \
             --function-name "$MYOL_LAMBDA_FUNCTION_NAME" \
-            --region "$MYOL_AWS_REGION"
-
-      - name: Upload auth config to S3
-        run: |
-          tmp_file="$(mktemp -t myol-auth-config.XXXXXX.json)"
-          AUTH_CONFIG_JSON="${MYOL_AUTH_CONFIG_JSON:-$MYOL_AUTH_USERS_CONFIG_JSON}"
-          printf '%s' "$AUTH_CONFIG_JSON" > "$tmp_file"
-          aws s3 cp "$tmp_file" "s3://${MYOL_DATA_BUCKET}/config/auth.json" \
-            --content-type "application/json; charset=utf-8" \
             --region "$MYOL_AWS_REGION"
 
       - name: Sync dist to S3
