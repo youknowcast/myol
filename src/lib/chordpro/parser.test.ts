@@ -199,4 +199,31 @@ describe('measure annotations (new format)', () => {
 		expect(grid.measures[1]!.startBar).toBe('repeatStart')
 		expect(grid.measures[1]!.endBar).toBe('barEnd')
 	})
+
+	it('carries a dangling repeat-start bar to the next grid line', () => {
+		const content = `{start_of_grid}
+|| G . . . |:
+| D . . . :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.startBar).toBeUndefined()
+		expect(grid.measures[1]!.startBar).toBe('repeatStart')
+		expect(grid.measures[1]!.endBar).toBe('repeatEnd')
+	})
+
+	it('attaches endBar to the previous measure across consecutive bar tokens', () => {
+		const content = `{start_of_grid}
+|| G . . . || :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(1)
+		expect(grid.measures[0]!.endBar).toBe('repeatEnd')
+	})
 })

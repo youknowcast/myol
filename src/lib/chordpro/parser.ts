@@ -46,10 +46,13 @@ interface GridLineEntry {
 	annotations: MeasureAnnotationEntry[]
 }
 
-function parseGridLineToMeasures(line: string): Measure[] {
+function parseGridLineToMeasures(
+	line: string,
+	carriedStartBar?: Measure['startBar']
+): { measures: Measure[]; danglingStartBar?: Measure['startBar'] } {
 	const measures: Measure[] = []
 	let currentCells: GridCell[] = []
-	let pendingStartBar: Measure['startBar']
+	let pendingStartBar: Measure['startBar'] = carriedStartBar
 
 	function closeMeasure(endBar?: Measure['endBar']) {
 		if (currentCells.length > 0) {
@@ -103,7 +106,7 @@ function parseGridLineToMeasures(line: string): Measure[] {
 		}
 	}
 	closeMeasure()
-	return measures
+	return { measures, danglingStartBar: pendingStartBar }
 }
 
 function buildGridMeasures(entries: GridLineEntry[], trailing: MeasureAnnotationEntry[]): Measure[] {
@@ -231,6 +234,7 @@ export function parseChordPro(content: string): ParsedSong {
 	let gridShape: string | undefined
 	let gridLines: GridLineEntry[] = []
 	let pendingAnnotations: MeasureAnnotationEntry[] = []
+	let gridCarryStartBar: Measure['startBar']
 	let tabLines: string[] = []
 	let lyricsLines: LyricsLine[] = []
 	let currentLabel: string | undefined
@@ -305,6 +309,7 @@ export function parseChordPro(content: string): ParsedSong {
 					gridShape = extractShape(val)
 					gridLines = []
 					pendingAnnotations = []
+					gridCarryStartBar = undefined
 				} else if (sectionType === 'tab') {
 					inTab = true
 					tabLines = []
@@ -363,7 +368,8 @@ export function parseChordPro(content: string): ParsedSong {
 
 		// Parse content based on current context
 		if (inGrid) {
-			const measures = parseGridLineToMeasures(trimmed)
+			const { measures, danglingStartBar } = parseGridLineToMeasures(trimmed, gridCarryStartBar)
+			gridCarryStartBar = danglingStartBar
 			if (measures.length > 0) {
 				gridLines.push({ measures, annotations: pendingAnnotations })
 				pendingAnnotations = []
