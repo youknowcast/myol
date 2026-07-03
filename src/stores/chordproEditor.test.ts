@@ -104,4 +104,27 @@ describe('chordproEditor store', () => {
 		store.autoAssign(4)
 		expect(store.gridSections.length).toBeGreaterThan(0)
 	})
+
+	it('round-trips document through serialize/loadDocument without change (mode-switch contract)', () => {
+		const store = useChordProEditorStore()
+		store.loadDocument(CONTENT)
+		store.addMeasure(0, 'end', null)
+		store.mergeLyrics(0, 1, 'left')
+		const text = store.serialize()
+		const before = JSON.parse(JSON.stringify(store.document))
+		store.loadDocument(text)
+		expect(JSON.parse(JSON.stringify(store.document))).toEqual(before)
+		expect(store.serialize()).toBe(text)
+	})
+
+	it('applies metadata at save time without disturbing grid content (save contract)', () => {
+		const store = useChordProEditorStore()
+		store.loadDocument(CONTENT)
+		const gridBefore = JSON.parse(JSON.stringify(grid(store, 0)))
+		store.updateMetadata({ title: 'Saved', artist: 'X', key: 'D', capo: 1, tempo: 88, time: '4/4' })
+		const reparsed = useChordProEditorStore()
+		reparsed.loadDocument(store.serialize())
+		expect(reparsed.document!.title).toBe('Saved')
+		expect(JSON.parse(JSON.stringify(grid(reparsed, 0)))).toEqual(gridBefore)
+	})
 })

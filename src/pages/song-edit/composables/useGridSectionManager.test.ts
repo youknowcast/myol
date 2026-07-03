@@ -6,7 +6,6 @@ const createStore = () => ({
 		{ type: 'grid' as const, label: undefined, content: { kind: 'grid' as const, measures: [{ cells: [{ type: 'empty' as const }] }] } }
 	],
 	gridSections: [{ index: 0, section: { type: 'grid' as const, label: undefined, content: { kind: 'grid' as const, measures: [{ cells: [{ type: 'empty' as const }] }] } } }],
-	updateSectionContent: () => undefined,
 	updateSectionLabel: () => undefined,
 	addGridSection: () => undefined,
 	removeSection: () => undefined,

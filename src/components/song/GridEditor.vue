@@ -32,7 +32,7 @@ function cellIndexFromId(id: string | null, fallback: number | null): number {
   return typeof fallback === 'number' ? fallback : -1
 }
 
-function selectMeasure(index: number) {
+function toggleMeasureSelection(index: number) {
   emit('select-measure', props.selectedMeasureIndex === index ? null : index)
 }
 
@@ -125,7 +125,7 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
       :section-index="sectionIndex"
       :can-move-prev-section="prevSectionIndex !== null"
       :can-move-next-section="nextSectionIndex !== null"
-      @select="selectMeasure"
+      @select="toggleMeasureSelection"
       @add-measure="handleAddMeasure"
       @copy="handleCopyMeasure"
       @swap="handleSwapMeasure"

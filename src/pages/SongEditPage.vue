@@ -52,6 +52,8 @@ const {
 
 const { beatsPerMeasure } = useBeatSignature(time)
 
+const saveError = ref<string | null>(null)
+
 onMounted(async () => {
   await loadSong()
   editorStore.loadDocument(content.value)
@@ -82,6 +84,7 @@ function collectMetadata() {
 }
 
 async function save() {
+  saveError.value = null
   if (editMode.value === 'text') {
     editorStore.loadDocument(content.value)
   }
@@ -92,7 +95,7 @@ async function save() {
       router.push({ name: 'song-detail', params: { id: song.id } })
     }
   } catch {
-    // songsStore.error に詳細が入る。ここでは遷移しないことが本質
+    saveError.value = songsStore.error ?? '不明なエラー'
   }
 }
 
@@ -165,8 +168,8 @@ function commitLabelDialog() {
       </div>
     </header>
 
-    <div v-if="songsStore.error" class="save-error" role="alert">
-      保存に失敗しました: {{ songsStore.error }}
+    <div v-if="saveError" class="save-error" role="alert">
+      保存に失敗しました: {{ saveError }}
     </div>
 
     <main class="edit-content">

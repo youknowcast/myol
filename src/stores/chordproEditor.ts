@@ -96,11 +96,6 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 	}
 
 	// Section actions
-	function updateSectionContent(index: number, content: GridSection) {
-		if (!document.value || !document.value.sections[index]) return
-		document.value.sections[index]!.content = content
-	}
-
 	function updateSectionLabel(index: number, label: string | undefined) {
 		if (!document.value || !document.value.sections[index]) return
 		document.value.sections[index]!.label = label
@@ -242,7 +237,6 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		updateMetadata,
 		autoAssign,
 		// Sections
-		updateSectionContent,
 		updateSectionLabel,
 		addGridSection,
 		removeSection,
