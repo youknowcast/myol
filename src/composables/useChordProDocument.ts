@@ -4,7 +4,7 @@ import {
 	parseBeatsPerMeasure,
 	parseChordProToExtended
 } from '@/lib/chordpro/parser'
-import type { ParsedSong, GridSection, LyricsSection } from '@/lib/chordpro/types'
+import type { ParsedSong, GridSection } from '@/lib/chordpro/types'
 
 
 export interface UseChordProDocumentOptions {
@@ -41,12 +41,9 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 	const totalMeasures = computed(() => {
 		if (!parsedSong.value) return 1
 		let count = 0
-
 		for (const section of parsedSong.value.sections) {
 			if (section.content.kind === 'grid') {
 				count += countMeasuresInGrid(section.content as GridSection)
-			} else if (section.content.kind === 'lyrics') {
-				count += (section.content as LyricsSection).lines.length
 			}
 		}
 		return Math.max(count, 1)
@@ -56,16 +53,12 @@ export function useChordProDocument(options: UseChordProDocumentOptions): UseCho
 		if (!parsedSong.value) return []
 		const offsets: number[] = []
 		let offset = 0
-
 		for (const section of parsedSong.value.sections) {
 			offsets.push(offset)
 			if (section.content.kind === 'grid') {
 				offset += countMeasuresInGrid(section.content as GridSection)
-			} else if (section.content.kind === 'lyrics') {
-				offset += (section.content as LyricsSection).lines.length
 			}
 		}
-
 		return offsets
 	})
 

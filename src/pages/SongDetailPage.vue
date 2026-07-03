@@ -8,6 +8,7 @@ import { useChordProDocument } from '@/composables/useChordProDocument'
 import { useSongDetailViewState } from '@/pages/song-detail/composables/useSongDetailViewState'
 import { useSongDetailNavigation } from '@/pages/song-detail/composables/useSongDetailNavigation'
 import { useSongChords } from '@/pages/song-detail/composables/useSongChords'
+import type { LyricsLine, Section } from '@/lib/chordpro/types'
 import GridView from '@/components/song/GridView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
 import SpeedControl from '@/components/player/SpeedControl.vue'
@@ -67,6 +68,14 @@ const { handleSeek, handleScroll } = usePlaybackSync({
 
 function handleSeekToMeasure(measureIndex: number) {
   playback.seekToMeasure(measureIndex)
+}
+
+function lyricsLines(section: Section): LyricsLine[] {
+  return section.content.kind === 'lyrics' ? section.content.lines : []
+}
+
+function lyricsLineText(line: LyricsLine): string {
+  return line.segments.map(segment => segment.text).join('')
 }
 
 const { goBack, goToEdit } = useSongDetailNavigation({ router, songId })
@@ -166,6 +175,21 @@ onUnmounted(() => {
               >
                 <div v-if="section.label" class="section-label">{{ section.label }}</div>
                 <pre class="tab-content">{{ section.content.lines.join('\n') }}</pre>
+              </div>
+
+              <!-- Lyrics-only sections (static text, no playback timing) -->
+              <div
+                v-if="section.content.kind === 'lyrics'"
+                class="lyrics-section"
+              >
+                <div v-if="section.label" class="section-label">{{ section.label }}</div>
+                <p
+                  v-for="(line, lineIndex) in lyricsLines(section)"
+                  :key="lineIndex"
+                  class="lyrics-line"
+                >
+                  {{ lyricsLineText(line) || ' ' }}
+                </p>
               </div>
             </template>
           </div>
@@ -325,6 +349,16 @@ onUnmounted(() => {
   overflow-x: auto;
   white-space: pre;
   line-height: 1.4;
+}
+
+.lyrics-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.lyrics-line {
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+  margin: 0;
 }
 
 .player-bar {
