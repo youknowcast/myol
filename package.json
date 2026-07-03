@@ -9,12 +9,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --ext .ts,.vue",
-    "hash:passcode": "node -e \"const bcrypt=require('bcryptjs');const pass=process.argv[1];if(!pass){console.error('passcode required');process.exit(1);}const normalized=String(pass).trim().toUpperCase();console.log(bcrypt.hashSync(normalized,10));\"",
-    "hash:passcode:b64": "node -e \"const bcrypt=require('bcryptjs');const pass=process.argv[1];if(!pass){console.error('passcode required');process.exit(1);}const normalized=String(pass).trim().toUpperCase();const hash=bcrypt.hashSync(normalized,10);const b64=Buffer.from(hash,'utf8').toString('base64').replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,'');console.log('b64:'+b64);\""
+    "lint": "eslint . --ext .ts,.vue"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
     "pinia": "^3.0.4",
     "sortablejs": "^1.15.6",
     "vue": "^3.5.24",

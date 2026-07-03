@@ -25,39 +25,15 @@ cp .env.example .env
 
 | 変数 | 説明 |
 |------|------|
-| `VITE_AUTH_CONFIG_KEY` | 認証設定を保存する S3 キー (既定: `config/auth.json`) |
 | `VITE_API_ENDPOINT` | Lambda 関数 URL |
 
-## 認証仕様 (移行中)
+## 認証
 
-認証は次の仕様に統一予定です。
+ログインは4桁数字の固定パスコードです（値は `src/stores/auth.ts` の定数）。
 
-- ログイン入力は **6桁数字のみ** (`/^\d{6}$/`)
-- フロントは S3 上の認証設定 (`config/auth.json`) を取得して照合
-- 照合は `bcrypt.compare` を使う
-- `VITE_AUTH_USERS` による埋め込み認証は廃止予定
-
-`config/auth.json` の例:
-
-```json
-{
-  "passcodeHash": "$2b$10$...",
-  "version": 1
-}
-```
-
-`passcodeHash` は以下のスクリプトで生成できます。
-
-```bash
-npm run hash:passcode -- 123456
-```
-
-`version` は任意ですが、セッション失効判定に使えるため付与を推奨します。
-
-### ローカル開発時の扱い
-
-ローカルでのログインスキップは検討中です。現在は本番仕様優先で、
-`VITE_API_ENDPOINT` と S3 上の認証設定を前提に動作確認してください。
+- 目的は「初見の第三者が操作できないようにする」抑止のみで、それ以上の保護は意図していません（パスコードはリポジトリおよび配布バンドルから読み取れます）
+- セッションは localStorage に保存され、12時間で失効します
+- ネットワーク・外部設定に依存しないため、ローカル開発でもそのままログインできます
 
 ## デプロイ (CI)
 
@@ -77,8 +53,3 @@ npm run hash:passcode -- 123456
 
 - `AWS_DEPLOY_ROLE_ARN` (GitHub OIDC で Assume するロール)
 - `MYOL_CLOUDFRONT_DISTRIBUTION_ID`
-- `MYOL_AUTH_CONFIG_JSON` (`config/auth.json` を自動更新。`passcodeHash` を含む JSON が必須)
-- `MYOL_AUTH_USERS_CONFIG_JSON` (互換用。未設定なら無視される)
-
-CI では `MYOL_AUTH_CONFIG_JSON` または `MYOL_AUTH_USERS_CONFIG_JSON` のどちらか1つが必須です。
-どちらを使う場合でも、`{"passcodeHash":"..."}` 形式の JSON を設定してください。
