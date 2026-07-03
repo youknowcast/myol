@@ -125,6 +125,23 @@ describe('parseChordProToExtended', () => {
 		const grid = parsed.sections[0]!.content as GridSection
 		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'noChord', 'empty'])
 	})
+
+	it('splits long chord lines into measures by beatsPerMeasure', () => {
+		const content = `{time: 4/4}
+
+{start_of_verse}
+[C]a [G]b [Am]c [F]d [C]e [G]f
+{end_of_verse}
+`
+
+		const parsed = parseChordProToExtended(content)
+		const grid = parsed.sections.find(section => section.content.kind === 'grid')!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.cells.map(cell => cell.value)).toEqual(['C', 'G', 'Am', 'F'])
+		expect(grid.measures[1]!.cells.map(cell => cell.value)).toEqual(['C', 'G'])
+		expect(grid.measures[0]!.lyricsHint).toBe('a b c d e f')
+		expect(grid.measures[1]!.lyricsHint).toBeUndefined()
+	})
 })
 
 describe('measure annotations (new format)', () => {
