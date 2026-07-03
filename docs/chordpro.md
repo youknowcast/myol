@@ -33,27 +33,48 @@ Supported bar types:
 - `:|:` : Repeat both
 - `|.` : End bar
 
+Repeat/end bars are preserved per measure across save (`Measure.startBar` /
+`Measure.endBar` internally); plain `|` and `||` are layout-normalized to
+4 measures per line when saving.
+
 ### Symbols
 - `.` : Empty beat/spacer
 - `%` : Repeat previous measure
-- `/` : No chord (rhythmic hit)
+- `/` : No chord (rhythmic hit) — parsed as a dedicated no-chord cell
 
 ## Lyrics Hints
 
-To associate lyrics with grid measures without breaking the grid structure, we use the `{lyrics_hint}` directive.
+To associate lyrics with grid measures, place a `{lyrics_hint}` directive
+directly above a grid row. The hint text is split by `|`, and each segment
+maps 1:1 to the measures of that row, in order.
 
 ```chordpro
 {start_of_grid}
-{lyrics_hint: Amazing grace, how sweet the sound}
+{lyrics_hint: Amazing grace how | sweet the sound}
 | G . . . | C . G . |
-{lyrics_hint: That saved a wretch like me}
+{lyrics_hint: That saved a | wretch like me}
 | G . . . | D . . . |
 {end_of_grid}
 ```
 
-- Each `{lyrics_hint}` applies to the **entire row** of the grid following it.
-- In the Grid View, these hints are displayed directly underneath the chord line.
-- Playback highlighting tracks both the chord and the corresponding hint.
+- Each segment attaches to the measure at the same position (**per measure**,
+  not per row).
+- An empty segment means "no hint for this measure"
+  (`{lyrics_hint: | sweet}` leaves the first measure without a hint).
+- Segments beyond the number of measures in the row are ignored.
+- `|` cannot be used inside hint text; when saving, the app replaces it with
+  the full-width `｜`.
+- Measure annotations generalize this mechanism: future directives
+  (e.g. strumming patterns) follow the same "annotation line above the row,
+  `|`-separated per measure" form.
+
+### Legacy format (read-only)
+
+Files saved by older versions carry `{lyrics_hint}` directives as a trailing
+block after the grid rows, or one hint line per row without `|`. These are
+still read (hints are matched by count: per-measure when counts match, else
+per-row onto each row's first measure), but the app always saves in the new
+format above.
 
 ## Sections and Labels
 
