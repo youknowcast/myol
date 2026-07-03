@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useGridMeasureActions } from '@/components/song/composables/useGridMeasureActions'
+import { computed } from 'vue'
+import { useChordProEditorStore } from '@/stores/chordproEditor'
+import { useEditableMeasures } from '@/components/song/composables/useEditableMeasures'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridMeasureList from '@/components/song/GridMeasureList.vue'
 
@@ -9,55 +10,74 @@ interface Props {
   sectionIndex: number
   prevSectionIndex: number | null
   nextSectionIndex: number | null
+  selectedMeasureIndex: number | null
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: GridSection): void
   (e: 'select-measure', value: number | null): void
-  (e: 'move-cell-across-section', payload: {
-    fromSectionIndex: number
-    toSectionIndex: number
-    fromMeasureIndex: number
-    toMeasureIndex: number
-    fromOrder: string[]
-    toOrder: string[]
-    movedCellId: string | null
-    oldIndex: number | null
-    newIndex: number | null
-  }): void
-  (e: 'move-measure-across-section', payload: {
-    fromSectionIndex: number
-    toSectionIndex: number
-    fromMeasureIndex: number
-  }): void
 }
 
 const props = defineProps<Props>()
-
 const emit = defineEmits<Emits>()
+const store = useChordProEditorStore()
 
-const selectedMeasureIndex = ref<number | null>(null)
-const modelValue = computed(() => props.modelValue)
+const measures = computed(() => props.modelValue.measures ?? [])
+const { displayMeasures } = useEditableMeasures(measures)
 
-const {
-  measures,
-  displayMeasures,
-  selectMeasure,
-  handleAddMeasure,
-  handleCopyMeasure,
-  handleDeleteMeasure,
-  handleDeleteLyrics,
-  handleDeleteChords,
-  handleSwapMeasure,
-  handleMergeLyrics,
-  handleReorder,
-  handleMoveAcrossMeasures
-} = useGridMeasureActions({
-  modelValue,
-  selectedMeasureIndex,
-  onUpdate: (section) => emit('update:modelValue', section),
-  onSelect: (index) => emit('select-measure', index)
-})
+function cellIndexFromId(id: string | null, fallback: number | null): number {
+  if (id) {
+    const parsed = Number.parseInt(id.split('-')[1] ?? '', 10)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return typeof fallback === 'number' ? fallback : -1
+}
+
+function selectMeasure(index: number) {
+  emit('select-measure', props.selectedMeasureIndex === index ? null : index)
+}
+
+function handleAddMeasure(position: 'end' | 'before' | 'after') {
+  store.addMeasure(props.sectionIndex, position, props.selectedMeasureIndex)
+}
+
+function handleCopyMeasure() {
+  if (props.selectedMeasureIndex === null) return
+  store.copyMeasure(props.sectionIndex, props.selectedMeasureIndex)
+}
+
+function handleDeleteMeasure() {
+  if (props.selectedMeasureIndex === null) return
+  store.deleteMeasure(props.sectionIndex, props.selectedMeasureIndex)
+  emit('select-measure', null)
+}
+
+function handleDeleteLyrics() {
+  if (props.selectedMeasureIndex === null) return
+  store.clearLyrics(props.sectionIndex, props.selectedMeasureIndex)
+}
+
+function handleDeleteChords() {
+  if (props.selectedMeasureIndex === null) return
+  store.clearChords(props.sectionIndex, props.selectedMeasureIndex)
+}
+
+function handleSwapMeasure(direction: 'left' | 'right') {
+  const current = props.selectedMeasureIndex
+  if (current === null) return
+  const target = direction === 'left' ? current - 1 : current + 1
+  if (target < 0 || target >= measures.value.length) return
+  store.swapMeasure(props.sectionIndex, current, direction)
+  emit('select-measure', target)
+}
+
+function handleMergeLyrics(direction: 'left' | 'right', sourceIndex: number) {
+  store.mergeLyrics(props.sectionIndex, sourceIndex, direction)
+}
+
+function handleReorder(measureIndex: number, orderedCellIds: string[]) {
+  const newOrder = orderedCellIds.map(id => cellIndexFromId(id, null))
+  store.reorderCells(props.sectionIndex, measureIndex, newOrder)
+}
 
 function handleMoveCell(payload: {
   fromSectionIndex: number
@@ -70,11 +90,16 @@ function handleMoveCell(payload: {
   oldIndex: number | null
   newIndex: number | null
 }) {
-  if (payload.fromSectionIndex !== payload.toSectionIndex) {
-    emit('move-cell-across-section', payload)
-    return
-  }
-  handleMoveAcrossMeasures(payload)
+  const sourceCellIndex = cellIndexFromId(payload.movedCellId, payload.oldIndex)
+  if (sourceCellIndex < 0) return
+  store.moveCell({
+    fromSectionIndex: payload.fromSectionIndex,
+    toSectionIndex: payload.toSectionIndex,
+    fromMeasureIndex: payload.fromMeasureIndex,
+    toMeasureIndex: payload.toMeasureIndex,
+    sourceCellIndex,
+    newIndex: payload.newIndex
+  })
 }
 
 function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: number }) {
@@ -82,11 +107,7 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
     ? props.prevSectionIndex
     : props.nextSectionIndex
   if (targetSectionIndex === null) return
-  emit('move-measure-across-section', {
-    fromSectionIndex: props.sectionIndex,
-    toSectionIndex: targetSectionIndex,
-    fromMeasureIndex: payload.measureIndex
-  })
+  store.moveMeasureAcrossSections(props.sectionIndex, targetSectionIndex, payload.measureIndex)
 }
 
 </script>

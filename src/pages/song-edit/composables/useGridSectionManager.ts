@@ -67,10 +67,6 @@ export function useGridSectionManager(store: GridSectionManagerStore) {
 		setSelectedMeasure(index + 1, null)
 	}
 
-	function updateGridSection(index: number, content: GridSection) {
-		store.updateSectionContent(index, content)
-	}
-
 	return {
 		gridSections,
 		selectedMeasureBySection,
@@ -81,7 +77,6 @@ export function useGridSectionManager(store: GridSectionManagerStore) {
 		addSection,
 		removeSection,
 		moveSection,
-		splitSection,
-		updateGridSection
+		splitSection
 	}
 }

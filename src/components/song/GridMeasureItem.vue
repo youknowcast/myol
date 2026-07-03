@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
-import type { EditableMeasure } from '@/components/song/composables/useGridMeasureEditor'
+import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
 
 interface Props {
