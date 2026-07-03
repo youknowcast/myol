@@ -51,21 +51,18 @@ export interface LyricsSegment {
 export interface GridSection {
 	kind: 'grid'
 	shape?: string
-	measures: Measure[]  // 新形式: 小節ごとに歌詞を持つ
+	measures: Measure[]
 }
 
-export interface GridRow {
-	cells: GridCell[]
-}
-
-// 新しい Measure インターフェース: 歌詞を直接関連付け
 export interface Measure {
 	cells: GridCell[]
-	lyricsHint?: string  // この小節に対応する歌詞
+	lyricsHint?: string
+	startBar?: 'repeatStart'
+	endBar?: 'repeatEnd' | 'barEnd'
 }
 
 export interface GridCell {
-	type: 'chord' | 'empty' | 'repeat' | 'bar' | 'barDouble' | 'barEnd' | 'repeatStart' | 'repeatEnd' | 'repeatBoth'
+	type: 'chord' | 'noChord' | 'empty' | 'repeat' | 'bar' | 'barDouble' | 'barEnd' | 'repeatStart' | 'repeatEnd' | 'repeatBoth'
 	value?: string
 }
 

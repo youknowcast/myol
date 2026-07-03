@@ -18,4 +18,9 @@ describe('useGridCellDisplay', () => {
 		expect(getCellClass({ type: 'chord' })).toEqual(['grid-chord'])
 		expect(getCellClass({ type: 'repeat' })).toEqual(['grid-repeat'])
 	})
+
+	it('displays noChord cells as slash', () => {
+		const { getCellDisplay } = useGridCellDisplay()
+		expect(getCellDisplay({ type: 'noChord' })).toBe('/')
+	})
 })

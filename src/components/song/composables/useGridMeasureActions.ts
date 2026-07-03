@@ -32,8 +32,8 @@ export function useGridMeasureActions(options: UseGridMeasureActionsOptions) {
     options.onUpdate({
       ...options.modelValue.value,
       measures: newMeasures.map(measure => ({
-        cells: measure.cells.map(cell => ({ ...cell })),
-        lyricsHint: measure.lyricsHint
+        ...measure,
+        cells: measure.cells.map(cell => ({ ...cell }))
       }))
     })
   }

@@ -1,5 +1,4 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { gridRowsFromMeasures } from '@/lib/chordpro/parser'
 import type { GridCell, GridSection } from '@/lib/chordpro/types'
 
 export interface CellWithMeasure extends GridCell {
@@ -21,42 +20,26 @@ export function useGridViewState(options: UseGridViewStateOptions) {
 	)
 
 	const cellsWithMeasures: ComputedRef<CellWithMeasure[][]> = computed(() => {
-		let measureIndex = 0
-		let hasSeenFirstBar = false
-		let hasSeenNonBarSinceLastBar = false
-		const result: CellWithMeasure[][] = []
-		const rows = gridRowsFromMeasures(options.grid.measures, measuresPerRow)
+		const rows: CellWithMeasure[][] = []
+		const measures = options.grid.measures
 
-		for (const row of rows) {
+		for (let start = 0; start < measures.length; start += measuresPerRow) {
 			const rowCells: CellWithMeasure[] = []
-
-			for (const cell of row.cells) {
-				const isBar = cell.type === 'bar' || cell.type === 'barDouble' ||
-					cell.type === 'barEnd' || cell.type === 'repeatStart' ||
-					cell.type === 'repeatEnd' || cell.type === 'repeatBoth'
-
-				if (isBar) {
-					if (hasSeenFirstBar && hasSeenNonBarSinceLastBar) {
-						measureIndex++
-					}
-					hasSeenFirstBar = true
-					hasSeenNonBarSinceLastBar = false
-				} else {
-					hasSeenNonBarSinceLastBar = true
+			measures.slice(start, start + measuresPerRow).forEach((measure, indexInRow) => {
+				const globalIndex = start + indexInRow + options.measureOffset.value
+				for (const cell of measure.cells) {
+					rowCells.push({
+						type: cell.type,
+						value: cell.value,
+						measureIndex: globalIndex,
+						isCurrentMeasure: globalIndex === options.currentMeasure.value
+					})
 				}
-
-				const currentIndex = measureIndex + options.measureOffset.value
-				rowCells.push({
-					type: cell.type,
-					value: cell.value,
-					measureIndex: currentIndex,
-					isCurrentMeasure: currentIndex === options.currentMeasure.value
-				})
-			}
-			result.push(rowCells)
+			})
+			rows.push(rowCells)
 		}
 
-		return result
+		return rows
 	})
 
 	const currentRowIndex = computed(() => {

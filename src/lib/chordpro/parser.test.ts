@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordProToExtended, ensureGridMeasures } from './parser'
+import { parseChordPro, parseChordProToExtended, generateChordPro } from './parser'
 import type { GridSection, ParsedSong } from './types'
 
 describe('parseChordProToExtended', () => {
@@ -94,24 +94,212 @@ describe('parseChordProToExtended', () => {
 		expect(grid.measures?.[1]?.lyricsHint).toBeUndefined()
 	})
 
-	it('does not overwrite existing measures', () => {
+	it('parses / as a no-chord cell', () => {
+		const content = `{start_of_grid}
+|| C . / . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordProToExtended(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'noChord', 'empty'])
+	})
+
+	it('splits long chord lines into measures by beatsPerMeasure', () => {
+		const content = `{time: 4/4}
+
+{start_of_verse}
+[C]a [G]b [Am]c [F]d [C]e [G]f
+{end_of_verse}
+`
+
+		const parsed = parseChordProToExtended(content)
+		const grid = parsed.sections.find(section => section.content.kind === 'grid')!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.cells.map(cell => cell.value)).toEqual(['C', 'G', 'Am', 'F'])
+		expect(grid.measures[1]!.cells.map(cell => cell.value)).toEqual(['C', 'G'])
+		expect(grid.measures[0]!.lyricsHint).toBe('a b c d e f')
+		expect(grid.measures[1]!.lyricsHint).toBeUndefined()
+	})
+})
+
+describe('measure annotations (new format)', () => {
+	it('assigns |-separated hint segments to the measures of the following row', () => {
+		const content = `{start_of_grid}
+{lyrics_hint: Amazing grace how | sweet the sound}
+|| G . . . | C . G . ||
+{lyrics_hint: That saved a | wretch like me}
+|| G . . . | D . . . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(4)
+		expect(grid.measures[0]!.lyricsHint).toBe('Amazing grace how')
+		expect(grid.measures[1]!.lyricsHint).toBe('sweet the sound')
+		expect(grid.measures[2]!.lyricsHint).toBe('That saved a')
+		expect(grid.measures[3]!.lyricsHint).toBe('wretch like me')
+	})
+
+	it('treats empty segments as no hint and ignores extra segments', () => {
+		const content = `{start_of_grid}
+{lyrics_hint: | sweet | extra | over}
+|| G . . . | C . . . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.lyricsHint).toBeUndefined()
+		expect(grid.measures[1]!.lyricsHint).toBe('sweet')
+	})
+
+	it('keeps trailing hint blocks on the legacy path (per-measure when counts match)', () => {
+		const content = `{start_of_grid}
+|| C . . . | G . . . ||
+{lyrics_hint: Line 1}
+{lyrics_hint: Line 2}
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.lyricsHint).toBe('Line 1')
+		expect(grid.measures[1]!.lyricsHint).toBe('Line 2')
+	})
+
+	it('captures repeat bars on measure boundaries', () => {
+		const content = `{start_of_grid}
+|: G . . . | C . . . :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.startBar).toBe('repeatStart')
+		expect(grid.measures[0]!.endBar).toBeUndefined()
+		expect(grid.measures[1]!.endBar).toBe('repeatEnd')
+	})
+
+	it('captures repeatBoth and end bars', () => {
+		const content = `{start_of_grid}
+|| C . . . :|: G . . . |.
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.endBar).toBe('repeatEnd')
+		expect(grid.measures[1]!.startBar).toBe('repeatStart')
+		expect(grid.measures[1]!.endBar).toBe('barEnd')
+	})
+
+	it('carries a dangling repeat-start bar to the next grid line', () => {
+		const content = `{start_of_grid}
+|| G . . . |:
+| D . . . :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.startBar).toBeUndefined()
+		expect(grid.measures[1]!.startBar).toBe('repeatStart')
+		expect(grid.measures[1]!.endBar).toBe('repeatEnd')
+	})
+
+	it('attaches endBar to the previous measure across consecutive bar tokens', () => {
+		const content = `{start_of_grid}
+|| G . . . || :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(1)
+		expect(grid.measures[0]!.endBar).toBe('repeatEnd')
+	})
+})
+
+describe('generateChordPro (grid)', () => {
+	it('emits one hint line per grid row, |-separated per measure', () => {
 		const song: ParsedSong = {
-			title: 'Test',
+			title: '',
 			artist: '',
 			sections: [
 				{
 					type: 'grid',
 					content: {
 						kind: 'grid',
-						measures: [{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'keep' }]
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'one' },
+							{ cells: [{ type: 'chord', value: 'C' }] },
+							{ cells: [{ type: 'chord', value: 'Am' }], lyricsHint: 'three' },
+							{ cells: [{ type: 'chord', value: 'F' }] },
+							{ cells: [{ type: 'chord', value: 'D' }], lyricsHint: 'five' }
+						]
 					}
 				}
 			]
 		}
 
-		const normalized = ensureGridMeasures(song)
-		const grid = normalized.sections[0]!.content as GridSection
-		expect(grid.measures?.length).toBe(1)
-		expect(grid.measures?.[0]?.lyricsHint).toBe('keep')
+		const text = generateChordPro(song)
+		const lines = text.split('\n').filter(line => line.trim())
+		expect(lines).toEqual([
+			'{start_of_grid}',
+			'{lyrics_hint: one |  | three}',
+			'|| G | C | Am | F ||',
+			'{lyrics_hint: five}',
+			'|| D ||',
+			'{end_of_grid}'
+		])
+	})
+
+	it('omits the hint line when a row has no hints', () => {
+		const song: ParsedSong = {
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }] },
+							{ cells: [{ type: 'chord', value: 'C' }] }
+						]
+					}
+				}
+			]
+		}
+
+		const text = generateChordPro(song)
+		expect(text).not.toContain('lyrics_hint')
+	})
+
+	it('restores boundary bars and sanitizes | in hints', () => {
+		const song: ParsedSong = {
+			title: '',
+			artist: '',
+			sections: [
+				{
+					type: 'grid',
+					content: {
+						kind: 'grid',
+						measures: [
+							{ cells: [{ type: 'chord', value: 'G' }], startBar: 'repeatStart', lyricsHint: 'a | b' },
+							{ cells: [{ type: 'chord', value: 'C' }], endBar: 'repeatEnd' }
+						]
+					}
+				}
+			]
+		}
+
+		const text = generateChordPro(song)
+		expect(text).toContain('{lyrics_hint: a ｜ b}')
+		expect(text).toContain('|: G | C :|')
 	})
 })

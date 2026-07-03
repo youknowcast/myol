@@ -9,6 +9,7 @@ export function useGridCellDisplay() {
 			case 'repeatStart': return '║:'
 			case 'repeatEnd': return ':║'
 			case 'repeatBoth': return ':║:'
+			case 'noChord': return '/'
 			case 'empty': return '·'
 			case 'repeat': return cell.value || '%'
 			case 'chord': return cell.value || ''
@@ -20,6 +21,7 @@ export function useGridCellDisplay() {
 		switch (cell.type) {
 			case 'chord':
 				return ['grid-chord']
+			case 'noChord':
 			case 'empty':
 				return ['grid-empty']
 			case 'repeat':
