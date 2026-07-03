@@ -201,8 +201,8 @@ function handleMoveMeasureAcrossSections(payload: {
 
   const nextToMeasures = [...toGrid.measures]
   nextToMeasures.splice(insertIndex, 0, {
-    cells: movedMeasure.cells.map(cell => ({ ...cell })),
-    lyricsHint: movedMeasure.lyricsHint
+    ...movedMeasure,
+    cells: movedMeasure.cells.map(cell => ({ ...cell }))
   })
 
   updateGridSection(payload.fromSectionIndex, {
