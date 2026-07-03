@@ -58,10 +58,12 @@ export interface GridRow {
 	cells: GridCell[]
 }
 
-// 新しい Measure インターフェース: 歌詞を直接関連付け
+// Measure: 小節。歌詞・境界バーを直接保持する（唯一の構造単位）
 export interface Measure {
 	cells: GridCell[]
 	lyricsHint?: string  // この小節に対応する歌詞
+	startBar?: 'repeatStart'
+	endBar?: 'repeatEnd' | 'barEnd'
 }
 
 export interface GridCell {

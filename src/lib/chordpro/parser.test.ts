@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordProToExtended, ensureGridMeasures } from './parser'
+import { parseChordPro, parseChordProToExtended, ensureGridMeasures } from './parser'
 import type { GridSection, ParsedSong } from './types'
 
 describe('parseChordProToExtended', () => {
@@ -124,5 +124,79 @@ describe('parseChordProToExtended', () => {
 		const parsed = parseChordProToExtended(content)
 		const grid = parsed.sections[0]!.content as GridSection
 		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'noChord', 'empty'])
+	})
+})
+
+describe('measure annotations (new format)', () => {
+	it('assigns |-separated hint segments to the measures of the following row', () => {
+		const content = `{start_of_grid}
+{lyrics_hint: Amazing grace how | sweet the sound}
+|| G . . . | C . G . ||
+{lyrics_hint: That saved a | wretch like me}
+|| G . . . | D . . . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(4)
+		expect(grid.measures[0]!.lyricsHint).toBe('Amazing grace how')
+		expect(grid.measures[1]!.lyricsHint).toBe('sweet the sound')
+		expect(grid.measures[2]!.lyricsHint).toBe('That saved a')
+		expect(grid.measures[3]!.lyricsHint).toBe('wretch like me')
+	})
+
+	it('treats empty segments as no hint and ignores extra segments', () => {
+		const content = `{start_of_grid}
+{lyrics_hint: | sweet | extra | over}
+|| G . . . | C . . . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures.length).toBe(2)
+		expect(grid.measures[0]!.lyricsHint).toBeUndefined()
+		expect(grid.measures[1]!.lyricsHint).toBe('sweet')
+	})
+
+	it('keeps trailing hint blocks on the legacy path (per-measure when counts match)', () => {
+		const content = `{start_of_grid}
+|| C . . . | G . . . ||
+{lyrics_hint: Line 1}
+{lyrics_hint: Line 2}
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.lyricsHint).toBe('Line 1')
+		expect(grid.measures[1]!.lyricsHint).toBe('Line 2')
+	})
+
+	it('captures repeat bars on measure boundaries', () => {
+		const content = `{start_of_grid}
+|: G . . . | C . . . :|
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.startBar).toBe('repeatStart')
+		expect(grid.measures[0]!.endBar).toBeUndefined()
+		expect(grid.measures[1]!.endBar).toBe('repeatEnd')
+	})
+
+	it('captures repeatBoth and end bars', () => {
+		const content = `{start_of_grid}
+|| C . . . :|: G . . . |.
+{end_of_grid}
+`
+
+		const parsed = parseChordPro(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures[0]!.endBar).toBe('repeatEnd')
+		expect(grid.measures[1]!.startBar).toBe('repeatStart')
+		expect(grid.measures[1]!.endBar).toBe('barEnd')
 	})
 })
