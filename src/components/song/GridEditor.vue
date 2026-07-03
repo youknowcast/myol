@@ -143,7 +143,7 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
       @update-lyrics="handleUpdateLyrics"
     />
 
-    <div class="editor-hint">
+    <div class="editor-help">
       クリックで小節を選択 ・ ドラッグでコード並び替え
     </div>
   </div>
@@ -175,7 +175,7 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
   color: var(--color-text);
 }
 
-.editor-hint {
+.editor-help {
   font-size: 0.7rem;
   color: var(--color-text-muted);
   margin-top: var(--spacing-sm);
