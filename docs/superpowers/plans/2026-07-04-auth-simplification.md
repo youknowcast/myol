@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-04-auth-simplification-design.md`
 
+> パスコードの具体値は本書に記載しない（src/stores/auth.ts の FIXED_PASSCODE を参照）。以下のコード片では '<FIXED_PASSCODE>' がプレースホルダ。
+
 **Branch:** `feature/simplify-auth`（main から作成）
 
 ## Global Constraints
@@ -91,7 +93,7 @@ describe('auth store', () => {
   it('logs in with the fixed 4-digit passcode and persists a session', async () => {
     const authStore = await createAuthStore()
 
-    const ok = await authStore.login('9999')
+    const ok = await authStore.login('<FIXED_PASSCODE>')
 
     expect(ok).toBe(true)
     expect(authStore.isAuthenticated).toBe(true)
@@ -102,13 +104,13 @@ describe('auth store', () => {
 
   it('trims surrounding whitespace before matching', async () => {
     const authStore = await createAuthStore()
-    expect(await authStore.login(' 9999 ')).toBe(true)
+    expect(await authStore.login(' <FIXED_PASSCODE> ')).toBe(true)
   })
 
   it('rejects wrong or malformed passcodes without touching the network', async () => {
     const authStore = await createAuthStore()
 
-    for (const attempt of ['1234', '999', '99999', 'abcd', '']) {
+    for (const attempt of ['1234', '999', '11111', 'abcd', '']) {
       expect(await authStore.login(attempt)).toBe(false)
     }
     expect(authStore.isAuthenticated).toBe(false)
@@ -154,7 +156,7 @@ describe('auth store', () => {
 
   it('logout clears the session', async () => {
     const authStore = await createAuthStore()
-    await authStore.login('9999')
+    await authStore.login('<FIXED_PASSCODE>')
 
     authStore.logout()
 
@@ -167,7 +169,7 @@ describe('auth store', () => {
 - [ ] **Step 2: テストが失敗することを確認**
 
 Run: `npx vitest run src/stores/auth.test.ts`
-Expected: FAIL（現実装は 6桁 + リモート設定必須のため `login('9999')` が false になる等）
+Expected: FAIL（現実装は 6桁 + リモート設定必須のため `login('<FIXED_PASSCODE>')` が false になる等）
 
 - [ ] **Step 3: auth.ts を全面置換**
 
@@ -180,7 +182,7 @@ const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000
 
 // 意図的なダウングレード（docs/superpowers/specs/2026-07-04-auth-simplification-design.md 参照）:
 // 初見の第三者の抑止のみが目的。値はリポジトリ・配布バンドルに露出する。
-const FIXED_PASSCODE = '9999'
+const FIXED_PASSCODE = '<FIXED_PASSCODE>'
 
 interface AuthSession {
   authenticatedAt: number

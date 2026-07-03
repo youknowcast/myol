@@ -130,6 +130,7 @@ const canSubmit = computed(() => isPasscodeComplete.value && !isSubmitting.value
         <input
           v-for="(_, index) in PASSCODE_LENGTH"
           :key="index"
+          :id="index === 0 ? 'passcode' : undefined"
           :value="passcodeChars[index] ?? ''"
           type="text"
           inputmode="numeric"
