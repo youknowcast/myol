@@ -656,3 +656,25 @@ function sectionTypeToDirective(type: SectionType): string {
 		default: return 'verse'
 	}
 }
+
+/**
+ * Extract song metadata only (no section structure) — for list/meta use in stores.
+ */
+export function extractSongMeta(content: string): {
+	title: string
+	artist: string
+	key?: string
+	capo?: number
+	tempo?: number
+	time?: string
+} {
+	const parsed = parseChordPro(content)
+	return {
+		title: parsed.title,
+		artist: parsed.artist,
+		key: parsed.key,
+		capo: parsed.capo,
+		tempo: parsed.tempo,
+		time: parsed.time
+	}
+}
