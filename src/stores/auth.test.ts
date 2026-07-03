@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import bcrypt from 'bcryptjs'
 
 class LocalStorageMock {
   private storage = new Map<string, string>()
@@ -22,46 +21,27 @@ class LocalStorageMock {
   }
 }
 
-function toBase64Url(value: string): string {
-  return btoa(value)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '')
-}
-
-async function createAuthStoreWithRemoteConfig(configText: string) {
+async function createAuthStore() {
   vi.resetModules()
-  vi.stubEnv('VITE_API_ENDPOINT', 'https://example.lambda-url.us-west-2.on.aws')
-  vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth.json')
-
-  const fetchMock = vi.fn()
-    .mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ url: 'https://signed.example.com/config' })
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      text: async () => configText
-    })
-
-  Object.defineProperty(globalThis, 'fetch', {
-    value: fetchMock,
-    configurable: true,
-    writable: true
-  })
-
   const { useAuthStore } = await import('./auth')
-  return { authStore: useAuthStore(), fetchMock }
+  return useAuthStore()
 }
 
 describe('auth store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.restoreAllMocks()
-    vi.unstubAllEnvs()
     Object.defineProperty(globalThis, 'localStorage', {
       value: new LocalStorageMock(),
       configurable: true
+    })
+    // 認証はネットワークに一切触れないことを構造的に保証する
+    Object.defineProperty(globalThis, 'fetch', {
+      value: vi.fn(() => {
+        throw new Error('auth must not touch the network')
+      }),
+      configurable: true,
+      writable: true
     })
   })
 
@@ -69,42 +49,31 @@ describe('auth store', () => {
     vi.useRealTimers()
   })
 
-  it('logs in with remote passcode hash', async () => {
-    const hash = bcrypt.hashSync('123456', 10)
-    const { authStore, fetchMock } = await createAuthStoreWithRemoteConfig(
-      JSON.stringify({ passcodeHash: hash, version: 1 })
-    )
+  it('logs in with the fixed 4-digit passcode and persists a session', async () => {
+    const authStore = await createAuthStore()
 
-    const ok = await authStore.login('123456')
+    const ok = await authStore.login('9999')
 
     expect(ok).toBe(true)
     expect(authStore.isAuthenticated).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const raw = localStorage.getItem('myol_auth_session')
+    expect(raw).not.toBeNull()
+    expect(typeof JSON.parse(raw!).authenticatedAt).toBe('number')
   })
 
-  it('accepts b64 prefixed passcode hash', async () => {
-    const hash = bcrypt.hashSync('123456', 10)
-    const { authStore } = await createAuthStoreWithRemoteConfig(
-      JSON.stringify({ passcodeHash: `b64:${toBase64Url(hash)}` })
-    )
-
-    const ok = await authStore.login('123456')
-
-    expect(ok).toBe(true)
-    expect(authStore.isAuthenticated).toBe(true)
+  it('trims surrounding whitespace before matching', async () => {
+    const authStore = await createAuthStore()
+    expect(await authStore.login(' 9999 ')).toBe(true)
   })
 
-  it('rejects non 6-digit passcode before remote fetch', async () => {
-    const hash = bcrypt.hashSync('123456', 10)
-    const { authStore, fetchMock } = await createAuthStoreWithRemoteConfig(
-      JSON.stringify({ passcodeHash: hash })
-    )
+  it('rejects wrong or malformed passcodes without touching the network', async () => {
+    const authStore = await createAuthStore()
 
-    const ok = await authStore.login('12ab56')
-
-    expect(ok).toBe(false)
+    for (const attempt of ['1234', '999', '99999', 'abcd', '']) {
+      expect(await authStore.login(attempt)).toBe(false)
+    }
     expect(authStore.isAuthenticated).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
   it('expires persisted session after ttl', async () => {
@@ -114,66 +83,43 @@ describe('auth store', () => {
 
     const storage = new LocalStorageMock()
     storage.setItem('myol_auth_session', JSON.stringify({
-      authenticatedAt: now.getTime() - 12 * 60 * 60 * 1000 - 1,
-      version: 1
+      authenticatedAt: now.getTime() - 12 * 60 * 60 * 1000 - 1
     }))
-
     Object.defineProperty(globalThis, 'localStorage', {
       value: storage,
       configurable: true
     })
 
-    vi.resetModules()
-    vi.stubEnv('VITE_API_ENDPOINT', 'https://example.lambda-url.us-west-2.on.aws')
-    vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth.json')
-    const { useAuthStore } = await import('./auth')
-    const authStore = useAuthStore()
+    const authStore = await createAuthStore()
 
     expect(authStore.isAuthenticated).toBe(false)
     expect(storage.getItem('myol_auth_session')).toBeNull()
   })
 
-  it('invalidates session when auth config version changes', async () => {
+  it('accepts a legacy session that still carries a version field', async () => {
     const storage = new LocalStorageMock()
     storage.setItem('myol_auth_session', JSON.stringify({
       authenticatedAt: Date.now(),
       version: 1
     }))
-
     Object.defineProperty(globalThis, 'localStorage', {
       value: storage,
       configurable: true
     })
 
-    vi.resetModules()
-    vi.stubEnv('VITE_API_ENDPOINT', 'https://example.lambda-url.us-west-2.on.aws')
-    vi.stubEnv('VITE_AUTH_CONFIG_KEY', 'config/auth.json')
+    const authStore = await createAuthStore()
 
-    const hash = bcrypt.hashSync('123456', 10)
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ url: 'https://signed.example.com/config' })
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify({ passcodeHash: hash, version: 2 })
-      })
+    expect(authStore.isAuthenticated).toBe(true)
+    expect(await authStore.ensureAuthenticated()).toBe(true)
+  })
 
-    Object.defineProperty(globalThis, 'fetch', {
-      value: fetchMock,
-      configurable: true,
-      writable: true
-    })
+  it('logout clears the session', async () => {
+    const authStore = await createAuthStore()
+    await authStore.login('9999')
 
-    const { useAuthStore } = await import('./auth')
-    const authStore = useAuthStore()
+    authStore.logout()
 
-    const active = await authStore.ensureAuthenticated()
-
-    expect(active).toBe(false)
     expect(authStore.isAuthenticated).toBe(false)
-    expect(storage.getItem('myol_auth_session')).toBeNull()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(localStorage.getItem('myol_auth_session')).toBeNull()
   })
 })
