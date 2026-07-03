@@ -51,6 +51,8 @@ myol（ギター弾き語り補助 PWA）のデータモデル・状態管理・
 - `GridRow` 型と再構成関数（`gridRowsFromMeasures` / `parseGridRow` の外部公開 / `lyricsLineToGridRow` の `GridRow` 依存）を廃止。パーサ内部の中間表現としても `Measure[]` を直接組み立てる。
 - 新形式の parse / generate を実装。旧形式読み込みは `parseLegacyLyricsHints` に隔離。
 - パーサバグ修正: `/` を `GridCell { type: 'noChord' }`（表示は `/`）として扱う。`ensureGridMeasures`（no-op）を削除。
+- リピート記号等の保持: 現状 `|:` `:|` `:|:` `|.` はパースされるが小節モデルに保持されず、保存すると `||`/`|` に潰れて消える。`Measure.startBar?: 'repeatStart'` / `endBar?: 'repeatEnd' | 'barEnd'` として保持し、generate で復元する。
+- 歌詞ヒント内の `|`: 区切り文字と衝突するため、generate 時に全角 `｜` へ置換してラウンドトリップを保証する。
 - `docs/chordpro.md` を新仕様に全面更新（行単位→小節単位、`|` 区切り、レガシー注記）。
 - ラウンドトリップ性テストを追加: 任意の ParsedSong について parse(generate(x)) ≡ x（ヒント位置を含む）。旧形式→新形式の移行テストも追加。
 
