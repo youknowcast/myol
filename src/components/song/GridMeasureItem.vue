@@ -25,6 +25,7 @@ interface Emits {
   (e: 'delete-lyrics'): void
   (e: 'delete-chords'): void
   (e: 'move-section', direction: 'prev' | 'next', measureIndex: number): void
+  (e: 'update-lyrics', measureIndex: number, value: string): void
 }
 
 
@@ -79,8 +80,18 @@ function getCellClass(cell: GridCell): string {
         {{ cellGlyph(cell) }}
       </div>
     </div>
+    <input
+      v-if="selected"
+      class="lyrics-hint-input"
+      type="text"
+      :value="measure.lyricsHint ?? ''"
+      placeholder="歌詞を入力"
+      @click.stop
+      @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+      @blur="emit('update-lyrics', measureIndex, ($event.target as HTMLInputElement).value)"
+    />
     <div
-      v-if="measure.lyricsHint"
+      v-else-if="measure.lyricsHint"
       class="lyrics-hint"
       :title="measure.lyricsHint"
       @click="emit('select', measureIndex)"
@@ -175,6 +186,17 @@ function getCellClass(cell: GridCell): string {
     min-width: 3.5rem;
     font-size: 1rem;
   }
+}
+
+.lyrics-hint-input {
+  width: 100%;
+  margin-top: 2px;
+  padding: 2px var(--spacing-xs);
+  font-size: 0.65rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
 }
 
 .lyrics-hint {

@@ -10,7 +10,8 @@ import {
 	reorderCells,
 	moveCellWithinGrid,
 	moveCellAcrossGrids,
-	moveMeasureAcrossGrids
+	moveMeasureAcrossGrids,
+	setLyricsHint
 } from './measureOps'
 import type { Measure } from './types'
 
@@ -95,6 +96,20 @@ describe('clearLyrics / clearChords / swapMeasure / mergeLyrics', () => {
 		const next = mergeLyrics(sample(), 1, 'left')
 		expect(next[0]!.lyricsHint).toBe('one two')
 		expect(next[1]!.lyricsHint).toBeUndefined()
+	})
+})
+
+describe('setLyricsHint', () => {
+	it('sets, replaces and clears the hint, preserving bars', () => {
+		const withHint = setLyricsHint(sample(), 2, ' new words ')
+		expect(withHint[2]!.lyricsHint).toBe('new words')
+		expect(withHint[2]!.endBar).toBe('repeatEnd')
+		const cleared = setLyricsHint(withHint, 2, '   ')
+		expect(cleared[2]!.lyricsHint).toBeUndefined()
+	})
+
+	it('is a no-op clone for invalid index', () => {
+		expect(setLyricsHint(sample(), 99, 'x')).toEqual(sample())
 	})
 })
 

@@ -36,6 +36,7 @@ interface Emits {
     newIndex: number | null
   }): void
   (e: 'move-section', payload: { direction: 'prev' | 'next'; measureIndex: number }): void
+  (e: 'update-lyrics', measureIndex: number, value: string): void
 }
 
 const props = defineProps<Props>()
@@ -103,6 +104,7 @@ onUnmounted(() => {
         @delete-lyrics="() => emit('delete-lyrics')"
         @delete-chords="() => emit('delete-chords')"
         @move-section="(direction, idx) => emit('move-section', { direction, measureIndex: idx })"
+        @update-lyrics="(idx, value) => emit('update-lyrics', idx, value)"
       />
     </template>
     <div class="bar-line" v-if="measures.length > 0">{{ barGlyphs[measures.length] }}</div>

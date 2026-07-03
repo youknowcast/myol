@@ -61,6 +61,19 @@ export function clearLyrics(measures: Measure[], measureIndex: number): Measure[
 	return next
 }
 
+export function setLyricsHint(
+	measures: Measure[],
+	measureIndex: number,
+	lyricsHint: string
+): Measure[] {
+	const next = cloneMeasures(measures)
+	const target = next[measureIndex]
+	if (!target) return next
+	const trimmed = lyricsHint.trim()
+	next[measureIndex] = { ...target, lyricsHint: trimmed ? trimmed : undefined }
+	return next
+}
+
 export function clearChords(measures: Measure[], measureIndex: number): Measure[] {
 	const next = cloneMeasures(measures)
 	const target = next[measureIndex]

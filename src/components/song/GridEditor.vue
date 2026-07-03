@@ -110,6 +110,10 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
   store.moveMeasureAcrossSections(props.sectionIndex, targetSectionIndex, payload.measureIndex)
 }
 
+function handleUpdateLyrics(measureIndex: number, value: string) {
+  store.setLyricsHint(props.sectionIndex, measureIndex, value)
+}
+
 </script>
 
 <template>
@@ -136,6 +140,7 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
       @reorder="handleReorder"
       @move-cell="handleMoveCell"
       @move-section="handleMoveSection"
+      @update-lyrics="handleUpdateLyrics"
     />
 
     <div class="editor-hint">
