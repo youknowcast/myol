@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/components/song/composables/useGridViewState'
-import { useGridCellDisplay } from '@/composables/useGridCellDisplay'
-import { useGridCellHighlight } from '@/composables/useGridCellHighlight'
+import { cellGlyph, gridCellClasses, boundaryGlyph } from '@/lib/chordpro/cellDisplay'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -26,21 +25,19 @@ const emit = defineEmits<Emits>()
 
 const gridContent = props.section.content as GridSection
 
-const { measureHints, cellsWithMeasures } = useGridViewState({
+const { lyricsHints, cellsWithMeasures } = useGridViewState({
   grid: gridContent,
   currentMeasure: computed(() => (props.isPlaying ? props.currentMeasure : -1)),
   measureOffset: computed(() => props.measureOffset)
 })
 
-
-const { getCellDisplay } = useGridCellDisplay()
-const { getGridViewCellClass, isBarCell } = useGridCellHighlight()
-
 interface MeasureGroup {
   measureIndex: number
   cells: CellWithMeasure[]
   isCurrent: boolean
-  hint: string
+  lyricsHint: string
+  startBar?: 'repeatStart'
+  endBar?: 'repeatEnd' | 'barEnd'
 }
 
 const measureRows = computed(() =>
@@ -48,16 +45,17 @@ const measureRows = computed(() =>
     const groups: MeasureGroup[] = []
 
     row.forEach((cell) => {
-      if (isBarCell(cell)) return
       const lastGroup = groups[groups.length - 1]
       if (!lastGroup || lastGroup.measureIndex !== cell.measureIndex) {
-        const hintIndex = cell.measureIndex - props.measureOffset
-        const hint = measureHints.value[hintIndex] || ''
+        const localIndex = cell.measureIndex - props.measureOffset
+        const measure = gridContent.measures[localIndex]
         groups.push({
           measureIndex: cell.measureIndex,
           cells: [cell],
           isCurrent: cell.isCurrentMeasure,
-          hint
+          lyricsHint: lyricsHints.value[localIndex] || '',
+          startBar: measure?.startBar,
+          endBar: measure?.endBar
         })
         return
       }
@@ -72,7 +70,7 @@ const measureRows = computed(() =>
 )
 
 function getCellClass(cell: CellWithMeasure): string[] {
-  return getGridViewCellClass(cell)
+  return gridCellClasses(cell, cell.isCurrentMeasure)
 }
 
 function getRowMeasureIndex(row: MeasureGroup[]): number {
@@ -102,17 +100,19 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
               :class="{ 'is-current-measure': group.isCurrent, 'is-empty': !group.cells.length }"
             >
               <div class="grid-measure-body">
+                <span v-if="group.startBar" class="grid-bar-mark">{{ boundaryGlyph(undefined, group.startBar, '') }}</span>
                 <div
                   v-for="(cell, cellIndex) in group.cells"
                   :key="cellIndex"
                   class="grid-cell"
                   :class="getCellClass(cell)"
                 >
-                  <span class="grid-cell-text">{{ getCellDisplay(cell) }}</span>
+                  <span class="grid-cell-text">{{ cellGlyph(cell) }}</span>
                 </div>
+                <span v-if="group.endBar" class="grid-bar-mark">{{ boundaryGlyph(group.endBar, undefined, '') }}</span>
               </div>
-              <div v-if="group.hint" class="grid-lyrics-row">
-                {{ group.hint }}
+              <div v-if="group.lyricsHint" class="grid-lyrics-row">
+                {{ group.lyricsHint }}
               </div>
             </div>
           </div>
@@ -207,6 +207,12 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
 .grid-measure-body {
   display: flex;
   gap: var(--spacing-xs);
+}
+
+.grid-bar-mark {
+  color: var(--color-grid-bar);
+  font-weight: 600;
+  align-self: center;
 }
 
 .grid-cell {

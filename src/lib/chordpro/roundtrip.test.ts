@@ -93,7 +93,7 @@ describe('chordpro round-trip', () => {
 	it('re-flows long grids at 4 measures per line without losing hints', () => {
 		const measures = Array.from({ length: 6 }, (_, index) => ({
 			cells: [{ type: 'chord' as const, value: 'C' }],
-			lyricsHint: `hint${index}`
+			lyricsHint: `lyricsHint${index}`
 		}))
 		const text = generateChordPro({
 			title: '',
@@ -103,7 +103,7 @@ describe('chordpro round-trip', () => {
 
 		const reparsed = gridMeasures(text)
 		expect(reparsed.map(measure => measure.lyricsHint)).toEqual([
-			'hint0', 'hint1', 'hint2', 'hint3', 'hint4', 'hint5'
+			'lyricsHint0', 'lyricsHint1', 'lyricsHint2', 'lyricsHint3', 'lyricsHint4', 'lyricsHint5'
 		])
 	})
 

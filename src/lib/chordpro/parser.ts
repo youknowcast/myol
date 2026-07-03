@@ -141,17 +141,17 @@ function parseLegacyLyricsHints(measures: Measure[], rowStartIndices: number[], 
 	if (!lyricsHints || lyricsHints.length === 0 || measures.length === 0) return
 
 	if (lyricsHints.length === measures.length) {
-		lyricsHints.forEach((hint, index) => {
-			measures[index]!.lyricsHint = hint
+		lyricsHints.forEach((lyricsHint, index) => {
+			measures[index]!.lyricsHint = lyricsHint
 		})
 		return
 	}
 
 	if (lyricsHints.length === rowStartIndices.length) {
 		rowStartIndices.forEach((startIndex, rowIndex) => {
-			const hint = lyricsHints[rowIndex]
-			if (hint && measures[startIndex]) {
-				measures[startIndex]!.lyricsHint = hint
+			const lyricsHint = lyricsHints[rowIndex]
+			if (lyricsHint && measures[startIndex]) {
+				measures[startIndex]!.lyricsHint = lyricsHint
 			}
 		})
 		return
@@ -624,17 +624,10 @@ export function generateChordPro(song: ParsedSong): string {
 
 function cellToString(cell: GridCell): string {
 	switch (cell.type) {
-		case 'bar': return '|'
-		case 'barDouble': return '||'
-		case 'barEnd': return '|.'
-		case 'repeatStart': return '|:'
-		case 'repeatEnd': return ':|'
-		case 'repeatBoth': return ':|:'
 		case 'noChord': return '/'
 		case 'empty': return '.'
 		case 'repeat': return cell.value || '%'
 		case 'chord': return cell.value || ''
-		default: return ''
 	}
 }
 

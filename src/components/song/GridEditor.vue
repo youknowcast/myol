@@ -110,6 +110,10 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
   store.moveMeasureAcrossSections(props.sectionIndex, targetSectionIndex, payload.measureIndex)
 }
 
+function handleUpdateLyrics(measureIndex: number, value: string) {
+  store.setLyricsHint(props.sectionIndex, measureIndex, value)
+}
+
 </script>
 
 <template>
@@ -136,9 +140,10 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
       @reorder="handleReorder"
       @move-cell="handleMoveCell"
       @move-section="handleMoveSection"
+      @update-lyrics="handleUpdateLyrics"
     />
 
-    <div class="editor-hint">
+    <div class="editor-help">
       クリックで小節を選択 ・ ドラッグでコード並び替え
     </div>
   </div>
@@ -170,7 +175,7 @@ function handleMoveSection(payload: { direction: 'prev' | 'next'; measureIndex: 
   color: var(--color-text);
 }
 
-.editor-hint {
+.editor-help {
   font-size: 0.7rem;
   color: var(--color-text-muted);
   margin-top: var(--spacing-sm);

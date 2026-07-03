@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
+import { cellGlyph, cellKind } from '@/lib/chordpro/cellDisplay'
 import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
 
@@ -24,6 +25,7 @@ interface Emits {
   (e: 'delete-lyrics'): void
   (e: 'delete-chords'): void
   (e: 'move-section', direction: 'prev' | 'next', measureIndex: number): void
+  (e: 'update-lyrics', measureIndex: number, value: string): void
 }
 
 
@@ -35,32 +37,19 @@ const toolboxAlign = computed(() => (
 ))
 
 function getCellClass(cell: GridCell): string {
-  switch (cell.type) {
-    case 'chord':
-      return 'cell-chord'
-    case 'noChord':
-    case 'empty':
-      return 'cell-empty'
-    case 'repeat':
-      return 'cell-repeat'
-    default:
-      return ''
-  }
+  return `cell-${cellKind(cell)}`
 }
 
-function getCellDisplay(cell: GridCell): string {
-  switch (cell.type) {
-    case 'noChord':
-      return '/'
-    case 'empty':
-      return '·'
-    case 'repeat':
-      return cell.value || '%'
-    case 'chord':
-      return cell.value || ''
-    default:
-      return ''
-  }
+function handleHintKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.isComposing) return
+  event.preventDefault()
+  ;(event.target as HTMLInputElement).blur()
+}
+
+function handleHintBlur(event: FocusEvent) {
+  const value = (event.target as HTMLInputElement).value
+  if (value.trim() === (props.measure.lyricsHint ?? '')) return
+  emit('update-lyrics', props.measureIndex, value)
 }
 </script>
 
@@ -100,11 +89,21 @@ function getCellDisplay(cell: GridCell): string {
         class="editable-cell"
         :class="getCellClass(cell)"
       >
-        {{ getCellDisplay(cell) }}
+        {{ cellGlyph(cell) }}
       </div>
     </div>
+    <input
+      v-if="selected"
+      class="lyrics-hint-input"
+      type="text"
+      :value="measure.lyricsHint ?? ''"
+      placeholder="歌詞を入力"
+      @click.stop
+      @keydown="handleHintKeydown"
+      @blur="handleHintBlur"
+    />
     <div
-      v-if="measure.lyricsHint"
+      v-else-if="measure.lyricsHint"
       class="lyrics-hint"
       :title="measure.lyricsHint"
       @click="emit('select', measureIndex)"
@@ -199,6 +198,17 @@ function getCellDisplay(cell: GridCell): string {
     min-width: 3.5rem;
     font-size: 1rem;
   }
+}
+
+.lyrics-hint-input {
+  width: 100%;
+  margin-top: 2px;
+  padding: 2px var(--spacing-xs);
+  font-size: 0.65rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
 }
 
 .lyrics-hint {

@@ -124,7 +124,7 @@ describe('parseChordProToExtended', () => {
 })
 
 describe('measure annotations (new format)', () => {
-	it('assigns |-separated hint segments to the measures of the following row', () => {
+	it('assigns |-separated lyricsHint segments to the measures of the following row', () => {
 		const content = `{start_of_grid}
 {lyrics_hint: Amazing grace how | sweet the sound}
 || G . . . | C . G . ||
@@ -142,7 +142,7 @@ describe('measure annotations (new format)', () => {
 		expect(grid.measures[3]!.lyricsHint).toBe('wretch like me')
 	})
 
-	it('treats empty segments as no hint and ignores extra segments', () => {
+	it('treats empty segments as no lyricsHint and ignores extra segments', () => {
 		const content = `{start_of_grid}
 {lyrics_hint: | sweet | extra | over}
 || G . . . | C . . . ||
@@ -156,7 +156,7 @@ describe('measure annotations (new format)', () => {
 		expect(grid.measures[1]!.lyricsHint).toBe('sweet')
 	})
 
-	it('keeps trailing hint blocks on the legacy path (per-measure when counts match)', () => {
+	it('keeps trailing lyricsHint blocks on the legacy path (per-measure when counts match)', () => {
 		const content = `{start_of_grid}
 || C . . . | G . . . ||
 {lyrics_hint: Line 1}
@@ -183,7 +183,7 @@ describe('measure annotations (new format)', () => {
 		expect(grid.measures[1]!.endBar).toBe('repeatEnd')
 	})
 
-	it('captures repeatBoth and end bars', () => {
+	it('captures repeat-both and end bars', () => {
 		const content = `{start_of_grid}
 || C . . . :|: G . . . |.
 {end_of_grid}
@@ -225,7 +225,7 @@ describe('measure annotations (new format)', () => {
 })
 
 describe('generateChordPro (grid)', () => {
-	it('emits one hint line per grid row, |-separated per measure', () => {
+	it('emits one lyricsHint line per grid row, |-separated per measure', () => {
 		const song: ParsedSong = {
 			title: '',
 			artist: '',
@@ -258,7 +258,7 @@ describe('generateChordPro (grid)', () => {
 		])
 	})
 
-	it('omits the hint line when a row has no hints', () => {
+	it('omits the lyricsHint line when a row has no lyricsHints', () => {
 		const song: ParsedSong = {
 			title: '',
 			artist: '',

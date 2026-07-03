@@ -15,7 +15,7 @@ export interface UseGridViewStateOptions {
 export function useGridViewState(options: UseGridViewStateOptions) {
 	const measuresPerRow = 2
 
-	const measureHints = computed(() =>
+	const lyricsHints = computed(() =>
 		options.grid.measures.map((measure) => measure.lyricsHint?.trim() ?? '')
 	)
 
@@ -53,7 +53,7 @@ export function useGridViewState(options: UseGridViewStateOptions) {
 	})
 
 	return {
-		measureHints,
+		lyricsHints,
 		cellsWithMeasures,
 		currentRowIndex
 	}

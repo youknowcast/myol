@@ -105,6 +105,14 @@ describe('chordproEditor store', () => {
 		expect(store.gridSections.length).toBeGreaterThan(0)
 	})
 
+	it('sets a lyricsHint on a measure and serializes it', () => {
+		const store = useChordProEditorStore()
+		store.loadDocument(CONTENT)
+		store.setLyricsHint(1, 0, 'inserted words')
+		expect(grid(store, 1).measures[0]!.lyricsHint).toBe('inserted words')
+		expect(store.serialize()).toContain('{lyrics_hint: inserted words')
+	})
+
 	it('round-trips document through serialize/loadDocument without change (mode-switch contract)', () => {
 		const store = useChordProEditorStore()
 		store.loadDocument(CONTENT)
