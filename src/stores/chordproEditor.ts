@@ -13,8 +13,8 @@ import type { ParsedSong, GridSection, GridCell, Measure } from '@/lib/chordpro/
  */
 function extractMeasuresFromGrid(grid: GridSection): Measure[] {
 	return grid.measures.map(measure => ({
-		cells: measure.cells.map(cell => ({ ...cell })),
-		lyricsHint: measure.lyricsHint
+		...measure,
+		cells: measure.cells.map(cell => ({ ...cell }))
 	}))
 }
 

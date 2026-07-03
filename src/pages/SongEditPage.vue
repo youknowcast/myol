@@ -160,15 +160,15 @@ function handleMoveAcrossSections(payload: {
   const updatedFrom: GridSection = {
     ...fromGrid,
     measures: fromGrid.measures.map((measure, index) => index === payload.fromMeasureIndex
-      ? { cells: sourceCells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint }
-      : { cells: measure.cells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint })
+      ? { ...measure, cells: sourceCells.map(cell => ({ ...cell })) }
+      : { ...measure, cells: measure.cells.map(cell => ({ ...cell })) })
   }
 
   const updatedTo: GridSection = {
     ...toGrid,
     measures: toGrid.measures.map((measure, index) => index === payload.toMeasureIndex
-      ? { cells: targetCells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint }
-      : { cells: measure.cells.map(cell => ({ ...cell })), lyricsHint: measure.lyricsHint })
+      ? { ...measure, cells: targetCells.map(cell => ({ ...cell })) }
+      : { ...measure, cells: measure.cells.map(cell => ({ ...cell })) })
   }
 
   updateGridSection(payload.fromSectionIndex, updatedFrom)
