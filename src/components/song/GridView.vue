@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/components/song/composables/useGridViewState'
-import { cellGlyph, cellKind } from '@/lib/chordpro/cellDisplay'
+import { cellGlyph, gridCellClasses, boundaryGlyph } from '@/lib/chordpro/cellDisplay'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -70,11 +70,7 @@ const measureRows = computed(() =>
 )
 
 function getCellClass(cell: CellWithMeasure): string[] {
-  const classes = [`grid-${cellKind(cell)}`]
-  if (cell.isCurrentMeasure && cell.type === 'chord') {
-    classes.push('current-measure')
-  }
-  return classes
+  return gridCellClasses(cell, cell.isCurrentMeasure)
 }
 
 function getRowMeasureIndex(row: MeasureGroup[]): number {
@@ -104,7 +100,7 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
               :class="{ 'is-current-measure': group.isCurrent, 'is-empty': !group.cells.length }"
             >
               <div class="grid-measure-body">
-                <span v-if="group.startBar" class="grid-bar-mark">║:</span>
+                <span v-if="group.startBar" class="grid-bar-mark">{{ boundaryGlyph(undefined, group.startBar, '') }}</span>
                 <div
                   v-for="(cell, cellIndex) in group.cells"
                   :key="cellIndex"
@@ -113,7 +109,7 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
                 >
                   <span class="grid-cell-text">{{ cellGlyph(cell) }}</span>
                 </div>
-                <span v-if="group.endBar" class="grid-bar-mark">{{ group.endBar === 'repeatEnd' ? ':║' : '║.' }}</span>
+                <span v-if="group.endBar" class="grid-bar-mark">{{ boundaryGlyph(group.endBar, undefined, '') }}</span>
               </div>
               <div v-if="group.lyricsHint" class="grid-lyrics-row">
                 {{ group.lyricsHint }}

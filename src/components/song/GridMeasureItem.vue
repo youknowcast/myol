@@ -39,6 +39,18 @@ const toolboxAlign = computed(() => (
 function getCellClass(cell: GridCell): string {
   return `cell-${cellKind(cell)}`
 }
+
+function handleHintKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.isComposing) return
+  event.preventDefault()
+  ;(event.target as HTMLInputElement).blur()
+}
+
+function handleHintBlur(event: FocusEvent) {
+  const value = (event.target as HTMLInputElement).value
+  if (value.trim() === (props.measure.lyricsHint ?? '')) return
+  emit('update-lyrics', props.measureIndex, value)
+}
 </script>
 
 <template>
@@ -87,8 +99,8 @@ function getCellClass(cell: GridCell): string {
       :value="measure.lyricsHint ?? ''"
       placeholder="歌詞を入力"
       @click.stop
-      @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
-      @blur="emit('update-lyrics', measureIndex, ($event.target as HTMLInputElement).value)"
+      @keydown="handleHintKeydown"
+      @blur="handleHintBlur"
     />
     <div
       v-else-if="measure.lyricsHint"

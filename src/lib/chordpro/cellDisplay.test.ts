@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cellGlyph, cellKind, boundaryGlyph, gridBarGlyphs } from './cellDisplay'
+import { cellGlyph, cellKind, boundaryGlyph, gridBarGlyphs, gridCellClasses } from './cellDisplay'
 import type { Measure } from './types'
 
 describe('cellGlyph / cellKind', () => {
@@ -39,5 +39,13 @@ describe('boundaryGlyph / gridBarGlyphs', () => {
 
 	it('returns the outer bars for an empty list', () => {
 		expect(gridBarGlyphs([])).toEqual(['║'])
+	})
+})
+
+describe('gridCellClasses', () => {
+	it('marks only chord cells as current', () => {
+		expect(gridCellClasses({ type: 'chord', value: 'G' }, true)).toEqual(['grid-chord', 'current-measure'])
+		expect(gridCellClasses({ type: 'empty' }, true)).toEqual(['grid-empty'])
+		expect(gridCellClasses({ type: 'chord', value: 'G' }, false)).toEqual(['grid-chord'])
 	})
 })

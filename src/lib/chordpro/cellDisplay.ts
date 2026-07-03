@@ -29,6 +29,14 @@ export function boundaryGlyph(
 	return fallback
 }
 
+export function gridCellClasses(cell: GridCell, isCurrentMeasure: boolean): string[] {
+	const classes = [`grid-${cellKind(cell)}`]
+	if (isCurrentMeasure && cell.type === 'chord') {
+		classes.push('current-measure')
+	}
+	return classes
+}
+
 export function gridBarGlyphs(measures: Measure[]): string[] {
 	const glyphs: string[] = []
 	for (let i = 0; i <= measures.length; i += 1) {

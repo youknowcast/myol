@@ -75,7 +75,7 @@ function lyricsLines(section: Section): LyricsLine[] {
 }
 
 function lyricsLineText(line: LyricsLine): string {
-  return line.segments.map(segment => segment.text).join('')
+  return line.segments.map(segment => segment.text).join('') || ' '
 }
 
 const { goBack, goToEdit } = useSongDetailNavigation({ router, songId })
@@ -188,7 +188,7 @@ onUnmounted(() => {
                   :key="lineIndex"
                   class="lyrics-line"
                 >
-                  {{ lyricsLineText(line) || ' ' }}
+                  {{ lyricsLineText(line) }}
                 </p>
               </div>
             </template>

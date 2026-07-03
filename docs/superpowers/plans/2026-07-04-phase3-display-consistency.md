@@ -651,10 +651,10 @@ git commit -m "Add inline lyrics hint editing to the visual editor"
 - [ ] **Step 1: 命名・残存参照の網羅確認**
 
 ```bash
-grep -rn "\bhint\b\|measureHints" src/ --include="*.ts" --include="*.vue"
+grep -rn "\bhint\b\|measureHints" src/ --include="*.ts" --include="*.vue" | grep -v "lyrics-hint"
 grep -rn "LyricsView\|SongKaraokeView\|useKaraokeScroll\|useLyricsHighlight\|useGridCellDisplay\|useGridCellHighlight" src/
 ```
-Expected: どちらも 0件（`lyricsHint` / `lyricsHints` / `lyrics_hint` は対象外のパターンにしてある）。ヒットが出た場合はその場でリネーム/削除する。
+Expected: どちらも 0件（`lyricsHint` / `lyricsHints` / `lyrics_hint` は対象外のパターンにしてある）。`lyrics-hint` CSS クラス（`.lyrics-hint` / `.lyrics-hint-input`）は `lyricsHint` の kebab-case 表記として許容される正式な形なので除外している。ヒットが出た場合はその場でリネーム/削除する。
 
 - [ ] **Step 2: ビルド + lint + 全テスト**
 

@@ -54,7 +54,7 @@ describe('addMeasure', () => {
 })
 
 describe('copyMeasure / deleteMeasure', () => {
-	it('duplicates the measure including bars and hint', () => {
+	it('duplicates the measure including bars and lyricsHint', () => {
 		const next = copyMeasure(sample(), 0)
 		expect(next.length).toBe(4)
 		expect(next[1]).toEqual(sample()[0])
@@ -100,7 +100,7 @@ describe('clearLyrics / clearChords / swapMeasure / mergeLyrics', () => {
 })
 
 describe('setLyricsHint', () => {
-	it('sets, replaces and clears the hint, preserving bars', () => {
+	it('sets, replaces and clears the lyricsHint, preserving bars', () => {
 		const withHint = setLyricsHint(sample(), 2, ' new words ')
 		expect(withHint[2]!.lyricsHint).toBe('new words')
 		expect(withHint[2]!.endBar).toBe('repeatEnd')

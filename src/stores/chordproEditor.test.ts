@@ -105,7 +105,7 @@ describe('chordproEditor store', () => {
 		expect(store.gridSections.length).toBeGreaterThan(0)
 	})
 
-	it('sets a lyrics hint on a measure and serializes it', () => {
+	it('sets a lyricsHint on a measure and serializes it', () => {
 		const store = useChordProEditorStore()
 		store.loadDocument(CONTENT)
 		store.setLyricsHint(1, 0, 'inserted words')
