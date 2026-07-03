@@ -22,8 +22,8 @@ export interface MoveCellAcrossMeasuresPayload {
 
 function cloneMeasures(measures: Measure[]): Measure[] {
 	return measures.map(measure => ({
-		cells: measure.cells.map(cell => ({ type: cell.type, value: cell.value })),
-		lyricsHint: measure.lyricsHint
+		...measure,
+		cells: measure.cells.map(cell => ({ ...cell }))
 	}))
 }
 
@@ -68,8 +68,8 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		if (!original) return next
 
 		next.splice(options.selectedMeasureIndex.value + 1, 0, {
-			cells: original.cells.map(cell => ({ ...cell })),
-			lyricsHint: original.lyricsHint
+			...original,
+			cells: original.cells.map(cell => ({ ...cell }))
 		})
 		return next
 	}
@@ -90,6 +90,7 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 		const target = next[options.selectedMeasureIndex.value]
 		if (!target) return next
 		next[options.selectedMeasureIndex.value] = {
+			...target,
 			cells: target.cells.map(cell => ({ ...cell })),
 			lyricsHint: undefined
 		}
@@ -105,8 +106,8 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 			? target.cells.map(() => ({ type: 'empty' as const }))
 			: [{ type: 'empty' as const }]
 		next[options.selectedMeasureIndex.value] = {
-			cells: clearedCells,
-			lyricsHint: target.lyricsHint
+			...target,
+			cells: clearedCells
 		}
 		return next
 	}
@@ -152,11 +153,11 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 				: `${currentLyrics} ${targetLyrics}`
 			: currentLyrics
 		next[targetIndex] = {
-			cells: next[targetIndex]?.cells ?? [],
+			...next[targetIndex]!,
 			lyricsHint: mergedLyrics
 		}
 		next[currentIndex] = {
-			cells: next[currentIndex]?.cells ?? [],
+			...next[currentIndex]!,
 			lyricsHint: undefined
 		}
 		return next
@@ -181,8 +182,8 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 
 		const next = cloneMeasures(options.measures.value)
 		next[measureIndex] = {
-			cells: newOrder.map(cell => ({ ...cell })),
-			lyricsHint: next[measureIndex]?.lyricsHint
+			...next[measureIndex]!,
+			cells: newOrder.map(cell => ({ ...cell }))
 		}
 		return next
 	}
@@ -231,12 +232,12 @@ export function useGridMeasureEditor(options: UseGridMeasureEditorOptions) {
 
 		const next = cloneMeasures(options.measures.value)
 		next[fromMeasureIndex] = {
-			cells: sourceCells.map(cell => ({ ...cell })),
-			lyricsHint: next[fromMeasureIndex]?.lyricsHint
+			...next[fromMeasureIndex]!,
+			cells: sourceCells.map(cell => ({ ...cell }))
 		}
 		next[toMeasureIndex] = {
-			cells: targetCells.map(cell => ({ ...cell })),
-			lyricsHint: next[toMeasureIndex]?.lyricsHint
+			...next[toMeasureIndex]!,
+			cells: targetCells.map(cell => ({ ...cell }))
 		}
 
 		return next

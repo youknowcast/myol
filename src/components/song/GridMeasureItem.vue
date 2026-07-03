@@ -38,6 +38,7 @@ function getCellClass(cell: GridCell): string {
   switch (cell.type) {
     case 'chord':
       return 'cell-chord'
+    case 'noChord':
     case 'empty':
       return 'cell-empty'
     case 'repeat':
@@ -49,6 +50,8 @@ function getCellClass(cell: GridCell): string {
 
 function getCellDisplay(cell: GridCell): string {
   switch (cell.type) {
+    case 'noChord':
+      return '/'
     case 'empty':
       return '·'
     case 'repeat':

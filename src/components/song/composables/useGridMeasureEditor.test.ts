@@ -181,4 +181,95 @@ describe('useGridMeasureEditor', () => {
 		expect(next[0]?.cells[0]?.type).toBe('empty')
 		expect(next[0]?.lyricsHint).toBe('Keep')
 	})
+
+	it('preserves startBar and endBar when clearing chords', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], startBar: 'repeatStart', endBar: 'repeatEnd' }
+		])
+		const { deleteChords } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = deleteChords()
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[0]?.endBar).toBe('repeatEnd')
+	})
+
+	it('preserves startBar and endBar when deleting lyrics only', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Keep', startBar: 'repeatStart', endBar: 'barEnd' }
+		])
+		const { deleteLyrics } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = deleteLyrics()
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[0]?.endBar).toBe('barEnd')
+	})
+
+	it('preserves startBar and endBar when copying a measure', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], startBar: 'repeatStart', endBar: 'repeatEnd' },
+			{ cells: [{ type: 'chord', value: 'G' }] }
+		])
+		const { copyMeasure } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = copyMeasure()
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[0]?.endBar).toBe('repeatEnd')
+		expect(next[1]?.startBar).toBe('repeatStart')
+		expect(next[1]?.endBar).toBe('repeatEnd')
+	})
+
+	it('preserves startBar and endBar when reordering cells', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }, { type: 'chord', value: 'G' }], startBar: 'repeatStart', endBar: 'repeatEnd' }
+		])
+		const { displayMeasures, reorderCells } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const ids = displayMeasures.value[0]?.cells.map(cell => cell.id) ?? []
+		const next = reorderCells(0, ids.slice().reverse())
+
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[0]?.endBar).toBe('repeatEnd')
+	})
+
+	it('preserves startBar and endBar when merging lyrics', () => {
+		const selectedMeasureIndex = ref<number | null>(1)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'C' }], lyricsHint: 'Prev', startBar: 'repeatStart' },
+			{ cells: [{ type: 'chord', value: 'G' }], lyricsHint: 'Current', endBar: 'repeatEnd' }
+		])
+		const { mergeLyrics } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const next = mergeLyrics('left')
+
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[1]?.endBar).toBe('repeatEnd')
+	})
+
+	it('preserves startBar and endBar when moving a cell across measures', () => {
+		const selectedMeasureIndex = ref<number | null>(0)
+		const measures = computed<Measure[]>(() => [
+			{ cells: [{ type: 'chord', value: 'A' }], startBar: 'repeatStart', endBar: 'barEnd' },
+			{ cells: [{ type: 'empty' }], endBar: 'repeatEnd' }
+		])
+		const { displayMeasures, moveCellAcrossMeasures } = useGridMeasureEditor({ measures, selectedMeasureIndex })
+
+		const movedCellId = displayMeasures.value[0]?.cells[0]?.id ?? null
+		const next = moveCellAcrossMeasures({
+			fromSectionIndex: 0,
+			toSectionIndex: 0,
+			fromMeasureIndex: 0,
+			toMeasureIndex: 1,
+			movedCellId,
+			oldIndex: 0,
+			newIndex: 0
+		})
+
+		expect(next[0]?.startBar).toBe('repeatStart')
+		expect(next[0]?.endBar).toBe('barEnd')
+		expect(next[1]?.endBar).toBe('repeatEnd')
+	})
 })

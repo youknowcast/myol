@@ -73,8 +73,9 @@ maps 1:1 to the measures of that row, in order.
 Files saved by older versions carry `{lyrics_hint}` directives as a trailing
 block after the grid rows, or one hint line per row without `|`. These are
 still read (hints are matched by count: per-measure when counts match, else
-per-row onto each row's first measure), but the app always saves in the new
-format above.
+per-row onto each row's first measure; when the count matches neither
+measures nor rows, hints are assigned positionally from the first measure and
+extras are ignored), but the app always saves in the new format above.
 
 ## Sections and Labels
 
