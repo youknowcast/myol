@@ -64,7 +64,6 @@ onMounted(async () => {
 async function save() {
   const song = await saveSong()
   if (song) {
-    editorStore.markAsSaved()
     router.push({ name: 'song-detail', params: { id: song.id } })
   }
 }
