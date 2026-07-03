@@ -392,6 +392,10 @@ export function parseGridRow(line: string): GridRow {
 		else if (token === '.') {
 			cells.push({ type: 'empty' })
 		}
+		// No chord (rhythmic hit)
+		else if (token === '/') {
+			cells.push({ type: 'noChord' })
+		}
 		// Repeat measure
 		else if (token === '%' || token === '%%') {
 			cells.push({ type: 'repeat', value: token })
@@ -662,6 +666,7 @@ function cellToString(cell: GridCell): string {
 		case 'repeatStart': return '|:'
 		case 'repeatEnd': return ':|'
 		case 'repeatBoth': return ':|:'
+		case 'noChord': return '/'
 		case 'empty': return '.'
 		case 'repeat': return cell.value || '%'
 		case 'chord': return cell.value || ''

@@ -114,4 +114,15 @@ describe('parseChordProToExtended', () => {
 		expect(grid.measures?.length).toBe(1)
 		expect(grid.measures?.[0]?.lyricsHint).toBe('keep')
 	})
+
+	it('parses / as a no-chord cell', () => {
+		const content = `{start_of_grid}
+|| C . / . ||
+{end_of_grid}
+`
+
+		const parsed = parseChordProToExtended(content)
+		const grid = parsed.sections[0]!.content as GridSection
+		expect(grid.measures?.[0]?.cells.map(cell => cell.type)).toEqual(['chord', 'empty', 'noChord', 'empty'])
+	})
 })
