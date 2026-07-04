@@ -42,6 +42,23 @@ Repeat/end bars are preserved per measure across save (`Measure.startBar` /
 - `%` : Repeat previous measure
 - `/` : No chord (rhythmic hit) — parsed as a dedicated no-chord cell
 
+## Beats per Cell
+
+Within a grid measure, cells share the measure's beats (from `{time:}`):
+
+- If the beat count is divisible by the cell count, cells split evenly:
+  `| Bm |` is four beats of Bm in 4/4, `| Bm G |` is 2 + 2.
+- With fewer cells than beats and no even split, each cell takes one beat
+  and the FIRST cell absorbs the remainder: `| G A/G E |` in 4/4 reads
+  G(2) A/G(1) E(1).
+- If the cell count is a multiple of the beats, cells are even sub-beats:
+  eight cells in 4/4 are eighth notes.
+- Anything else (e.g. five cells in 4/4) cannot be interpreted; the editor
+  shows a warning and rendering falls back to an even split.
+
+A measure always lasts exactly its time-signature beats during playback.
+Cell widths in the views are proportional to their beat share.
+
 ## Lyrics Hints
 
 To associate lyrics with grid measures, place a `{lyrics_hint}` directive
