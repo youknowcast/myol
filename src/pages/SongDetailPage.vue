@@ -164,6 +164,7 @@ onUnmounted(() => {
                 :currentMeasure="currentMeasure"
                 :measureOffset="sectionMeasureOffsets[index] || 0"
                 :isPlaying="isPlaying"
+                :beats-per-measure="beatsPerMeasure"
                 @seek="handleSeekToMeasure"
               />
 

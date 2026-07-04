@@ -11,6 +11,7 @@ interface Props {
   prevSectionIndex: number | null
   nextSectionIndex: number | null
   selectedMeasureIndex: number | null
+  beatsPerMeasure: number
 }
 
 interface Emits {
@@ -129,6 +130,7 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
       :section-index="sectionIndex"
       :can-move-prev-section="prevSectionIndex !== null"
       :can-move-next-section="nextSectionIndex !== null"
+      :beats-per-measure="beatsPerMeasure"
       @select="toggleMeasureSelection"
       @add-measure="handleAddMeasure"
       @copy="handleCopyMeasure"

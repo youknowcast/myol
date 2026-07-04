@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useGridViewState, type CellWithMeasure } from '@/components/song/composables/useGridViewState'
 import { cellGlyph, gridCellClasses, boundaryGlyph } from '@/lib/chordpro/cellDisplay'
+import { measureBeatLayout } from '@/lib/chordpro/beatLayout'
 import type { Section, GridSection } from '@/lib/chordpro/types'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   currentMeasure?: number
   measureOffset?: number  // Offset for this section in global measure count
   isPlaying?: boolean
+  beatsPerMeasure?: number
 }
 
 interface Emits {
@@ -18,7 +20,8 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   currentMeasure: 0,
   measureOffset: 0,
-  isPlaying: false
+  isPlaying: false,
+  beatsPerMeasure: 4
 })
 
 const emit = defineEmits<Emits>()
@@ -38,6 +41,7 @@ interface MeasureGroup {
   lyricsHint: string
   startBar?: 'repeatStart'
   endBar?: 'repeatEnd' | 'barEnd'
+  beats: number[]
 }
 
 const measureRows = computed(() =>
@@ -55,7 +59,8 @@ const measureRows = computed(() =>
           isCurrent: cell.isCurrentMeasure,
           lyricsHint: lyricsHints.value[localIndex] || '',
           startBar: measure?.startBar,
-          endBar: measure?.endBar
+          endBar: measure?.endBar,
+          beats: []
         })
         return
       }
@@ -63,6 +68,10 @@ const measureRows = computed(() =>
       if (cell.isCurrentMeasure) {
         lastGroup.isCurrent = true
       }
+    })
+
+    groups.forEach((group) => {
+      group.beats = measureBeatLayout(group.cells.length, props.beatsPerMeasure).beats
     })
 
     return groups
@@ -99,13 +108,17 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
               class="grid-measure"
               :class="{ 'is-current-measure': group.isCurrent, 'is-empty': !group.cells.length }"
             >
-              <div class="grid-measure-body">
+              <div
+                class="grid-measure-body"
+                :style="{ minWidth: `calc(var(--grid-beat-unit) * ${beatsPerMeasure})` }"
+              >
                 <span v-if="group.startBar" class="grid-bar-mark">{{ boundaryGlyph(undefined, group.startBar, '') }}</span>
                 <div
                   v-for="(cell, cellIndex) in group.cells"
                   :key="cellIndex"
                   class="grid-cell"
                   :class="getCellClass(cell)"
+                  :style="{ flexGrow: String(group.beats[cellIndex] ?? 1) }"
                 >
                   <span class="grid-cell-text">{{ cellGlyph(cell) }}</span>
                 </div>
@@ -141,6 +154,7 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
   border-radius: var(--radius-lg);
   background: rgba(0, 0, 0, 0.2);
   padding: var(--spacing-md);
+  --grid-beat-unit: 1.75rem;
 }
 
 .chord-grid {
@@ -221,7 +235,8 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
   justify-content: center;
   border-radius: var(--radius-sm);
   padding: 2px 4px;
-  min-width: 1.5rem;
+  flex-basis: 0;
+  min-width: max-content;
   min-height: 2rem;
 }
 
@@ -254,8 +269,10 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
 }
 
 @media (min-width: 768px) {
+  .chord-grid-container {
+    --grid-beat-unit: 2rem;
+  }
   .grid-cell {
-    min-width: 1.75rem;
     font-size: 1rem;
   }
   .grid-lyrics-row {
@@ -264,8 +281,8 @@ function getRowMeasureIndex(row: MeasureGroup[]): number {
 }
 
 @media (min-width: 1024px) {
-  .grid-cell {
-    min-width: 2rem;
+  .chord-grid-container {
+    --grid-beat-unit: 2.25rem;
   }
 }
 </style>

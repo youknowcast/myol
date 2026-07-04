@@ -12,6 +12,7 @@ interface Props {
   sectionIndex: number
   canMovePrevSection: boolean
   canMoveNextSection: boolean
+  beatsPerMeasure: number
 }
 
 interface Emits {
@@ -95,6 +96,7 @@ onUnmounted(() => {
         :can-move-prev-section="canMovePrevSection"
         :can-move-next-section="canMoveNextSection"
         :selected="selectedMeasureIndex === measureIndex"
+        :beats-per-measure="beatsPerMeasure"
         @select="(index) => emit('select', index)"
         @add-measure="(position) => emit('add-measure', position)"
         @copy="() => emit('copy')"

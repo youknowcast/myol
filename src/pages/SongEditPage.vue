@@ -358,6 +358,7 @@ function commitLabelDialog() {
                 :prev-section-index="gridSections[gridIndex - 1]?.index ?? null"
                 :next-section-index="gridSections[gridIndex + 1]?.index ?? null"
                 :selected-measure-index="getSelectedMeasure(index)"
+                :beats-per-measure="beatsPerMeasure"
                 @select-measure="(val) => setSelectedMeasure(index, val)"
               />
             </div>
