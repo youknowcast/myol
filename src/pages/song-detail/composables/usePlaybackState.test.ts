@@ -53,7 +53,7 @@ describe('calculateCurrentMeasure', () => {
 
 describe('usePlaybackState', () => {
 	beforeEach(() => {
-		vi.useFakeTimers()
+		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date', 'performance'] })
 	})
 
 	afterEach(() => {
@@ -188,5 +188,33 @@ describe('usePlaybackState', () => {
 		expect(state.currentTime.value).toBe(0)
 
 		state.dispose()
+	})
+
+	it('advances by wall-clock elapsed time, not by tick count', () => {
+		const playback = usePlaybackState({ tempo: 60, beatsPerMeasure: 4, totalMeasures: 100 })
+
+		playback.play()
+		vi.advanceTimersByTime(1000)
+		playback.pause()
+
+		// 60BPM 4/4 → 1小節4秒。1秒経過なら currentTime ≒ 1.0（tick 粒度の誤差のみ許容）
+		expect(playback.currentTime.value).toBeGreaterThan(0.95)
+		expect(playback.currentTime.value).toBeLessThanOrEqual(1.0)
+
+		playback.dispose()
+	})
+
+	it('applies speed multiplier to elapsed time', () => {
+		const playback = usePlaybackState({ tempo: 60, beatsPerMeasure: 4, totalMeasures: 100 })
+
+		playback.setSpeed(2)
+		playback.play()
+		vi.advanceTimersByTime(1000)
+		playback.pause()
+
+		expect(playback.currentTime.value).toBeGreaterThan(1.9)
+		expect(playback.currentTime.value).toBeLessThanOrEqual(2.0)
+
+		playback.dispose()
 	})
 })

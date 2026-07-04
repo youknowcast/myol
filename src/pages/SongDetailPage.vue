@@ -58,10 +58,10 @@ watch([parsedSong, totalMeasures, beatsPerMeasure], () => {
 provide('currentMeasure', currentMeasure)
 provide('isPlaying', isPlaying)
 
-const { handleSeek, handleScroll } = usePlaybackSync({
+const { handleSeek } = usePlaybackSync({
   contentRef,
   isPlaying,
-  progress,
+  currentMeasure,
   totalDuration,
   seek: playback.seek
 })
@@ -142,7 +142,6 @@ onUnmounted(() => {
         <main
           ref="contentRef"
           class="song-content"
-          @scroll="handleScroll"
         >
           <!-- Chord diagrams (tablet/desktop) -->
           <aside class="chord-diagrams-sidebar" v-if="uniqueChords.length > 0">
