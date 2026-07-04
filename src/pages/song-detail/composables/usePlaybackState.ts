@@ -74,6 +74,7 @@ export function usePlaybackState(initialConfig?: Partial<PlaybackConfig>): Playb
 
 	// Playback interval
 	let playbackInterval: ReturnType<typeof setInterval> | null = null
+	let lastTickAt: number | null = null
 	const TICK_MS = 16 // ~60fps
 
 	// Computed values
@@ -98,10 +99,13 @@ export function usePlaybackState(initialConfig?: Partial<PlaybackConfig>): Playb
 	function play() {
 		if (playbackInterval) return
 		isPlaying.value = true
+		lastTickAt = performance.now()
 
 		playbackInterval = setInterval(() => {
-			const increment = (TICK_MS / 1000) * speedMultiplier.value
-			const newTime = currentTime.value + increment
+			const now = performance.now()
+			const elapsedSeconds = lastTickAt === null ? 0 : (now - lastTickAt) / 1000
+			lastTickAt = now
+			const newTime = currentTime.value + elapsedSeconds * speedMultiplier.value
 
 			// Loop or stop at end
 			if (newTime >= totalDuration.value) {
@@ -117,6 +121,7 @@ export function usePlaybackState(initialConfig?: Partial<PlaybackConfig>): Playb
 			clearInterval(playbackInterval)
 			playbackInterval = null
 		}
+		lastTickAt = null
 		isPlaying.value = false
 	}
 
