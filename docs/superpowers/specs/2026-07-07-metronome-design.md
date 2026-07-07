@@ -59,6 +59,7 @@ audioTime = ctx.currentTime + (beatSongTime - songTimeNow) / speedMultiplier
 | --- | --- |
 | ブラウザの自動再生制限 | AudioContext をトグル ON のユーザー操作時に生成・resume |
 | 曲末ループで currentTime が 0 に巻き戻る | 予約済み拍番号をリセットして再スケジュール |
+| 曲末直前の先読み窓が曲長を跨ぐ | 曲長（`maxSongTime`）で拍列挙を打ち切り、`songTime === 曲長` の拍（=次ループの1拍目）は予約しない。折り返し後の拍 0 だけが鳴り、ダウンビートの二重打ちを防ぐ |
 | seek（前方・後方） | 同上。予約済みで未再生のクリックは 100ms 以内のため許容 |
 | 再生速度変更 | 次ループから新しい換算で予約 |
 | 一時停止 / トグル OFF | 予約済みノードを停止、スケジューラ停止 |
