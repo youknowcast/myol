@@ -13,6 +13,7 @@ export interface UseMetronomeOptions {
 	tempo: Ref<number>
 	beatsPerMeasure: Ref<number>
 	speedMultiplier: Ref<number>
+	totalDuration: Ref<number> | ComputedRef<number>
 }
 
 const SCHEDULER_INTERVAL_MS = 25
@@ -38,7 +39,7 @@ export function useMetronome(options: UseMetronomeOptions) {
 			if (!audioContext) {
 				audioContext = new AudioContext()
 			}
-			void audioContext.resume()
+			audioContext.resume().catch(() => {})
 		}
 	}
 
@@ -74,7 +75,8 @@ export function useMetronome(options: UseMetronomeOptions) {
 			windowSeconds: LOOKAHEAD_SECONDS * speed,
 			secondsPerBeat: 60 / options.tempo.value,
 			beatsPerMeasure: options.beatsPerMeasure.value,
-			lastScheduledBeatIndex
+			lastScheduledBeatIndex,
+			maxSongTime: options.totalDuration.value
 		})
 		for (const beat of beats) {
 			const audioTime = audioContext.currentTime + (beat.songTime - songTimeNow) / speed
@@ -118,7 +120,7 @@ export function useMetronome(options: UseMetronomeOptions) {
 	function dispose() {
 		stopScheduler()
 		if (audioContext) {
-			void audioContext.close()
+			audioContext.close().catch(() => {})
 			audioContext = null
 		}
 	}

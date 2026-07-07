@@ -49,4 +49,31 @@ describe('upcomingBeats', () => {
 	it('returns empty for non-positive secondsPerBeat', () => {
 		expect(upcomingBeats({ ...base, songTimeNow: 0, secondsPerBeat: 0 })).toEqual([])
 	})
+
+	it('returns empty for non-positive windowSeconds', () => {
+		expect(upcomingBeats({ ...base, songTimeNow: 0, windowSeconds: 0 })).toEqual([])
+	})
+
+	it('excludes the beat at maxSongTime to avoid double-scheduling the loop downbeat', () => {
+		expect(upcomingBeats({
+			songTimeNow: 1.95,
+			windowSeconds: 0.2,
+			secondsPerBeat: 0.5,
+			beatsPerMeasure: 4,
+			lastScheduledBeatIndex: 3,
+			maxSongTime: 2
+		})).toEqual([])
+	})
+
+	it('includes the beat at that same time when maxSongTime is not set', () => {
+		expect(upcomingBeats({
+			songTimeNow: 1.95,
+			windowSeconds: 0.2,
+			secondsPerBeat: 0.5,
+			beatsPerMeasure: 4,
+			lastScheduledBeatIndex: 3
+		})).toEqual([
+			{ beatIndex: 4, songTime: 2, accent: true }
+		])
+	})
 })

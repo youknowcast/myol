@@ -51,7 +51,8 @@ const metronome = useMetronome({
   currentTime: playback.currentTime,
   tempo: playback.tempo,
   beatsPerMeasure: playback.beatsPerMeasure,
-  speedMultiplier
+  speedMultiplier,
+  totalDuration: playback.totalDuration
 })
 
 // Sync config from parsed song
@@ -463,5 +464,4 @@ onUnmounted(() => {
   justify-content: center;
   gap: var(--spacing-md);
 }
-
 </style>

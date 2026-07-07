@@ -15,6 +15,7 @@ export interface UpcomingBeatsOptions {
 	secondsPerBeat: number
 	beatsPerMeasure: number
 	lastScheduledBeatIndex: number | null
+	maxSongTime?: number
 }
 
 const EPSILON = 1e-9
@@ -25,13 +26,15 @@ export function isAccent(beatIndex: number, beatsPerMeasure: number): boolean {
 }
 
 export function upcomingBeats(options: UpcomingBeatsOptions): ScheduledBeat[] {
-	const { songTimeNow, windowSeconds, secondsPerBeat, beatsPerMeasure, lastScheduledBeatIndex } = options
+	const { songTimeNow, windowSeconds, secondsPerBeat, beatsPerMeasure, lastScheduledBeatIndex, maxSongTime } = options
 	if (secondsPerBeat <= 0 || windowSeconds <= 0) return []
 
 	const firstFromTime = Math.ceil(songTimeNow / secondsPerBeat - EPSILON)
 	const firstAfterScheduled = lastScheduledBeatIndex === null ? 0 : lastScheduledBeatIndex + 1
 	const firstIndex = Math.max(firstFromTime, firstAfterScheduled, 0)
-	const windowEnd = songTimeNow + windowSeconds
+	const windowEnd = maxSongTime === undefined
+		? songTimeNow + windowSeconds
+		: Math.min(songTimeNow + windowSeconds, maxSongTime)
 
 	const beats: ScheduledBeat[] = []
 	for (let index = firstIndex; index * secondsPerBeat < windowEnd - EPSILON; index++) {
