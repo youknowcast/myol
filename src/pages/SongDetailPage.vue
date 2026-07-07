@@ -12,6 +12,8 @@ import type { LyricsLine, Section } from '@/lib/chordpro/types'
 import GridView from '@/components/song/GridView.vue'
 import ChordDiagram from '@/components/chord/ChordDiagram.vue'
 import SpeedControl from '@/components/player/SpeedControl.vue'
+import { useMetronome } from '@/pages/song-detail/composables/useMetronome'
+import MetronomeToggle from '@/components/player/MetronomeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +45,14 @@ const {
   togglePlay,
   handleSpeedChange
 } = useSongDetailViewState({ playback })
+
+const metronome = useMetronome({
+  isPlaying,
+  currentTime: playback.currentTime,
+  tempo: playback.tempo,
+  beatsPerMeasure: playback.beatsPerMeasure,
+  speedMultiplier
+})
 
 // Sync config from parsed song
 
@@ -86,6 +96,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   playback.dispose()
+  metronome.dispose()
 })
 </script>
 
@@ -231,12 +242,18 @@ onUnmounted(() => {
           <span class="measure-total">{{ totalMeasures }}</span>
         </div>
 
-        <SpeedControl
-          :speed="speedMultiplier"
-          :is-playing="isPlaying"
-          @update:speed="handleSpeedChange"
-          @toggle-play="togglePlay"
-        />
+        <div class="player-controls">
+          <SpeedControl
+            :speed="speedMultiplier"
+            :is-playing="isPlaying"
+            @update:speed="handleSpeedChange"
+            @toggle-play="togglePlay"
+          />
+          <MetronomeToggle
+            :enabled="metronome.enabled.value"
+            @toggle="metronome.toggle()"
+          />
+        </div>
       </footer>
     </template>
   </div>
@@ -438,6 +455,13 @@ onUnmounted(() => {
 
 .measure-total {
   font-family: var(--font-mono);
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
 }
 
 </style>
