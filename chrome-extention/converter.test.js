@@ -212,6 +212,33 @@ describe('convertSheetToChordPro', () => {
     expect(text).toContain('{lyrics_hint: a｜b | c | d | e}')
   })
 
+  it('escapes braces in a lyrics hint so the directive still matches and the row is not corrupted', () => {
+    const text = convertSheetToChordPro({
+      title: 'T',
+      artist: 'A',
+      capoOffset: null,
+      rows: [{ cells: [{ chord: 'C', text: 'a}b' }, { chord: 'G', text: 'c' }, { chord: 'F', text: 'd' }, { chord: 'D', text: 'e' }] }]
+    })
+    expect(text).toContain('{lyrics_hint: a｝b | c | d | e}')
+
+    const parsed = parseChordPro(text)
+    const grid = parsed.sections.find(section => section.content.kind === 'grid')
+    // The directive must still match {([^}]+)} - if the unescaped `}` broke it, this would
+    // instead be parsed as a grid row with a chord cell literally named "{lyrics_hint:".
+    expect(grid.content.measures.map(measure => measure.cells[0].value)).toEqual(['C', 'G', 'F', 'D'])
+    expect(grid.content.measures[0].lyricsHint).toBe('a｝b')
+  })
+
+  it('escapes braces in the title so it does not corrupt the title directive', () => {
+    const text = convertSheetToChordPro({ title: 'A}B', artist: 'C', capoOffset: null, rows: [] })
+    expect(text).toContain('{title: A｝B}')
+
+    const parsed = parseChordPro(text)
+    // Without escaping, `{title: A}B}` fails the /^\{([^}]+)\}$/ directive regex and the
+    // title comes back empty.
+    expect(parsed.title).toBe('A｝B')
+  })
+
   it('derives measuresPerRow from the time signature', () => {
     const rows = [{ cells: [{ chord: 'C', text: 'あ' }, { chord: 'G', text: 'い' }] }]
     const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: '3/4' })
@@ -232,6 +259,10 @@ describe('convertSheetToChordPro', () => {
     const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: '' })
     expect(text).not.toContain('| |')
     expect(text).toContain('| C | C | G | G |')
+  })
+
+  it('matches the ChordPro snapshot generated from the real ufret fixture', () => {
+    expect(convertSheetToChordPro(sheet)).toMatchSnapshot()
   })
 
   it('converts the real ufret sheet into the expected section structure', () => {

@@ -1,0 +1,94 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`convertSheetToChordPro > matches the ChordPro snapshot generated from the real ufret fixture 1`] = `
+"{title: 優しいあの子}
+{artist: スピッツ}
+{capo: 2}
+{tempo: 120}
+{time: 4/4}
+
+{start_of_grid label="Intro"}
+| C | G/B | Am | Em7 |
+| F | G | Csus4 | C |
+{end_of_grid}
+
+{start_of_grid label="Verse 1"}
+{lyrics_hint: 重い | 扉を押 | し開けた | ら}
+| C | G | Am | Em7 |
+{lyrics_hint: 暗い | 道が | 続いてて | }
+| F | C | G | G |
+{lyrics_hint: めげずに | 歩いた | その先 | に}
+| C | G | Am | Em7 |
+{lyrics_hint: 知らな | かった世 | 界 | }
+| F | G | C | G/B |
+{lyrics_hint: 氷 | を散らす | 風す | ら味}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: 方に | もで | きるんだ | なあ | }
+| F | G | Csus4 | C | G/B |
+{lyrics_hint: 切り | 取られる | ことの | ない}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: 丸い大空 |  | の色を | }
+| F | F | G | G |
+{lyrics_hint: 優し | い | あの子に | も}
+| C | G/B | Am | Em7 |
+{lyrics_hint: 教 | えた | い | }
+| F | G | Csus4 | C |
+{end_of_grid}
+
+{start_of_grid label="Interlude 1"}
+| C | G/B | Am | Em7 |
+| F | G | Csus4 | C |
+{end_of_grid}
+
+{start_of_grid label="Verse 2"}
+{lyrics_hint: 口にす | る度に | 泣けるほ | ど}
+| C | G | Am | Em7 |
+{lyrics_hint: 憧れ | て砕 | かれて | }
+| F | C | G | G |
+{lyrics_hint: 消えかけ | た火を | 胸に抱 | きた}
+| C | G | Am | Em7 |
+{lyrics_hint: どり着 | いたコ | タン | }
+| F | G | C | G/B |
+{lyrics_hint: 芽吹 | きを待つ | 仲間 | が}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: 麓に | も生き | ていたんだ | なあ | }
+| F | G | Csus4 | C | G/B |
+{lyrics_hint: 寂し | い夜 | 温め | る}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: 古い許し |  | の歌を | }
+| F | F | G | G |
+{lyrics_hint: 優し | い | あの子に | も}
+| C | G/B | Am | Em7 |
+{lyrics_hint: 聴か | せた | い | }
+| F | G | Csus4 | C |
+{end_of_grid}
+
+{start_of_grid label="Interlude 2"}
+| C | G/B | Am | Em7 |
+| F | G | Csus4 | C |
+| A# | F | C |
+| A# | F | C |
+| A# | F | G | Am | G/B | E |
+{end_of_grid}
+
+{start_of_grid label="Verse 3"}
+{lyrics_hint: 怖 | がりで言い | そびれ | た}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: ありが | とうの | 一言 | と | }
+| F | G | Csus4 | C | G/B |
+{lyrics_hint: 日な | たでま | た会えるな | ら}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: 丸い大空 |  | の色を | }
+| F | F | G | G |
+{lyrics_hint: 優し | い | あの子に | も}
+| C | G/B | Am | Em7 |
+{lyrics_hint: 教 | えた | い | }
+| F | G | Csus4 | C |
+{end_of_grid}
+
+{start_of_grid label="Outro"}
+| C | G/B | Am | Em7 |
+| F | G | Csus4 | C |
+{end_of_grid}
+"
+`;

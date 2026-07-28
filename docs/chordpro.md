@@ -119,10 +119,17 @@ When a song contains only lyrics, the editor's "Auto Assign Measures" feature co
 
 The Chrome extension in `chrome-extention/` generates Extended Grid ChordPro
 directly from a ufret page. Since ufret exposes neither bar lines nor section
-headings, measures are inferred: a row with at least `M` chords becomes one
-measure per chord, and a shorter row with lyrics is padded to `M` measures in
-proportion to the character count of each chord's lyrics. Sections are split
-where rows switch between having lyrics and not, yielding `Intro`, `Verse N`,
+headings, measures are inferred: a row with at least `M` chords (`M` being the
+numerator of `{time:}`) becomes one measure per chord. A shorter row with
+lyrics is padded to `M` measures in proportion to the character count of each
+chord's lyrics; a shorter row *without* lyrics is left as-is, one chord per
+measure, since there is no text to distribute. Sections are split where rows
+switch between having lyrics and not, yielding `Intro`, `Verse N`,
 `Interlude N` and `Outro` labels.
 
-`{tempo:}` is always emitted as 120 because ufret does not publish BPM.
+`{tempo:}` is always emitted as 120 and `{time:}` as `4/4`, since ufret
+publishes neither BPM nor a time signature; both are fixed defaults for the
+user to correct in myol. `{capo:}` is derived from ufret's `capo` attribute,
+which is the semitone offset from the song's original key: a negative offset
+becomes a positive `{capo:}` value (`capo="-2"` &#8594; `{capo: 2}`), and a
+missing, zero, or positive offset omits `{capo:}` entirely.

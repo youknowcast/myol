@@ -14,6 +14,19 @@
  */
 
 /**
+ * ChordPro のディレクティブ記法と衝突する記号を全角に置換する。
+ * `|` は {lyrics_hint} のセグメント区切りと、`{` `}` はディレクティブ行の
+ * 波括弧 (src/lib/chordpro/parser.ts の /^\{([^}]+)\}$/) と衝突するため、
+ * 生の値のまま出力するとその行がディレクティブとして認識されなくなる。
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+function escapeForChordPro(value) {
+  return value.replace(/\|/g, '｜').replace(/\{/g, '｛').replace(/\}/g, '｝')
+}
+
+/**
  * total 小節を weights の比で配分する (最大剰余法)。各要素に最低 1 小節を保証する。
  * weights の要素数が total 以上のときは配分せず全要素 1 を返す。
  *
@@ -187,7 +200,10 @@ export function convertSheetToChordPro(sheet, options = {}) {
   const time = options.time ?? '4/4'
   const measuresPerRow = parseMeasuresPerRow(time)
 
-  const lines = [`{title: ${sheet.title ?? ''}}`, `{artist: ${sheet.artist ?? ''}}`]
+  const lines = [
+    `{title: ${escapeForChordPro(sheet.title ?? '')}}`,
+    `{artist: ${escapeForChordPro(sheet.artist ?? '')}}`
+  ]
 
   // ufret の capo 属性は原曲キーからの半音オフセット。負値がカポ位置に対応する。
   const capo = sheet.capoOffset ? -sheet.capoOffset : 0
@@ -199,7 +215,7 @@ export function convertSheetToChordPro(sheet, options = {}) {
     lines.push(`{start_of_grid label="${section.label}"}`)
     for (const row of section.rows) {
       if (row.hasLyrics) {
-        const hints = row.measures.map(measure => measure.hint.replace(/\|/g, '｜'))
+        const hints = row.measures.map(measure => escapeForChordPro(measure.hint))
         lines.push(`{lyrics_hint: ${hints.join(' | ')}}`)
       }
       lines.push(`| ${row.measures.map(measure => measure.chord).join(' | ')} |`)
