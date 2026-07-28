@@ -156,9 +156,27 @@ export function splitSections(rows) {
 }
 
 /**
+ * time (拍子) の分子を 1 行あたりの小節数として取り出す。
+ * 分子が欠落・非数値・0 以下など不正な場合は 4 にフォールバックする。
+ *
+ * src/lib/chordpro/parser.ts の parseBeatsPerMeasure と同じフォールバック方針をここに
+ * 複製したもの。拡張機能はビルドレスの独立ファイル群として配布するため src/ からは import しない。
+ *
+ * @param {string} [time]
+ * @returns {number}
+ */
+function parseMeasuresPerRow(time) {
+  if (!time) return 4
+  const [beats] = time.split('/')
+  const parsed = Number.parseInt(beats ?? '4', 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 4
+}
+
+/**
  * 抽出した譜面を Grid 形式の ChordPro 文字列に変換する。
  *
  * ufret は BPM も拍子も持たないため tempo/time は既定値を置く。myol 側で直す前提。
+ * options.time の分子が不正な場合、小節数は 4 にフォールバックする (parseMeasuresPerRow 参照)。
  *
  * @param {ExtractedSheet} sheet
  * @param {{ tempo?: number, time?: string }} [options]
@@ -167,7 +185,7 @@ export function splitSections(rows) {
 export function convertSheetToChordPro(sheet, options = {}) {
   const tempo = options.tempo ?? 120
   const time = options.time ?? '4/4'
-  const measuresPerRow = Number(time.split('/')[0])
+  const measuresPerRow = parseMeasuresPerRow(time)
 
   const lines = [`{title: ${sheet.title ?? ''}}`, `{artist: ${sheet.artist ?? ''}}`]
 

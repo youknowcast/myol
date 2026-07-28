@@ -126,7 +126,7 @@ content script と popup の間で受け渡す構造（JSDoc で型を付ける�
 `Intro` とする。
 
 各セクションは `{start_of_grid label="..."}` / `{end_of_grid}` で囲む
-（`label="..."` は `serializeChordPro` の出力形式と同じ）。
+（`label="..."` は `generateChordPro` の出力形式と同じ）。
 
 ### メタデータ
 

@@ -198,6 +198,10 @@ describe('convertSheetToChordPro', () => {
     expect(convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows: [] })).not.toContain('{capo:')
   })
 
+  it('omits capo when the offset is positive (transposed up, no capo applies)', () => {
+    expect(convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: 2, rows: [] })).not.toContain('{capo:')
+  })
+
   it('escapes a pipe in the lyrics so it cannot break the hint separator', () => {
     const text = convertSheetToChordPro({
       title: 'T',
@@ -213,6 +217,21 @@ describe('convertSheetToChordPro', () => {
     const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: '3/4' })
     expect(text).toContain('{time: 3/4}')
     expect(text).toContain('| C | C | G |')
+  })
+
+  it('falls back to 4 measures per row when the time numerator is non-numeric, instead of silently dropping the row', () => {
+    const rows = [{ cells: [{ chord: 'C', text: 'あ' }, { chord: 'G', text: 'い' }] }]
+    const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: 'x/4' })
+    expect(text).toContain('{time: x/4}')
+    expect(text).not.toContain('| |')
+    expect(text).toContain('| C | C | G | G |')
+  })
+
+  it('falls back to 4 measures per row when the time is an empty string, instead of silently dropping the row', () => {
+    const rows = [{ cells: [{ chord: 'C', text: 'あ' }, { chord: 'G', text: 'い' }] }]
+    const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: '' })
+    expect(text).not.toContain('| |')
+    expect(text).toContain('| C | C | G | G |')
   })
 
   it('converts the real ufret sheet into the expected section structure', () => {
