@@ -111,4 +111,25 @@ describe('convertRows', () => {
     expect(result).toHaveLength(1)
     expect(result[0].measures[0]).toEqual({ chord: 'F', hint: '方に' })
   })
+
+  it('attaches a leading chordless cell to the previous row last measure even when that measure is a padding repeat', () => {
+    const result = convertRows(
+      [
+        row(['F', '暗い'], ['C', '道が'], ['G', '続いてて']),
+        row([null, 'て'], ['Am', 'い'], ['G', 'け'], ['F', 'った'])
+      ],
+      4
+    )
+    // The first row has 3 chords but measuresPerRow is 4, so distribute([2,2,4], 4) = [1,1,2]
+    // gives measures [F:'暗い', C:'道が', G:'続いてて', G:''] where the last G is a padding repeat.
+    // The second row's leading chordless cell 'て' should be appended to the LAST measure,
+    // which is the padding repeat G. This is correct because the lyric is still being sung
+    // under that chord, so it belongs at the end of the chord's span.
+    expect(result[0].measures).toEqual([
+      { chord: 'F', hint: '暗い' },
+      { chord: 'C', hint: '道が' },
+      { chord: 'G', hint: '続いてて' },
+      { chord: 'G', hint: 'て' }
+    ])
+  })
 })
