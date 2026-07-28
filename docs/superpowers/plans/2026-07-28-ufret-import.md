@@ -780,8 +780,8 @@ function extractSheet() {
   const root = document.querySelector('#my-chord-data')
   if (!root) return null
 
-  const title = (document.querySelector('.show_name')?.textContent || document.title || '').trim()
-  const artist = (document.querySelector('.show_artist')?.textContent || '').replace(/\s+/g, ' ').trim()
+  const title = (document.querySelector('h1.p-detail-head__ttl')?.textContent || '').trim()
+  const artist = (document.querySelector('a.p-detail-head__artist')?.textContent || '').replace(/\s+/g, ' ').trim()
 
   const capoAttr = root.getAttribute('capo')
   const capoOffset = capoAttr === null || capoAttr.trim() === '' || Number.isNaN(Number(capoAttr))

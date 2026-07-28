@@ -132,8 +132,8 @@ content script と popup の間で受け渡す構造（JSDoc で型を付ける�
 
 | ディレクティブ | 値 |
 |---|---|
-| `{title:}` | `.show_name` |
-| `{artist:}` | `.show_artist`（空白正規化） |
+| `{title:}` | `h1.p-detail-head__ttl`（フォールバック無し。セレクタが無い場合は空文字） |
+| `{artist:}` | `a.p-detail-head__artist`（空白正規化、セレクタが無い場合は空文字） |
 | `{capo:}` | `-capoOffset`（`capo="-2"` → `{capo: 2}`）。`capoOffset >= 0` のときは出力しない |
 | `{tempo:}` | **120 固定**。ufret から取得不能のため myol 側で直す前提 |
 | `{time:}` | **4/4 固定**。ufret に拍子情報が無いため |
