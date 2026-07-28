@@ -63,7 +63,7 @@ chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 
 - popup から `.cho` ダウンロード / クリップボードコピー
 - ufret には小節線・セクション見出し・BPM が無いため、小節割りは行内のコード数と
   歌詞文字数から推定する。tempo は 120 固定で myol 側で直す
-- 設計: `docs/superpowers/specs/2026-07-28-ufret-import-design.md`
+- 小節推定・セクション分割・capo の詳細は `docs/chordpro.md` の「Importing from ufret」
 
 ## 環境変数
 
