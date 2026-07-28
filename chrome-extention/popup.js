@@ -1,56 +1,70 @@
-const button = document.getElementById('extract')
-const status = document.getElementById('status')
+import { convertSheetToChordPro } from './converter.js'
+
+const downloadButton = document.getElementById('download')
+const copyButton = document.getElementById('copy')
+const statusEl = document.getElementById('status')
+
+let chordPro = ''
+let baseName = 'chordpro'
 
 function setStatus(message) {
-  status.textContent = message
+  statusEl.textContent = message
 }
 
-function downloadText(filename, text) {
-  const blob = new Blob([text], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  chrome.downloads.download({
-    url,
-    filename,
-    saveAs: true
-  }, () => {
-    URL.revokeObjectURL(url)
+function sanitize(value) {
+  return value.replace(/[\\/:*?"<>|]+/g, '_').trim()
+}
+
+function requestSheet(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: 'MYOL_EXTRACT' }, (response) => {
+      if (chrome.runtime.lastError) {
+        resolve(null)
+        return
+      }
+      resolve(response?.sheet ?? null)
+    })
   })
 }
 
-button.addEventListener('click', async () => {
-  setStatus('Extracting...')
+async function load() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab || !tab.id) {
-    setStatus('No active tab found.')
+  if (!tab?.id) {
+    setStatus('アクティブなタブが見つかりません。')
     return
   }
 
-  chrome.tabs.sendMessage(tab.id, { type: 'MYOL_EXTRACT' }, (response) => {
-    if (chrome.runtime.lastError) {
-      setStatus('Content script not available on this page.')
-      return
-    }
-    if (!response || !response.text) {
-      setStatus('No data found in page.')
-      return
-    }
+  const sheet = await requestSheet(tab.id)
+  if (!sheet) {
+    setStatus('このページからコード譜を取得できませんでした。')
+    return
+  }
 
-    const headerLines = []
-    if (response.title) headerLines.push(`{title: ${response.title}}`)
-    if (response.artist) headerLines.push(`{artist: ${response.artist}}`)
-    if (headerLines.length > 0) headerLines.push('')
+  chordPro = convertSheetToChordPro(sheet)
+  baseName = [sanitize(sheet.artist || ''), sanitize(sheet.title || '')].filter(Boolean).join('_') || 'chordpro'
 
-    const chordProText = headerLines.length > 0
-      ? `${headerLines.join('\n')}${response.text ? `\n${response.text}` : ''}`
-      : response.text
+  setStatus(`${sheet.title || '(無題)'} / ${sheet.artist || '(不明)'}\n${sheet.rows.length} 行を変換しました。`)
 
-    const rawTitle = response.title || 'chordpro'
-    const rawArtist = response.artist || ''
-    const safeTitle = rawTitle.replace(/[\\/:*?"<>|]+/g, '_').trim()
-    const safeArtist = rawArtist.replace(/[\\/:*?"<>|]+/g, '_').trim()
-    const baseName = [safeArtist, safeTitle].filter(Boolean).join('_') || 'chordpro'
-    const filename = `${baseName}.cho`
-    downloadText(filename, chordProText)
-    setStatus('Downloaded.')
+  downloadButton.disabled = false
+  copyButton.disabled = false
+}
+
+downloadButton.addEventListener('click', () => {
+  const blob = new Blob([chordPro], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  chrome.downloads.download({ url, filename: `${baseName}.cho`, saveAs: true }, () => {
+    URL.revokeObjectURL(url)
+    setStatus('ダウンロードしました。')
   })
 })
+
+copyButton.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(chordPro)
+    setStatus('クリップボードにコピーしました。')
+  } catch {
+    setStatus('コピーに失敗しました。')
+  }
+})
+
+void load()
