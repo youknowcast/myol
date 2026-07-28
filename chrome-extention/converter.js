@@ -42,3 +42,74 @@ export function distribute(weights, total) {
 
   return counts
 }
+
+/** @typedef {{ chord: string, hint: string }} ConvertedMeasure */
+/** @typedef {{ measures: ConvertedMeasure[], hasLyrics: boolean }} ConvertedRow */
+
+/**
+ * 行のセルを「コード + それに続くコード無しセルの歌詞」に畳む。
+ * 行頭のコード無しセル (前行からの歌詞の続き) は leading として分離する。
+ *
+ * @param {ExtractedCell[]} cells
+ * @returns {{ leading: string, groups: { chord: string, text: string }[] }}
+ */
+function groupCellsByChord(cells) {
+  let leading = ''
+  const groups = []
+  for (const cell of cells) {
+    if (cell.chord) {
+      groups.push({ chord: cell.chord, text: cell.text })
+    } else if (groups.length > 0) {
+      groups[groups.length - 1].text += cell.text
+    } else {
+      leading += cell.text
+    }
+  }
+  return { leading, groups }
+}
+
+/**
+ * 抽出した行を小節列に変換する。
+ *
+ * @param {ExtractedRow[]} rows
+ * @param {number} measuresPerRow 基準小節数 ({time:} の分子)
+ * @returns {ConvertedRow[]}
+ */
+export function convertRows(rows, measuresPerRow) {
+  /** @type {ConvertedRow[]} */
+  const converted = []
+
+  for (const row of rows) {
+    const { leading, groups } = groupCellsByChord(row.cells)
+
+    const trimmedLeading = leading.trim()
+    if (trimmedLeading && converted.length > 0) {
+      const previous = converted[converted.length - 1]
+      const lastMeasure = previous.measures[previous.measures.length - 1]
+      if (lastMeasure) {
+        lastMeasure.hint += trimmedLeading
+        previous.hasLyrics = true
+      }
+    }
+
+    if (groups.length === 0) continue
+
+    const hasLyrics = groups.some(group => group.text.trim().length > 0)
+    const counts =
+      groups.length >= measuresPerRow || !hasLyrics
+        ? groups.map(() => 1)
+        : distribute(groups.map(group => Math.max(group.text.trim().length, 1)), measuresPerRow)
+
+    /** @type {ConvertedMeasure[]} */
+    const measures = []
+    groups.forEach((group, index) => {
+      for (let repeat = 0; repeat < counts[index]; repeat++) {
+        measures.push({ chord: group.chord, hint: repeat === 0 ? group.text.trim() : '' })
+      }
+    })
+
+    converted.push({ measures, hasLyrics })
+  }
+
+  return converted
+}
