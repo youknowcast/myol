@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { distribute, convertRows, splitSections } from './converter.js'
+import { distribute, convertRows, splitSections, convertSheetToChordPro } from './converter.js'
+import { parseChordPro } from '@/lib/chordpro/parser'
+import sheet from './fixtures/ufret-yasashii-ano-ko.json'
 
 describe('distribute', () => {
   it('splits evenly when weights are equal', () => {
@@ -178,5 +180,91 @@ describe('splitSections', () => {
 
   it('returns no sections for no rows', () => {
     expect(splitSections([])).toEqual([])
+  })
+})
+
+describe('convertSheetToChordPro', () => {
+  it('emits metadata with a capo derived from the ufret offset', () => {
+    const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: -2, rows: [] })
+    expect(text).toContain('{title: T}')
+    expect(text).toContain('{artist: A}')
+    expect(text).toContain('{capo: 2}')
+    expect(text).toContain('{tempo: 120}')
+    expect(text).toContain('{time: 4/4}')
+  })
+
+  it('omits capo when the offset is zero or absent', () => {
+    expect(convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: 0, rows: [] })).not.toContain('{capo:')
+    expect(convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows: [] })).not.toContain('{capo:')
+  })
+
+  it('escapes a pipe in the lyrics so it cannot break the hint separator', () => {
+    const text = convertSheetToChordPro({
+      title: 'T',
+      artist: 'A',
+      capoOffset: null,
+      rows: [{ cells: [{ chord: 'C', text: 'a|b' }, { chord: 'G', text: 'c' }, { chord: 'F', text: 'd' }, { chord: 'D', text: 'e' }] }]
+    })
+    expect(text).toContain('{lyrics_hint: a｜b | c | d | e}')
+  })
+
+  it('derives measuresPerRow from the time signature', () => {
+    const rows = [{ cells: [{ chord: 'C', text: 'あ' }, { chord: 'G', text: 'い' }] }]
+    const text = convertSheetToChordPro({ title: 'T', artist: 'A', capoOffset: null, rows }, { time: '3/4' })
+    expect(text).toContain('{time: 3/4}')
+    expect(text).toContain('| C | C | G |')
+  })
+
+  it('converts the real ufret sheet into the expected section structure', () => {
+    const text = convertSheetToChordPro(sheet)
+    const labels = [...text.matchAll(/\{start_of_grid label="([^"]+)"\}/g)].map(m => m[1])
+    expect(labels).toEqual([
+      'Intro',
+      'Verse 1',
+      'Interlude 1',
+      'Verse 2',
+      'Interlude 2',
+      'Verse 3',
+      'Outro'
+    ])
+  })
+
+  it('pads short lyric rows of the real sheet to four measures', () => {
+    const text = convertSheetToChordPro(sheet)
+    // 暗い(2) 道が(2) 続いてて(4) -> 1:1:2
+    expect(text).toContain('| F | C | G | G |')
+    // 丸い大空(4) の色を(3) -> 2:2
+    expect(text).toContain('| F | F | G | G |')
+  })
+
+  it('produces ChordPro that myol can parse back', () => {
+    const parsed = parseChordPro(convertSheetToChordPro(sheet))
+
+    expect(parsed.title).toBe('優しいあの子')
+    expect(parsed.artist).toBe('スピッツ')
+    expect(parsed.capo).toBe(2)
+    expect(parsed.tempo).toBe(120)
+    expect(parsed.time).toBe('4/4')
+
+    const grids = parsed.sections.filter(section => section.content.kind === 'grid')
+    expect(grids).toHaveLength(7)
+    expect(grids[0].label).toBe('Intro')
+    expect(grids[0].content.measures.map(measure => measure.cells[0].value)).toEqual([
+      'C', 'G/B', 'Am', 'Em7', 'F', 'G', 'Csus4', 'C'
+    ])
+
+    const verse1 = grids[1]
+    expect(verse1.label).toBe('Verse 1')
+    expect(verse1.content.measures.slice(0, 4).map(measure => measure.lyricsHint)).toEqual([
+      '重い', '扉を押', 'し開けた', 'ら'
+    ])
+
+    // 全小節がちょうど 1 セル (= 小節いっぱいのコード) であること
+    for (const grid of grids) {
+      for (const measure of grid.content.measures) {
+        expect(measure.cells).toHaveLength(1)
+        expect(measure.cells[0].type).toBe('chord')
+      }
+    }
   })
 })

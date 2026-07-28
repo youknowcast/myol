@@ -1,0 +1,735 @@
+{
+  "title": "優しいあの子",
+  "artist": "スピッツ",
+  "capoOffset": -2,
+  "rows": [
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Em7",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "重い"
+        },
+        {
+          "chord": "G",
+          "text": "扉を押"
+        },
+        {
+          "chord": "Am",
+          "text": "し開けた"
+        },
+        {
+          "chord": "Em7",
+          "text": "ら"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "暗い"
+        },
+        {
+          "chord": "C",
+          "text": "道が"
+        },
+        {
+          "chord": "G",
+          "text": "続いてて"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "めげずに"
+        },
+        {
+          "chord": "G",
+          "text": "歩いた"
+        },
+        {
+          "chord": "Am",
+          "text": "その先"
+        },
+        {
+          "chord": "Em7",
+          "text": "に"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "知らな"
+        },
+        {
+          "chord": "G",
+          "text": "かった世"
+        },
+        {
+          "chord": "C",
+          "text": "界"
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "氷"
+        },
+        {
+          "chord": "Em7",
+          "text": "を散らす"
+        },
+        {
+          "chord": "Am",
+          "text": "風す"
+        },
+        {
+          "chord": "Em7",
+          "text": "ら"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": null,
+          "text": "味"
+        },
+        {
+          "chord": "F",
+          "text": "方に"
+        },
+        {
+          "chord": "G",
+          "text": "もで"
+        },
+        {
+          "chord": "Csus4",
+          "text": "きるんだ"
+        },
+        {
+          "chord": "C",
+          "text": "なあ"
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "切り"
+        },
+        {
+          "chord": "Em7",
+          "text": "取られる"
+        },
+        {
+          "chord": "Am",
+          "text": "ことの"
+        },
+        {
+          "chord": "Em7",
+          "text": "ない"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "丸い大空"
+        },
+        {
+          "chord": "G",
+          "text": "の色を"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "優し"
+        },
+        {
+          "chord": "G/B",
+          "text": "い"
+        },
+        {
+          "chord": "Am",
+          "text": "あの子に"
+        },
+        {
+          "chord": "Em7",
+          "text": "も"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "教"
+        },
+        {
+          "chord": "G",
+          "text": "えた"
+        },
+        {
+          "chord": "Csus4",
+          "text": "い"
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Em7",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "口にす"
+        },
+        {
+          "chord": "G",
+          "text": "る度に"
+        },
+        {
+          "chord": "Am",
+          "text": "泣けるほ"
+        },
+        {
+          "chord": "Em7",
+          "text": "ど"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "憧れ"
+        },
+        {
+          "chord": "C",
+          "text": "て砕"
+        },
+        {
+          "chord": "G",
+          "text": "かれて"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "消えかけ"
+        },
+        {
+          "chord": "G",
+          "text": "た火を"
+        },
+        {
+          "chord": "Am",
+          "text": "胸に抱"
+        },
+        {
+          "chord": "Em7",
+          "text": "き"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": null,
+          "text": "た"
+        },
+        {
+          "chord": "F",
+          "text": "どり着"
+        },
+        {
+          "chord": "G",
+          "text": "いたコ"
+        },
+        {
+          "chord": "C",
+          "text": "タン"
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "芽吹"
+        },
+        {
+          "chord": "Em7",
+          "text": "きを待つ"
+        },
+        {
+          "chord": "Am",
+          "text": "仲間"
+        },
+        {
+          "chord": "Em7",
+          "text": "が"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "麓に"
+        },
+        {
+          "chord": "G",
+          "text": "も生き"
+        },
+        {
+          "chord": "Csus4",
+          "text": "ていたんだ"
+        },
+        {
+          "chord": "C",
+          "text": "なあ"
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "寂し"
+        },
+        {
+          "chord": "Em7",
+          "text": "い夜"
+        },
+        {
+          "chord": "Am",
+          "text": "温め"
+        },
+        {
+          "chord": "Em7",
+          "text": "る"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "古い許し"
+        },
+        {
+          "chord": "G",
+          "text": "の歌を"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "優し"
+        },
+        {
+          "chord": "G/B",
+          "text": "い"
+        },
+        {
+          "chord": "Am",
+          "text": "あの子に"
+        },
+        {
+          "chord": "Em7",
+          "text": "も"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "聴か"
+        },
+        {
+          "chord": "G",
+          "text": "せた"
+        },
+        {
+          "chord": "Csus4",
+          "text": "い"
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Em7",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "A#",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "A#",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "A#",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "E",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "怖"
+        },
+        {
+          "chord": "Em7",
+          "text": "がりで言い"
+        },
+        {
+          "chord": "Am",
+          "text": "そびれ"
+        },
+        {
+          "chord": "Em7",
+          "text": "た"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "ありが"
+        },
+        {
+          "chord": "G",
+          "text": "とうの"
+        },
+        {
+          "chord": "Csus4",
+          "text": "一言"
+        },
+        {
+          "chord": "C",
+          "text": "と"
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "日な"
+        },
+        {
+          "chord": "Em7",
+          "text": "たでま"
+        },
+        {
+          "chord": "Am",
+          "text": "た会えるな"
+        },
+        {
+          "chord": "Em7",
+          "text": "ら"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "丸い大空"
+        },
+        {
+          "chord": "G",
+          "text": "の色を"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "優し"
+        },
+        {
+          "chord": "G/B",
+          "text": "い"
+        },
+        {
+          "chord": "Am",
+          "text": "あの子に"
+        },
+        {
+          "chord": "Em7",
+          "text": "も"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "教"
+        },
+        {
+          "chord": "G",
+          "text": "えた"
+        },
+        {
+          "chord": "Csus4",
+          "text": "い"
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Em7",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}

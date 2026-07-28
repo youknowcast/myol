@@ -154,3 +154,40 @@ export function splitSections(rows) {
     return { label, rows: block.rows }
   })
 }
+
+/**
+ * 抽出した譜面を Grid 形式の ChordPro 文字列に変換する。
+ *
+ * ufret は BPM も拍子も持たないため tempo/time は既定値を置く。myol 側で直す前提。
+ *
+ * @param {ExtractedSheet} sheet
+ * @param {{ tempo?: number, time?: string }} [options]
+ * @returns {string}
+ */
+export function convertSheetToChordPro(sheet, options = {}) {
+  const tempo = options.tempo ?? 120
+  const time = options.time ?? '4/4'
+  const measuresPerRow = Number(time.split('/')[0])
+
+  const lines = [`{title: ${sheet.title ?? ''}}`, `{artist: ${sheet.artist ?? ''}}`]
+
+  // ufret の capo 属性は原曲キーからの半音オフセット。負値がカポ位置に対応する。
+  const capo = sheet.capoOffset ? -sheet.capoOffset : 0
+  if (capo > 0) lines.push(`{capo: ${capo}}`)
+
+  lines.push(`{tempo: ${tempo}}`, `{time: ${time}}`, '')
+
+  for (const section of splitSections(convertRows(sheet.rows, measuresPerRow))) {
+    lines.push(`{start_of_grid label="${section.label}"}`)
+    for (const row of section.rows) {
+      if (row.hasLyrics) {
+        const hints = row.measures.map(measure => measure.hint.replace(/\|/g, '｜'))
+        lines.push(`{lyrics_hint: ${hints.join(' | ')}}`)
+      }
+      lines.push(`| ${row.measures.map(measure => measure.chord).join(' | ')} |`)
+    }
+    lines.push('{end_of_grid}', '')
+  }
+
+  return lines.join('\n')
+}
