@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 const AUTH_SESSION_KEY = 'myol_auth_session'
 const AUTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000
 
-// 意図的なダウングレード（docs/superpowers/specs/2026-07-04-auth-simplification-design.md 参照）:
+// 意図的なダウングレード（README「認証」参照）:
 // 初見の第三者の抑止のみが目的。値はリポジトリ・配布バンドルに露出する。
 const FIXED_PASSCODE = '9999'
 
