@@ -1,43 +1,36 @@
-function extractChordProFromPage() {
+/**
+ * ufret のコード譜 DOM から ExtractedSheet を抽出する。
+ * ChordPro の知識は持たない (変換は popup 側の converter.js が行う)。
+ */
+
+function extractSheet() {
   const root = document.querySelector('#my-chord-data')
-  if (!root) return { text: '' }
+  if (!root) return null
 
-  const nameEl = document.querySelector('.show_name')
-  const artistEl = document.querySelector('.show_artist')
-  const title = (nameEl?.textContent || document.title || '').trim()
-  const artist = (artistEl?.textContent || '').replace(/\s+/g, ' ').trim()
+  const title = (document.querySelector('.show_name')?.textContent || document.title || '').trim()
+  const artist = (document.querySelector('.show_artist')?.textContent || '').replace(/\s+/g, ' ').trim()
 
-  const lines = []
-  const rows = root.querySelectorAll('.chord-row')
+  const capoAttr = root.getAttribute('capo')
+  const capoOffset = capoAttr === null || capoAttr.trim() === '' || Number.isNaN(Number(capoAttr))
+    ? null
+    : Number(capoAttr)
 
-  rows.forEach((row) => {
-    let line = ''
-    const chordBlocks = row.querySelectorAll('p.chord')
-
-    chordBlocks.forEach((p) => {
-      const chord = (p.querySelector('rt')?.textContent || '').trim()
-      const lyric = Array.from(p.querySelectorAll('.mejiowvnz .col'))
-        .map((el) => el.textContent || '')
+  const rows = Array.from(root.querySelectorAll('.chord-row')).map((row) => ({
+    cells: Array.from(row.querySelectorAll('p.chord')).map((cell) => ({
+      chord: (cell.querySelector('rt')?.textContent || '').trim() || null,
+      text: Array.from(cell.querySelectorAll('.mejiowvnz .col'))
+        .map((col) => col.textContent || '')
         .join('')
+    }))
+  }))
 
-      if (chord) {
-        line += `[${chord}]${lyric}`
-      } else {
-        line += lyric
-      }
-    })
+  if (rows.length === 0) return null
 
-    if (line.trim()) {
-      lines.push(line)
-    }
-  })
-
-  const text = lines.join('\n')
-  return { text, title, artist }
+  return { title, artist, capoOffset, rows }
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message && message.type === 'MYOL_EXTRACT') {
-    sendResponse(extractChordProFromPage())
+    sendResponse({ sheet: extractSheet() })
   }
 })
