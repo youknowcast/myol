@@ -113,3 +113,44 @@ export function convertRows(rows, measuresPerRow) {
 
   return converted
 }
+
+/** @typedef {{ label: string, rows: ConvertedRow[] }} ConvertedSection */
+
+/**
+ * 歌詞の有無が切り替わる境目でセクションを分割し、ラベルを付ける。
+ * ufret はセクション見出しを持たないため、これが唯一の構造の手がかりになる。
+ *
+ * @param {ConvertedRow[]} rows
+ * @returns {ConvertedSection[]}
+ */
+export function splitSections(rows) {
+  /** @type {{ hasLyrics: boolean, rows: ConvertedRow[] }[]} */
+  const blocks = []
+  for (const row of rows) {
+    const last = blocks[blocks.length - 1]
+    if (last && last.hasLyrics === row.hasLyrics) {
+      last.rows.push(row)
+    } else {
+      blocks.push({ hasLyrics: row.hasLyrics, rows: [row] })
+    }
+  }
+
+  let verseNumber = 0
+  let interludeNumber = 0
+
+  return blocks.map((block, index) => {
+    let label
+    if (block.hasLyrics) {
+      verseNumber += 1
+      label = `Verse ${verseNumber}`
+    } else if (index === 0) {
+      label = 'Intro'
+    } else if (index === blocks.length - 1) {
+      label = 'Outro'
+    } else {
+      interludeNumber += 1
+      label = `Interlude ${interludeNumber}`
+    }
+    return { label, rows: block.rows }
+  })
+}

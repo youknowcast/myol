@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { distribute, convertRows } from './converter.js'
+import { distribute, convertRows, splitSections } from './converter.js'
 
 describe('distribute', () => {
   it('splits evenly when weights are equal', () => {
@@ -131,5 +131,52 @@ describe('convertRows', () => {
       { chord: 'G', hint: '続いてて' },
       { chord: 'G', hint: 'て' }
     ])
+  })
+})
+
+const lyricRow = () => ({ measures: [{ chord: 'C', hint: 'あ' }], hasLyrics: true })
+const instrumentalRow = () => ({ measures: [{ chord: 'F', hint: '' }], hasLyrics: false })
+
+describe('splitSections', () => {
+  it('labels a leading instrumental block as Intro and a trailing one as Outro', () => {
+    const sections = splitSections([instrumentalRow(), lyricRow(), instrumentalRow()])
+    expect(sections.map(s => s.label)).toEqual(['Intro', 'Verse 1', 'Outro'])
+  })
+
+  it('numbers verses and interludes independently', () => {
+    const sections = splitSections([
+      instrumentalRow(),
+      lyricRow(),
+      instrumentalRow(),
+      lyricRow(),
+      instrumentalRow(),
+      lyricRow(),
+      instrumentalRow()
+    ])
+    expect(sections.map(s => s.label)).toEqual([
+      'Intro',
+      'Verse 1',
+      'Interlude 1',
+      'Verse 2',
+      'Interlude 2',
+      'Verse 3',
+      'Outro'
+    ])
+  })
+
+  it('groups consecutive rows of the same kind into one section', () => {
+    const sections = splitSections([instrumentalRow(), instrumentalRow(), lyricRow(), lyricRow()])
+    expect(sections).toHaveLength(2)
+    expect(sections[0].rows).toHaveLength(2)
+    expect(sections[1].rows).toHaveLength(2)
+  })
+
+  it('prefers Intro over Outro when the whole song has no lyrics', () => {
+    const sections = splitSections([instrumentalRow(), instrumentalRow()])
+    expect(sections.map(s => s.label)).toEqual(['Intro'])
+  })
+
+  it('returns no sections for no rows', () => {
+    expect(splitSections([])).toEqual([])
   })
 })
