@@ -114,3 +114,15 @@ When a song contains only lyrics, the editor's "Auto Assign Measures" feature co
 1. Each line of lyrics is extracted as a `{lyrics_hint}`.
 2. A corresponding grid row with a default number of measures (based on tempo) is generated.
 3. The original lyrics section is replaced by the new grid section.
+
+## Importing from ufret
+
+The Chrome extension in `chrome-extention/` generates Extended Grid ChordPro
+directly from a ufret page. Since ufret exposes neither bar lines nor section
+headings, measures are inferred: a row with at least `M` chords becomes one
+measure per chord, and a shorter row with lyrics is padded to `M` measures in
+proportion to the character count of each chord's lyrics. Sections are split
+where rows switch between having lyrics and not, yielding `Intro`, `Verse N`,
+`Interlude N` and `Outro` labels.
+
+`{tempo:}` is always emitted as 120 because ufret does not publish BPM.
