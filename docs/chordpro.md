@@ -42,6 +42,23 @@ Repeat/end bars are preserved per measure across save (`Measure.startBar` /
 - `%` : Repeat previous measure
 - `/` : No chord (rhythmic hit) — parsed as a dedicated no-chord cell
 
+## Beats per Cell
+
+Within a grid measure, cells share the measure's beats (from `{time:}`):
+
+- If the beat count is divisible by the cell count, cells split evenly:
+  `| Bm |` is four beats of Bm in 4/4, `| Bm G |` is 2 + 2.
+- With fewer cells than beats and no even split, each cell takes one beat
+  and the FIRST cell absorbs the remainder: `| G A/G E |` in 4/4 reads
+  G(2) A/G(1) E(1).
+- If the cell count is a multiple of the beats, cells are even sub-beats:
+  eight cells in 4/4 are eighth notes.
+- Anything else (e.g. five cells in 4/4) cannot be interpreted; the editor
+  shows a warning and rendering falls back to an even split.
+
+A measure always lasts exactly its time-signature beats during playback.
+Cell widths in the views are proportional to their beat share.
+
 ## Lyrics Hints
 
 To associate lyrics with grid measures, place a `{lyrics_hint}` directive
@@ -97,3 +114,22 @@ When a song contains only lyrics, the editor's "Auto Assign Measures" feature co
 1. Each line of lyrics is extracted as a `{lyrics_hint}`.
 2. A corresponding grid row with a default number of measures (based on tempo) is generated.
 3. The original lyrics section is replaced by the new grid section.
+
+## Importing from ufret
+
+The Chrome extension in `chrome-extention/` generates Extended Grid ChordPro
+directly from a ufret page. Since ufret exposes neither bar lines nor section
+headings, measures are inferred: a row with at least `M` chords (`M` being the
+numerator of `{time:}`) becomes one measure per chord. A shorter row with
+lyrics is padded to `M` measures in proportion to the character count of each
+chord's lyrics; a shorter row *without* lyrics is left as-is, one chord per
+measure, since there is no text to distribute. Sections are split where rows
+switch between having lyrics and not, yielding `Intro`, `Verse N`,
+`Interlude N` and `Outro` labels.
+
+`{tempo:}` is always emitted as 120 and `{time:}` as `4/4`, since ufret
+publishes neither BPM nor a time signature; both are fixed defaults for the
+user to correct in myol. `{capo:}` is derived from ufret's `capo` attribute,
+which is the semitone offset from the song's original key: a negative offset
+becomes a positive `{capo:}` value (`capo="-2"` &#8594; `{capo: 2}`), and a
+missing, zero, or positive offset omits `{capo:}` entirely.

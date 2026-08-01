@@ -16,6 +16,12 @@
       padding: 8px 10px;
       font-size: 14px;
       cursor: pointer;
+      margin-bottom: 6px;
+    }
+
+    button:disabled {
+      cursor: default;
+      opacity: 0.5;
     }
 
     #status {
@@ -28,9 +34,10 @@
 </head>
 
 <body>
-  <button id="extract">Extract + Download</button>
+  <button id="download" disabled>.cho をダウンロード</button>
+  <button id="copy" disabled>クリップボードにコピー</button>
   <div id="status"></div>
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 
 </html>

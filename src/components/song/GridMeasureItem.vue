@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { GridCell } from '@/lib/chordpro/types'
 import { cellGlyph, cellKind } from '@/lib/chordpro/cellDisplay'
+import { measureBeatLayout } from '@/lib/chordpro/beatLayout'
 import type { EditableMeasure } from '@/components/song/composables/useEditableMeasures'
 import GridMeasureToolbox from '@/components/song/GridMeasureToolbox.vue'
 
@@ -13,6 +14,7 @@ interface Props {
   canMovePrevSection: boolean
   canMoveNextSection: boolean
   selected: boolean
+  beatsPerMeasure: number
 }
 
 interface Emits {
@@ -31,6 +33,8 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const beatLayout = computed(() => measureBeatLayout(props.measure.cells.length, props.beatsPerMeasure))
 
 const toolboxAlign = computed(() => (
   props.measureIndex >= Math.max(1, props.measuresLength - 2) ? 'right' : 'left'
@@ -80,18 +84,25 @@ function handleHintBlur(event: FocusEvent) {
       class="measure-cells"
       :data-measure-index="measureIndex"
       :data-section-index="sectionIndex"
+      :style="{ minWidth: `calc(var(--editor-beat-unit) * ${beatsPerMeasure})` }"
       @click="emit('select', measureIndex)"
     >
       <div
-        v-for="cell in measure.cells"
+        v-for="(cell, cellIndex) in measure.cells"
         :key="cell.id"
         :data-id="cell.id"
         class="editable-cell"
         :class="getCellClass(cell)"
+        :style="{ flexGrow: String(beatLayout.beats[cellIndex] ?? 1) }"
       >
         {{ cellGlyph(cell) }}
       </div>
     </div>
+    <span
+      v-if="beatLayout.irregular"
+      class="beat-warning"
+      title="セル数が拍子と合いません（例: 4/4 で5セル）。再生・表示は均等割りで扱われます"
+    >⚠</span>
     <input
       v-if="selected"
       class="lyrics-hint-input"
@@ -120,6 +131,7 @@ function handleHintBlur(event: FocusEvent) {
   border-radius: var(--radius-sm);
   padding: 2px;
   transition: all var(--transition-fast);
+  --editor-beat-unit: 2.5rem;
 }
 
 .measure-wrapper:hover {
@@ -146,7 +158,9 @@ function handleHintBlur(event: FocusEvent) {
   cursor: grab;
   user-select: none;
   transition: all var(--transition-fast);
-  min-width: 2.5rem;
+  flex-grow: 1;
+  flex-basis: 0;
+  min-width: max-content;
   text-align: center;
 }
 
@@ -178,6 +192,14 @@ function handleHintBlur(event: FocusEvent) {
   color: white;
 }
 
+.beat-warning {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 0.8rem;
+  cursor: help;
+}
+
 /* SortableJS states */
 .cell-ghost {
   opacity: 0.4;
@@ -194,8 +216,11 @@ function handleHintBlur(event: FocusEvent) {
 }
 
 @media (min-width: 768px) {
+  .measure-wrapper {
+    --editor-beat-unit: 3.5rem;
+  }
+
   .editable-cell {
-    min-width: 3.5rem;
     font-size: 1rem;
   }
 }

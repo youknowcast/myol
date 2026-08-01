@@ -1,0 +1,383 @@
+{
+  "title": "サンプルソング",
+  "artist": "テストアーティスト",
+  "capoOffset": -2,
+  "rows": [
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Dm7",
+          "text": ""
+        },
+        {
+          "chord": "G7",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "あい"
+        },
+        {
+          "chord": "Am",
+          "text": "うえお"
+        },
+        {
+          "chord": "F",
+          "text": "かきくけ"
+        },
+        {
+          "chord": "G",
+          "text": "こ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "さし"
+        },
+        {
+          "chord": "C",
+          "text": "すせ"
+        },
+        {
+          "chord": "G",
+          "text": "そたちつ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "てとなに"
+        },
+        {
+          "chord": "G",
+          "text": "ぬねの"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "はひ"
+        },
+        {
+          "chord": "Em7",
+          "text": "ふへほ"
+        },
+        {
+          "chord": "Am",
+          "text": "まみ"
+        },
+        {
+          "chord": "Em7",
+          "text": "む"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": null,
+          "text": "め"
+        },
+        {
+          "chord": "F",
+          "text": "もやゆ"
+        },
+        {
+          "chord": "G",
+          "text": "よら"
+        },
+        {
+          "chord": "Csus4",
+          "text": "りる"
+        },
+        {
+          "chord": "C",
+          "text": "れろ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "わをん"
+        },
+        {
+          "chord": "G/B",
+          "text": "あ"
+        },
+        {
+          "chord": "Am",
+          "text": "いう"
+        },
+        {
+          "chord": "Em7",
+          "text": "えお"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "Em7",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "かき"
+        },
+        {
+          "chord": "Am",
+          "text": "くけこ"
+        },
+        {
+          "chord": "F",
+          "text": "さしすせ"
+        },
+        {
+          "chord": "G",
+          "text": "そ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "たち"
+        },
+        {
+          "chord": "C",
+          "text": "つて"
+        },
+        {
+          "chord": "G",
+          "text": "となにぬ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "ねの"
+        },
+        {
+          "chord": "Em7",
+          "text": "はひふ"
+        },
+        {
+          "chord": "F",
+          "text": "へほま"
+        },
+        {
+          "chord": "G",
+          "text": "み"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "むめもや"
+        },
+        {
+          "chord": "G",
+          "text": "ゆよら"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "G/B",
+          "text": ""
+        },
+        {
+          "chord": "Am",
+          "text": ""
+        },
+        {
+          "chord": "F",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": "りる"
+        },
+        {
+          "chord": "Am",
+          "text": "れろわ"
+        },
+        {
+          "chord": "F",
+          "text": "をんあい"
+        },
+        {
+          "chord": "G",
+          "text": "う"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": "えお"
+        },
+        {
+          "chord": "C",
+          "text": "かき"
+        },
+        {
+          "chord": "G",
+          "text": "くけこさ"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "Am",
+          "text": "しす"
+        },
+        {
+          "chord": "Em7",
+          "text": "せそた"
+        },
+        {
+          "chord": "Am",
+          "text": "ちつ"
+        },
+        {
+          "chord": "Em7",
+          "text": "て"
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "F",
+          "text": ""
+        },
+        {
+          "chord": "G",
+          "text": ""
+        },
+        {
+          "chord": "Csus4",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        },
+        {
+          "chord": "C",
+          "text": ""
+        }
+      ]
+    }
+  ]
+}

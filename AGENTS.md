@@ -36,6 +36,7 @@ lambda/
 
 infra/                  # AWS インフラ設定
 scripts/                # ユーティリティスクリプト
+chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 (MV3)
 ```
 
 ## 主要機能
@@ -55,6 +56,14 @@ scripts/                # ユーティリティスクリプト
 ### S3 連携 (`src/lib/s3/client.ts`)
 - Lambda 経由で presigned URL を取得
 - API 未設定時はサンプルデータにフォールバック
+
+### ufret インポート (`chrome-extention/`)
+- `content.js` が ufret の DOM から `ExtractedSheet` を抽出
+- `converter.js` が Grid 形式の ChordPro に変換 (純粋関数・`converter.test.js` でテスト)
+- popup から `.cho` ダウンロード / クリップボードコピー
+- ufret には小節線・セクション見出し・BPM が無いため、小節割りは行内のコード数と
+  歌詞文字数から推定する。tempo は 120 固定で myol 側で直す
+- 小節推定・セクション分割・capo の詳細は `docs/chordpro.md` の「Importing from ufret」
 
 ## 環境変数
 
@@ -147,6 +156,6 @@ lambroll + esbuild 使用時、出力が `dist/index.js` の場合:
 
 ## 一般的な注意事項
 
-- 認証はコード内の固定4桁パスコード照合（`src/stores/auth.ts` の `FIXED_PASSCODE`）。抑止目的のみの意図的なダウングレード（docs/superpowers/specs/2026-07-04-auth-simplification-design.md 参照）
+- 認証はコード内の固定4桁パスコード照合（`src/stores/auth.ts` の `FIXED_PASSCODE`）。抑止目的のみの意図的なダウングレードで、値はバンドルに露出する前提。セッションは localStorage に12時間保存（README「認証」参照）。ドキュメントにパスコードの具体値は書かない
 - S3 バケットは us-west-2 リージョン
 - Lambda 関数 URL の CORS は本番 Origin のみ許可 (`AllowOrigins=*` は使わない)

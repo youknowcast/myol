@@ -1,0 +1,64 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`convertSheetToChordPro > matches the ChordPro snapshot generated from the sample ufret fixture 1`] = `
+"{title: サンプルソング}
+{artist: テストアーティスト}
+{capo: 2}
+{tempo: 120}
+{time: 4/4}
+
+{start_of_grid label="Intro"}
+| C | Am | F | G |
+| C | Am | Dm7 | G7 |
+{end_of_grid}
+
+{start_of_grid label="Verse 1"}
+{lyrics_hint: あい | うえお | かきくけ | こ}
+| C | Am | F | G |
+{lyrics_hint: さし | すせ | そたちつ | }
+| F | C | G | G |
+{lyrics_hint: てとなに |  | ぬねの | }
+| F | F | G | G |
+{lyrics_hint: はひ | ふへほ | まみ | むめ}
+| Am | Em7 | Am | Em7 |
+{lyrics_hint: もやゆ | よら | りる | れろ}
+| F | G | Csus4 | C |
+{lyrics_hint: わをん | あ | いう | えお}
+| C | G/B | Am | Em7 |
+{end_of_grid}
+
+{start_of_grid label="Interlude 1"}
+| F | G | Csus4 | C |
+| Am | Em7 | F | G |
+{end_of_grid}
+
+{start_of_grid label="Verse 2"}
+{lyrics_hint: かき | くけこ | さしすせ | そ}
+| C | Am | F | G |
+{lyrics_hint: たち | つて | となにぬ | }
+| F | C | G | G |
+{lyrics_hint: ねの | はひふ | へほま | み}
+| Am | Em7 | F | G |
+{lyrics_hint: むめもや |  | ゆよら | }
+| F | F | G | G |
+{end_of_grid}
+
+{start_of_grid label="Interlude 2"}
+| C | G/B | Am | F |
+{end_of_grid}
+
+{start_of_grid label="Verse 3"}
+{lyrics_hint: りる | れろわ | をんあい | う}
+| C | Am | F | G |
+{lyrics_hint: えお | かき | くけこさ | }
+| F | C | G | G |
+{lyrics_hint: しす | せそた | ちつ | て}
+| Am | Em7 | Am | Em7 |
+{end_of_grid}
+
+{start_of_grid label="Outro"}
+| F | G | Csus4 | C |
+| C | C | C | C |
+{end_of_grid}
+"
+`;
