@@ -31,6 +31,16 @@ module.exports = {
         beforeEach: 'readonly',
         afterEach: 'readonly'
       }
+    },
+    {
+      files: ['chrome-extention/**/*.js'],
+      env: {
+        browser: true,
+        es2022: true
+      },
+      globals: {
+        chrome: 'readonly'
+      }
     }
   ],
   rules: {

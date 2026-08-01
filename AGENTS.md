@@ -36,6 +36,7 @@ lambda/
 
 infra/                  # AWS インフラ設定
 scripts/                # ユーティリティスクリプト
+chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 (MV3)
 ```
 
 ## 主要機能
@@ -55,6 +56,14 @@ scripts/                # ユーティリティスクリプト
 ### S3 連携 (`src/lib/s3/client.ts`)
 - Lambda 経由で presigned URL を取得
 - API 未設定時はサンプルデータにフォールバック
+
+### ufret インポート (`chrome-extention/`)
+- `content.js` が ufret の DOM から `ExtractedSheet` を抽出
+- `converter.js` が Grid 形式の ChordPro に変換 (純粋関数・`converter.test.js` でテスト)
+- popup から `.cho` ダウンロード / クリップボードコピー
+- ufret には小節線・セクション見出し・BPM が無いため、小節割りは行内のコード数と
+  歌詞文字数から推定する。tempo は 120 固定で myol 側で直す
+- 小節推定・セクション分割・capo の詳細は `docs/chordpro.md` の「Importing from ufret」
 
 ## 環境変数
 
