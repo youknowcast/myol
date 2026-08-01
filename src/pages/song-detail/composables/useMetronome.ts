@@ -1,7 +1,7 @@
 /**
  * Metronome Composable
  * Web Audio の先読みスケジューラで拍に合わせてクリック音を鳴らす
- * (docs/superpowers/specs/2026-07-07-metronome-design.md)
+ * (AGENTS.md「メトロノーム」参照)
  */
 
 import { ref, watch, type Ref, type ComputedRef } from 'vue'

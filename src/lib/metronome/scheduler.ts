@@ -1,5 +1,5 @@
 /**
- * メトロノームの拍スケジューリング規則（docs/superpowers/specs/2026-07-07-metronome-design.md）
+ * メトロノームの拍スケジューリング規則（AGENTS.md「メトロノーム」参照）
  * - 先読み窓内の未予約の拍を列挙する
  * - 巻き戻り（ループ・後方 seek）時の lastScheduledBeatIndex リセットは呼び出し側の責務
  */

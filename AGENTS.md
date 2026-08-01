@@ -53,6 +53,20 @@ chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 
 - 現在小節のハイライト表示
 - 速度調整 (0.5x - 2x)
 
+### メトロノーム (`src/lib/metronome/scheduler.ts`, `src/pages/song-detail/composables/useMetronome.ts`)
+- 再生中に拍へ合わせてクリック音を鳴らす。小節の 1 拍目のみアクセント（高い音）
+- プレーヤーバーのトグル (`MetronomeToggle.vue`) で ON/OFF。初期状態は OFF
+- Web Audio の先読みスケジューラ方式。25ms 間隔のループで曲時刻を読み直し、
+  `audioTime = ctx.currentTime + (beatSongTime - songTimeNow) / speedMultiplier`
+  で約 100ms 先の拍を予約する。アンカーを持たないので seek・ループ・速度変更に自動追従する
+- 予約済みの拍番号を記録して二重予約を防ぎ、拍番号が巻き戻った（ループ・後方 seek）ら記録をリセットする
+- 先読み窓が曲末を跨ぐ場合は曲長で拍列挙を打ち切り、`songTime === 曲長` の拍は予約しない
+  （折り返し後の拍 0 だけを鳴らし、ダウンビートの二重打ちを防ぐ）
+- 音源ファイルは使わず oscillator + gain エンベロープ（約 30ms 減衰）で合成。音量は固定
+- `AudioContext` はトグル ON のユーザー操作時に生成・resume する（ブラウザの自動再生制限対策）
+- 拍子は曲全体で一定という現行の再生モデルに従う（小節ごとの拍数変化・音量スライダー・
+  カウントインはスコープ外）
+
 ### S3 連携 (`src/lib/s3/client.ts`)
 - Lambda 経由で presigned URL を取得
 - API 未設定時はサンプルデータにフォールバック
