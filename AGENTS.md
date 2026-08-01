@@ -156,6 +156,6 @@ lambroll + esbuild 使用時、出力が `dist/index.js` の場合:
 
 ## 一般的な注意事項
 
-- 認証はコード内の固定4桁パスコード照合（`src/stores/auth.ts` の `FIXED_PASSCODE`）。抑止目的のみの意図的なダウングレード（docs/superpowers/specs/2026-07-04-auth-simplification-design.md 参照）
+- 認証はコード内の固定4桁パスコード照合（`src/stores/auth.ts` の `FIXED_PASSCODE`）。抑止目的のみの意図的なダウングレードで、値はバンドルに露出する前提。セッションは localStorage に12時間保存（README「認証」参照）。ドキュメントにパスコードの具体値は書かない
 - S3 バケットは us-west-2 リージョン
 - Lambda 関数 URL の CORS は本番 Origin のみ許可 (`AllowOrigins=*` は使わない)

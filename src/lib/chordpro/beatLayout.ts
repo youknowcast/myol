@@ -1,5 +1,5 @@
 /**
- * 小節内のセルと拍の対応規則（docs/superpowers/specs/2026-07-04-beat-layout-design.md）
+ * 小節内のセルと拍の対応規則（docs/chordpro.md の「Beats per Cell」）
  * - 割り切れる場合は均等割り
  * - セル数 < 拍数で割り切れない場合は各1拍 + 余りを先頭セルへ
  * - セル数が拍数の倍数ならサブビートの均等割り
