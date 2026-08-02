@@ -39,6 +39,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node'
+    environment: 'node',
+    // Chrome は "_" 始まりのディレクトリを含む拡張機能を読み込めないため、
+    // 既定の __snapshots__ ではなく snapshots/ に出力する
+    resolveSnapshotPath: (testPath, snapExtension) =>
+      path.join(path.dirname(testPath), 'snapshots', path.basename(testPath) + snapExtension)
   }
 })

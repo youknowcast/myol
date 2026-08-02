@@ -78,6 +78,9 @@ chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 
 - ufret には小節線・セクション見出し・BPM が無いため、小節割りは行内のコード数と
   歌詞文字数から推定する。tempo は 120 固定で myol 側で直す
 - 小節推定・セクション分割・capo の詳細は `docs/chordpro.md` の「Importing from ufret」
+- Chrome は `_` 始まりのディレクトリを含む拡張機能を読み込めない。この配下に
+  `__snapshots__` を作らないよう、vitest の `resolveSnapshotPath`（`vite.config.ts`）で
+  スナップショットを `snapshots/` に出力している
 
 ## 環境変数
 
