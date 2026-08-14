@@ -40,6 +40,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['src/test/setup.ts'],
     // Chrome は "_" 始まりのディレクトリを含む拡張機能を読み込めないため、
     // 既定の __snapshots__ ではなく snapshots/ に出力する
     resolveSnapshotPath: (testPath, snapExtension) =>
