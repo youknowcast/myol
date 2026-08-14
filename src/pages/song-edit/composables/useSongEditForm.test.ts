@@ -99,4 +99,27 @@ describe('useSongEditForm', () => {
 		expect(title.value).toBe('')
 		expect(content.value).toBe('')
 	})
+
+	it('does not save while the song is still loading', async () => {
+		let resolveFetch: (() => void) | undefined
+		let saved = false
+		const { loadSong, save } = useSongEditForm({
+			isNew: ref(false),
+			songId: ref('a'),
+			songsStore: {
+				currentSong: null,
+				fetchSong: async () => {
+					await new Promise<void>(res => { resolveFetch = res })
+				},
+				saveSong: async () => { saved = true }
+			},
+			initialTemplate: '{title: }'
+		})
+
+		const p = loadSong()
+		await save('{title: Should Not Save}')
+		expect(saved).toBe(false)
+		resolveFetch?.()
+		await p
+	})
 })

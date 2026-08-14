@@ -267,6 +267,68 @@ describe('songs store (s3 + cache mode)', () => {
 		expect(store.currentSong?.content).toBe('{title: Song B}')
 	})
 
+	it('keeps loading true while a newer fetch is pending when an older one settles', async () => {
+		await putCachedSongs([
+			{ key: 'songs/a.cho', content: contentA, lastModified: 't1', fetchedAt: staleFetchedAt() }
+		])
+		let resolveA: (value: string) => void = () => {}
+		let resolveB: (value: string) => void = () => {}
+		mocks.getSongContent.mockImplementation(async (key: string) => {
+			if (key === 'a') {
+				return await new Promise<string>(res => { resolveA = res })
+			}
+			return await new Promise<string>(res => { resolveB = res })
+		})
+
+		const store = useSongsStore()
+		const pA = store.fetchSong('a')
+		// a の再検証が開始されるのを待ってから b へ遷移
+		await vi.waitFor(() => {
+			expect(mocks.getSongContent).toHaveBeenCalledWith('a')
+		})
+		const pB = store.fetchSong('b')
+		resolveA('{title: Song A v2}')
+		await pA
+		// 古い再検証の完了では loading を落とさない
+		expect(store.loading).toBe(true)
+		await vi.waitFor(() => {
+			expect(mocks.getSongContent).toHaveBeenCalledWith('b')
+		})
+		resolveB('{title: Song B}')
+		await pB
+		expect(store.loading).toBe(false)
+		expect(store.currentSong?.id).toBe('b')
+	})
+
+	it('does not let a stale failed fetch set the error', async () => {
+		mocks.getSongContent.mockImplementation(async (key: string) => {
+			if (key === 'a') throw new Error('network down')
+			return '{title: Song B}'
+		})
+
+		const store = useSongsStore()
+		const pA = store.fetchSong('a')
+		const pB = store.fetchSong('b')
+		await pA
+		await pB
+
+		expect(store.error).toBeNull()
+		expect(store.currentSong?.id).toBe('b')
+	})
+
+	it('caches an empty song content instead of treating it as a failure', async () => {
+		mocks.listSongs.mockResolvedValue([{ id: 'empty', key: 'songs/empty.cho', lastModified: 't1' }])
+		mocks.getSongContent.mockResolvedValue('')
+
+		const store = useSongsStore()
+		await store.fetchSongs()
+		await store.fetchSongs()
+
+		expect(mocks.getSongContent).toHaveBeenCalledTimes(1)
+		const cached = await getAllCachedSongs()
+		expect(cached[0]?.content).toBe('')
+	})
+
 	it('keeps lastModified when revalidating a stale cached song', async () => {
 		await putCachedSongs([
 			{ key: 'songs/a.cho', content: contentA, lastModified: 't1', fetchedAt: staleFetchedAt() }

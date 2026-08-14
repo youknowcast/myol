@@ -190,7 +190,7 @@ Than [G]when we'd [D]first be[G]gun
 				return
 			}
 
-			// キャッシュがあれば即表示
+			// キャッシュがあれば即表示 (ローカル状態のスナップショットなので無条件で安全)
 			let cached: CachedSong[] = []
 			try {
 				cached = await songCache.getAllCachedSongs()
@@ -207,6 +207,7 @@ Than [G]when we'd [D]first be[G]gun
 			try {
 				s3Songs = await s3Api.listSongs()
 			} catch (e) {
+				if (gen !== fetchGen) return
 				if (cached.length === 0) {
 					error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
 					// エラー時もローカルデータを表示
@@ -246,7 +247,7 @@ Than [G]when we'd [D]first be[G]gun
 			})
 
 			for (const { s, content } of fetched) {
-				if (content) {
+				if (content !== null) {
 					toPersist.push({ key: s.key, content, lastModified: s.lastModified, fetchedAt: now })
 					metaByKey.set(s.key, toSongMeta(content, s.id))
 				} else {
@@ -279,7 +280,8 @@ Than [G]when we'd [D]first be[G]gun
 			if (gen !== fetchGen) return
 			songs.value = metaList
 		} finally {
-			loading.value = false
+			// 新しい操作が進行中なら loading を落とさない
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
@@ -336,20 +338,25 @@ Than [G]when we'd [D]first be[G]gun
 				// キャッシュ保存失敗は致命的ではない
 			}
 		} catch (e) {
+			// 新しい操作が進行中なら error / currentSong を書き換えない
+			if (gen !== fetchGen) {
+				if (options?.force) throw e
+				return
+			}
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
 			if (options?.force) {
 				throw e
 			}
-			if (gen !== fetchGen) return
 			// エラー時はローカルデータを試す
 			currentSong.value = localSongs.value[id] ?? null
 		} finally {
-			loading.value = false
+			// 新しい操作が進行中なら loading を落とさない
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
 	async function saveSong(song: Song) {
-		fetchGen++
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -375,15 +382,17 @@ Than [G]when we'd [D]first be[G]gun
 			currentSong.value = song
 			upsertSongMeta(song)
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
+			if (gen === fetchGen) {
+				error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
+			}
 			throw e
 		} finally {
-			loading.value = false
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
 	async function removeSong(id: string) {
-		fetchGen++
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -405,10 +414,12 @@ Than [G]when we'd [D]first be[G]gun
 				currentSong.value = null
 			}
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
+			if (gen === fetchGen) {
+				error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
+			}
 			throw e
 		} finally {
-			loading.value = false
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 

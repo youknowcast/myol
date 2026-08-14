@@ -29,6 +29,7 @@ const {
   content,
   saving,
   loadError,
+  loadingSong,
   loadSong,
   save: saveSong
 } = useSongEditForm({
@@ -162,7 +163,7 @@ function commitLabelDialog() {
         <button
           class="btn btn-primary"
           @click="save"
-          :disabled="saving || loadError"
+          :disabled="saving || loadError || loadingSong"
         >
           {{ saving ? '保存中...' : '保存' }}
         </button>
