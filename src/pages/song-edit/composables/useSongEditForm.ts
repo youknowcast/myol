@@ -4,7 +4,11 @@ import type { Song } from '@/lib/chordpro/types'
 export interface UseSongEditFormOptions {
 	isNew: Ref<boolean>
 	songId: Ref<string | undefined>
-	songsStore: { fetchSong: (id: string) => Promise<void>; saveSong: (song: Song) => Promise<void>; currentSong: Song | null }
+	songsStore: {
+		fetchSong: (id: string, options?: { force?: boolean }) => Promise<void>
+		saveSong: (song: Song) => Promise<void>
+		currentSong: Song | null
+	}
 	initialTemplate: string
 }
 
@@ -31,7 +35,8 @@ export function useSongEditForm(options: UseSongEditFormOptions) {
 
 	async function loadSong() {
 		if (!options.isNew.value && options.songId.value) {
-			await options.songsStore.fetchSong(options.songId.value)
+			// 編集は最新のリモート内容から始める (キャッシュを信用しない)
+			await options.songsStore.fetchSong(options.songId.value, { force: true })
 			const current = options.songsStore.currentSong
 			if (current) {
 				title.value = current.title

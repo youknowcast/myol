@@ -3,6 +3,69 @@ import { ref, computed } from 'vue'
 import type { Song, SongMeta } from '@/lib/chordpro/types'
 import { extractSongMeta } from '@/lib/chordpro/parser'
 import * as s3Api from '@/lib/s3/client'
+import * as songCache from '@/lib/cache/songCache'
+import type { CachedSong } from '@/lib/cache/songCache'
+
+const CACHE_TTL_MS = 5 * 60 * 1000
+const FETCH_CONCURRENCY = 4
+
+function isFresh(fetchedAt: number): boolean {
+	return Date.now() - fetchedAt < CACHE_TTL_MS
+}
+
+/**
+ * 並列度を制限してマップする
+ */
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	limit: number,
+	fn: (item: T) => Promise<R>
+): Promise<R[]> {
+	const results = new Array<R>(items.length)
+	let index = 0
+	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+		while (index < items.length) {
+			const i = index++
+			results[i] = await fn(items[i]!)
+		}
+	})
+	await Promise.all(workers)
+	return results
+}
+
+/**
+ * キャッシュキーを正規化する (songs/foo.cho 形式)
+ */
+function canonicalKey(raw: string): string {
+	const trimmed = raw.trim().replace(/^\/+/, '')
+	if (trimmed.startsWith('songs/')) {
+		return trimmed
+	}
+	return `songs/${trimmed}${trimmed.endsWith('.cho') ? '' : '.cho'}`
+}
+
+function idFromKey(key: string): string {
+	return key.replace(/^songs\//, '').replace(/\.cho$/, '')
+}
+
+function toSongMeta(content: string, fallbackId: string): SongMeta {
+	const meta = extractSongMeta(content)
+	return {
+		id: fallbackId,
+		title: meta.title || fallbackId,
+		artist: meta.artist || '',
+		key: meta.key
+	}
+}
+
+function toLocalMeta(song: Song): SongMeta {
+	return {
+		id: song.id,
+		title: song.title,
+		artist: song.artist,
+		key: song.key
+	}
+}
 
 export const useSongsStore = defineStore('songs', () => {
 	const songs = ref<SongMeta[]>([])
@@ -93,79 +156,165 @@ Than [G]when we'd [D]first be[G]gun
 		}
 	}
 
+	function setCurrentSong(id: string, content: string) {
+		const meta = extractSongMeta(content)
+		currentSong.value = {
+			id,
+			title: meta.title || id,
+			artist: meta.artist || '',
+			key: meta.key,
+			capo: meta.capo,
+			tempo: meta.tempo,
+			time: meta.time,
+			content
+		}
+	}
+
+	function localSongMetas(): SongMeta[] {
+		return Object.values(localSongs.value).map(toLocalMeta)
+	}
+
 	async function fetchSongs() {
 		loading.value = true
 		error.value = null
 		try {
-			if (s3Api.isApiConfigured()) {
-				// S3 から曲リストを取得
-				const s3Songs = await s3Api.listSongs()
-				songs.value = await Promise.all(
-					s3Songs.map(async (s) => {
-						try {
-							// 各曲のメタデータを取得するため内容を読み込む
-							const content = await s3Api.getSongContent(s.key)
-							const meta = extractSongMeta(content)
-							return {
-								id: s.id,
-								title: meta.title || s.id,
-								artist: meta.artist || '',
-								key: meta.key
-							}
-						} catch {
-							// メタデータ取得失敗時は ID だけ使用
-							return {
-								id: s.id,
-								title: s.id,
-								artist: ''
-							}
-						}
-					})
-				)
-			} else {
+			if (!s3Api.isApiConfigured()) {
 				// API 未設定時はローカルデータを使用
-				songs.value = Object.values(localSongs.value).map(s => ({
-					id: s.id,
-					title: s.title,
-					artist: s.artist,
-					key: s.key
-				}))
+				songs.value = localSongMetas()
+				return
 			}
-		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
-			// エラー時もローカルデータを表示
-			songs.value = Object.values(localSongs.value).map(s => ({
-				id: s.id,
-				title: s.title,
-				artist: s.artist,
-				key: s.key
-			}))
+
+			// キャッシュがあれば即表示
+			let cached: CachedSong[] = []
+			try {
+				cached = await songCache.getAllCachedSongs()
+			} catch {
+				// IndexedDB が使えない場合はキャッシュなしで続行
+			}
+			if (cached.length > 0) {
+				songs.value = cached.map(c => toSongMeta(c.content, idFromKey(c.key)))
+				loading.value = false
+			}
+
+			// バックグラウンドで S3 と差分検証
+			let s3Songs
+			try {
+				s3Songs = await s3Api.listSongs()
+			} catch (e) {
+				if (cached.length === 0) {
+					error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
+					// エラー時もローカルデータを表示
+					songs.value = localSongMetas()
+				}
+				return
+			}
+
+			const cacheByKey = new Map(cached.map(c => [c.key, c]))
+			const now = Date.now()
+			const toPersist: CachedSong[] = []
+			const metaByKey = new Map<string, SongMeta>()
+			const pending: typeof s3Songs = []
+
+			// パス1: キャッシュで充足できる曲を確定させる
+			for (const s of s3Songs) {
+				const entry = cacheByKey.get(s.key)
+				if (entry && (entry.lastModified === s.lastModified || isFresh(entry.fetchedAt))) {
+					// 変更なし、または直近取得済み (throttle)。lastModified は進めない
+					metaByKey.set(s.key, toSongMeta(entry.content, s.id))
+				} else {
+					pending.push(s)
+				}
+			}
+
+			// パス2: 差分のある曲だけ並列で再取得
+			const fetched = await mapWithConcurrency(pending, FETCH_CONCURRENCY, async (s) => {
+				try {
+					const content = await s3Api.getSongContent(s.key)
+					return { s, content } as const
+				} catch {
+					return { s, content: null } as const
+				}
+			})
+
+			for (const { s, content } of fetched) {
+				if (content) {
+					toPersist.push({ key: s.key, content, lastModified: s.lastModified, fetchedAt: now })
+					metaByKey.set(s.key, toSongMeta(content, s.id))
+				} else {
+					// 取得失敗時はキャッシュがあれば維持
+					const entry = cacheByKey.get(s.key)
+					metaByKey.set(
+						s.key,
+						entry ? toSongMeta(entry.content, s.id) : { id: s.id, title: s.id, artist: '' }
+					)
+				}
+			}
+
+			// リモートの並び順を保って一覧を組み立てる
+			const metaList = s3Songs.map(s => metaByKey.get(s.key) ?? { id: s.id, title: s.id, artist: '' })
+
+			// リモートで削除された曲をキャッシュから除去
+			const removedKeys = cached
+				.filter(c => !s3Songs.some(s => s.key === c.key))
+				.map(c => c.key)
+
+			try {
+				await songCache.putCachedSongs(toPersist)
+				await songCache.removeCachedSongs(removedKeys)
+			} catch {
+				// キャッシュ書き込み失敗は致命的ではない
+			}
+
+			songs.value = metaList
 		} finally {
 			loading.value = false
 		}
 	}
 
-	async function fetchSong(id: string) {
+	async function fetchSong(id: string, options?: { force?: boolean }) {
 		loading.value = true
 		error.value = null
 		try {
-			if (s3Api.isApiConfigured()) {
-				// S3 から曲データを取得
-				const content = await s3Api.getSongContent(id)
-				const meta = extractSongMeta(content)
-				currentSong.value = {
-					id,
-					title: meta.title || id,
-					artist: meta.artist || '',
-					key: meta.key,
-					capo: meta.capo,
-					tempo: meta.tempo,
-					time: meta.time,
-					content
-				}
-			} else {
+			if (!s3Api.isApiConfigured()) {
 				// API 未設定時はローカルデータを使用
 				currentSong.value = localSongs.value[id] ?? localSongs.value['amazing-grace'] ?? null
+				return
+			}
+
+			const key = canonicalKey(id)
+
+			let cached: CachedSong | undefined
+			try {
+				cached = await songCache.getCachedSong(key)
+			} catch {
+				cached = undefined
+			}
+
+			if (cached && !options?.force) {
+				// キャッシュで即表示
+				setCurrentSong(id, cached.content)
+				loading.value = false
+
+				if (!isFresh(cached.fetchedAt)) {
+					// 期限切れならバックグラウンドで再検証
+					try {
+						const content = await s3Api.getSongContent(id)
+						setCurrentSong(id, content)
+						await songCache.putCachedSongs([{ key, content, fetchedAt: Date.now() }])
+					} catch {
+						// キャッシュ表示を維持
+					}
+				}
+				return
+			}
+
+			// キャッシュミス or 強制再取得 → S3 から取得して保存
+			const content = await s3Api.getSongContent(id)
+			setCurrentSong(id, content)
+			try {
+				await songCache.putCachedSongs([{ key, content, fetchedAt: Date.now() }])
+			} catch {
+				// キャッシュ保存失敗は致命的ではない
 			}
 		} catch (e) {
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
@@ -183,6 +332,14 @@ Than [G]when we'd [D]first be[G]gun
 			if (s3Api.isApiConfigured()) {
 				// S3 に保存
 				await s3Api.saveSongContent(song.id, song.content)
+				// キャッシュを即時更新
+				try {
+					await songCache.putCachedSongs([
+						{ key: canonicalKey(song.id), content: song.content, fetchedAt: Date.now() }
+					])
+				} catch {
+					// キャッシュ書き込み失敗は致命的ではない
+				}
 			} else {
 				// API 未設定時はローカルデータを更新
 				localSongs.value = {
@@ -207,6 +364,12 @@ Than [G]when we'd [D]first be[G]gun
 		try {
 			if (s3Api.isApiConfigured()) {
 				await s3Api.deleteSong(id)
+				// キャッシュからも削除
+				try {
+					await songCache.removeCachedSongs([canonicalKey(id)])
+				} catch {
+					// キャッシュ削除失敗は致命的ではない
+				}
 			} else {
 				const { [id]: _, ...rest } = localSongs.value
 				localSongs.value = rest
