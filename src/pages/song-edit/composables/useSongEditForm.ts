@@ -21,6 +21,7 @@ export function useSongEditForm(options: UseSongEditFormOptions) {
 	const time = ref('4/4')
 	const content = ref('')
 	const saving = ref(false)
+	const loadError = ref(false)
 
 	const formSong = computed((): Song => ({
 		id: options.songId.value || generateId(),
@@ -36,17 +37,25 @@ export function useSongEditForm(options: UseSongEditFormOptions) {
 	async function loadSong() {
 		if (!options.isNew.value && options.songId.value) {
 			// 編集は最新のリモート内容から始める (キャッシュを信用しない)
-			await options.songsStore.fetchSong(options.songId.value, { force: true })
-			const current = options.songsStore.currentSong
-			if (current) {
-				title.value = current.title
-				artist.value = current.artist
-				key.value = current.key || ''
-				capo.value = current.capo || 0
-				tempo.value = current.tempo || 120
-				time.value = current.time || '4/4'
-				content.value = current.content
+			try {
+				await options.songsStore.fetchSong(options.songId.value, { force: true })
+			} catch {
+				// 取得失敗時は空フォームで保存できる状態にしない
+				loadError.value = true
+				return
 			}
+			const current = options.songsStore.currentSong
+			if (current?.id !== options.songId.value) {
+				loadError.value = true
+				return
+			}
+			title.value = current.title
+			artist.value = current.artist
+			key.value = current.key || ''
+			capo.value = current.capo || 0
+			tempo.value = current.tempo || 120
+			time.value = current.time || '4/4'
+			content.value = current.content
 			return
 		}
 
@@ -74,6 +83,7 @@ export function useSongEditForm(options: UseSongEditFormOptions) {
 		time,
 		content,
 		saving,
+		loadError,
 		formSong,
 		loadSong,
 		save

@@ -64,4 +64,39 @@ describe('useSongEditForm', () => {
 		await save(finalContent)
 		expect(content.value).toBe(finalContent)
 	})
+
+	it('loads an existing song into the form', async () => {
+		const { loadSong, title, content } = useSongEditForm({
+			isNew: ref(false),
+			songId: ref('a'),
+			songsStore: {
+				currentSong: { id: 'a', title: 'Existing', artist: 'X', content: '{title: Existing}' },
+				fetchSong: async () => undefined,
+				saveSong: async () => undefined
+			},
+			initialTemplate: '{title: }'
+		})
+
+		await loadSong()
+		expect(title.value).toBe('Existing')
+		expect(content.value).toBe('{title: Existing}')
+	})
+
+	it('sets loadError when fetching an existing song fails', async () => {
+		const { loadSong, loadError, title, content } = useSongEditForm({
+			isNew: ref(false),
+			songId: ref('a'),
+			songsStore: {
+				currentSong: null,
+				fetchSong: async () => { throw new Error('network down') },
+				saveSong: async () => undefined
+			},
+			initialTemplate: '{title: }'
+		})
+
+		await loadSong()
+		expect(loadError.value).toBe(true)
+		expect(title.value).toBe('')
+		expect(content.value).toBe('')
+	})
 })

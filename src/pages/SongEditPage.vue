@@ -28,6 +28,7 @@ const {
   time,
   content,
   saving,
+  loadError,
   loadSong,
   save: saveSong
 } = useSongEditForm({
@@ -161,7 +162,7 @@ function commitLabelDialog() {
         <button
           class="btn btn-primary"
           @click="save"
-          :disabled="saving"
+          :disabled="saving || loadError"
         >
           {{ saving ? '保存中...' : '保存' }}
         </button>
@@ -170,6 +171,10 @@ function commitLabelDialog() {
 
     <div v-if="saveError" class="save-error" role="alert">
       保存に失敗しました: {{ saveError }}
+    </div>
+
+    <div v-if="loadError" class="save-error" role="alert">
+      曲の読み込みに失敗しました。ネットワークを確認して再度開いてください。
     </div>
 
     <main class="edit-content">
