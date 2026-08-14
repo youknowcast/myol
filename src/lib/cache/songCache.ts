@@ -44,6 +44,21 @@ async function withStore<T>(
 	}
 }
 
+async function withTransaction(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => void): Promise<void> {
+	const db = await openDb()
+	try {
+		return await new Promise<void>((resolve, reject) => {
+			const transaction = db.transaction(STORE_NAME, mode)
+			fn(transaction.objectStore(STORE_NAME))
+			transaction.oncomplete = () => resolve()
+			transaction.onerror = () => reject(transaction.error)
+			transaction.onabort = () => reject(transaction.error)
+		})
+	} finally {
+		db.close()
+	}
+}
+
 /**
  * Get all cached songs
  */
@@ -62,23 +77,31 @@ export async function getCachedSong(key: string): Promise<CachedSong | undefined
  * Store (or overwrite) songs in the cache
  */
 export async function putCachedSongs(songs: CachedSong[]): Promise<void> {
-	for (const song of songs) {
-		await withStore('readwrite', store => store.put(song))
-	}
+	if (songs.length === 0) return
+	await withTransaction('readwrite', store => {
+		for (const song of songs) {
+			store.put(song)
+		}
+	})
 }
 
 /**
  * Remove songs from the cache by key
  */
 export async function removeCachedSongs(keys: string[]): Promise<void> {
-	for (const key of keys) {
-		await withStore('readwrite', store => store.delete(key))
-	}
+	if (keys.length === 0) return
+	await withTransaction('readwrite', store => {
+		for (const key of keys) {
+			store.delete(key)
+		}
+	})
 }
 
 /**
  * Clear the entire song cache
  */
 export async function clearSongCache(): Promise<void> {
-	await withStore('readwrite', store => store.clear())
+	await withTransaction('readwrite', store => {
+		store.clear()
+	})
 }

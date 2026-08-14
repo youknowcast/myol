@@ -7,9 +7,30 @@ import * as songCache from '@/lib/cache/songCache'
 import type { CachedSong } from '@/lib/cache/songCache'
 
 const CACHE_TTL_MS = 5 * 60 * 1000
+const FETCH_CONCURRENCY = 4
 
 function isFresh(fetchedAt: number): boolean {
 	return Date.now() - fetchedAt < CACHE_TTL_MS
+}
+
+/**
+ * 並列度を制限してマップする
+ */
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	limit: number,
+	fn: (item: T) => Promise<R>
+): Promise<R[]> {
+	const results = new Array<R>(items.length)
+	let index = 0
+	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+		while (index < items.length) {
+			const i = index++
+			results[i] = await fn(items[i]!)
+		}
+	})
+	await Promise.all(workers)
+	return results
 }
 
 /**
@@ -88,7 +109,7 @@ Was [G]blind but [D]now I [G]see
 [G]'Twas grace that [G/B]taught my [C]heart to [G]fear
 And [G]grace my [Em]fears re[D]lieved
 [G]How precious [G/B]did that [C]grace ap[G]pear
-The [G]hour I [D]first be[G]believed
+The [G]hour I [D]first be[G]lieved
 {end_of_verse}
 
 {start_of_verse label="Verse 3"}
@@ -190,32 +211,47 @@ Than [G]when we'd [D]first be[G]gun
 
 			const cacheByKey = new Map(cached.map(c => [c.key, c]))
 			const now = Date.now()
-			const metaList: SongMeta[] = []
 			const toPersist: CachedSong[] = []
+			const metaByKey = new Map<string, SongMeta>()
+			const pending: typeof s3Songs = []
 
+			// パス1: キャッシュで充足できる曲を確定させる
 			for (const s of s3Songs) {
 				const entry = cacheByKey.get(s.key)
-				let content: string | null = null
-
-				if (entry && entry.lastModified === s.lastModified) {
-					// 変更なし
-					content = entry.content
-				} else if (entry && isFresh(entry.fetchedAt)) {
-					// 直近に取得済み (throttle)。lastModified だけ更新
-					content = entry.content
-					toPersist.push({ ...entry, lastModified: s.lastModified })
+				if (entry && (entry.lastModified === s.lastModified || isFresh(entry.fetchedAt))) {
+					// 変更なし、または直近取得済み (throttle)。lastModified は進めない
+					metaByKey.set(s.key, toSongMeta(entry.content, s.id))
 				} else {
-					try {
-						content = await s3Api.getSongContent(s.key)
-						toPersist.push({ key: s.key, content, lastModified: s.lastModified, fetchedAt: now })
-					} catch {
-						// 取得失敗時はキャッシュがあれば維持
-						content = entry?.content ?? null
-					}
+					pending.push(s)
 				}
-
-				metaList.push(content ? toSongMeta(content, s.id) : { id: s.id, title: s.id, artist: '' })
 			}
+
+			// パス2: 差分のある曲だけ並列で再取得
+			const fetched = await mapWithConcurrency(pending, FETCH_CONCURRENCY, async (s) => {
+				try {
+					const content = await s3Api.getSongContent(s.key)
+					return { s, content } as const
+				} catch {
+					return { s, content: null } as const
+				}
+			})
+
+			for (const { s, content } of fetched) {
+				if (content) {
+					toPersist.push({ key: s.key, content, lastModified: s.lastModified, fetchedAt: now })
+					metaByKey.set(s.key, toSongMeta(content, s.id))
+				} else {
+					// 取得失敗時はキャッシュがあれば維持
+					const entry = cacheByKey.get(s.key)
+					metaByKey.set(
+						s.key,
+						entry ? toSongMeta(entry.content, s.id) : { id: s.id, title: s.id, artist: '' }
+					)
+				}
+			}
+
+			// リモートの並び順を保って一覧を組み立てる
+			const metaList = s3Songs.map(s => metaByKey.get(s.key) ?? { id: s.id, title: s.id, artist: '' })
 
 			// リモートで削除された曲をキャッシュから除去
 			const removedKeys = cached
@@ -235,7 +271,7 @@ Than [G]when we'd [D]first be[G]gun
 		}
 	}
 
-	async function fetchSong(id: string) {
+	async function fetchSong(id: string, options?: { force?: boolean }) {
 		loading.value = true
 		error.value = null
 		try {
@@ -254,7 +290,7 @@ Than [G]when we'd [D]first be[G]gun
 				cached = undefined
 			}
 
-			if (cached) {
+			if (cached && !options?.force) {
 				// キャッシュで即表示
 				setCurrentSong(id, cached.content)
 				loading.value = false
@@ -272,7 +308,7 @@ Than [G]when we'd [D]first be[G]gun
 				return
 			}
 
-			// キャッシュミス → S3 から取得して保存
+			// キャッシュミス or 強制再取得 → S3 から取得して保存
 			const content = await s3Api.getSongContent(id)
 			setCurrentSong(id, content)
 			try {

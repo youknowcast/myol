@@ -154,7 +154,7 @@ describe('songs store (s3 + cache mode)', () => {
 		expect((await getAllCachedSongs()).map(c => c.key)).toEqual(['songs/a.cho'])
 	})
 
-	it('does not refetch a recently fetched song even when lastModified changed', async () => {
+	it('does not refetch a recently fetched song and keeps the old lastModified', async () => {
 		await putCachedSongs([
 			{ key: 'songs/a.cho', content: contentA, lastModified: 't1', fetchedAt: Date.now() }
 		])
@@ -167,6 +167,29 @@ describe('songs store (s3 + cache mode)', () => {
 
 		expect(mocks.getSongContent).not.toHaveBeenCalled()
 		expect(store.songs[0]!.title).toBe('Song A')
+		const cached = await getAllCachedSongs()
+		// lastModified を新しい値に進めない: TTL 切れ後の差分で再検出させる
+		expect(cached[0]!.lastModified).toBe('t1')
+	})
+
+	it('refetches a throttled song once the TTL expires and lastModified differs', async () => {
+		await putCachedSongs([
+			{ key: 'songs/a.cho', content: contentA, lastModified: 't1', fetchedAt: Date.now() }
+		])
+		mocks.listSongs.mockResolvedValue([
+			{ id: 'a', key: 'songs/a.cho', lastModified: 't2' }
+		])
+
+		const store = useSongsStore()
+		await store.fetchSongs()
+		expect(mocks.getSongContent).not.toHaveBeenCalled()
+
+		vi.advanceTimersByTime(TTL_MS + 60 * 1000)
+		mocks.getSongContent.mockResolvedValue('{title: Song A v2}')
+		await store.fetchSongs()
+
+		expect(mocks.getSongContent).toHaveBeenCalledTimes(1)
+		expect(store.songs[0]!.title).toBe('Song A v2')
 		const cached = await getAllCachedSongs()
 		expect(cached[0]!.lastModified).toBe('t2')
 	})
@@ -216,6 +239,19 @@ describe('songs store (s3 + cache mode)', () => {
 
 		const store = useSongsStore()
 		await store.fetchSong('a')
+
+		expect(mocks.getSongContent).toHaveBeenCalledTimes(1)
+		expect(store.currentSong?.content).toBe('{title: Song A v2}')
+	})
+
+	it('force-fetches even when a fresh cache entry exists', async () => {
+		await putCachedSongs([
+			{ key: 'songs/a.cho', content: contentA, lastModified: 't1', fetchedAt: Date.now() }
+		])
+		mocks.getSongContent.mockResolvedValue('{title: Song A v2}')
+
+		const store = useSongsStore()
+		await store.fetchSong('a', { force: true })
 
 		expect(mocks.getSongContent).toHaveBeenCalledTimes(1)
 		expect(store.currentSong?.content).toBe('{title: Song A v2}')
