@@ -73,6 +73,10 @@ export const useSongsStore = defineStore('songs', () => {
 	const loading = ref(false)
 	const error = ref<string | null>(null)
 
+	// 非同期結果の世代管理: fetchSongs / fetchSong は開始時の世代を記録し、
+	// 完了時に世代が進んでいたら (新しい遷移・保存・削除) 結果を破棄する
+	let fetchGen = 0
+
 	const sortedSongs = computed(() => {
 		return [...songs.value].sort((a, b) => a.title.localeCompare(b.title, 'ja'))
 	})
@@ -175,6 +179,8 @@ Than [G]when we'd [D]first be[G]gun
 	}
 
 	async function fetchSongs() {
+		// 開始時点の世代を記録: 待機中に保存・削除・新しい取得が起きたら結果を破棄する
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -184,7 +190,7 @@ Than [G]when we'd [D]first be[G]gun
 				return
 			}
 
-			// キャッシュがあれば即表示
+			// キャッシュがあれば即表示 (ローカル状態のスナップショットなので無条件で安全)
 			let cached: CachedSong[] = []
 			try {
 				cached = await songCache.getAllCachedSongs()
@@ -201,6 +207,7 @@ Than [G]when we'd [D]first be[G]gun
 			try {
 				s3Songs = await s3Api.listSongs()
 			} catch (e) {
+				if (gen !== fetchGen) return
 				if (cached.length === 0) {
 					error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
 					// エラー時もローカルデータを表示
@@ -208,6 +215,9 @@ Than [G]when we'd [D]first be[G]gun
 				}
 				return
 			}
+
+			// 待機中に保存・削除・新しい取得が起きていたら結果を破棄
+			if (gen !== fetchGen) return
 
 			const cacheByKey = new Map(cached.map(c => [c.key, c]))
 			const now = Date.now()
@@ -237,7 +247,7 @@ Than [G]when we'd [D]first be[G]gun
 			})
 
 			for (const { s, content } of fetched) {
-				if (content) {
+				if (content !== null) {
 					toPersist.push({ key: s.key, content, lastModified: s.lastModified, fetchedAt: now })
 					metaByKey.set(s.key, toSongMeta(content, s.id))
 				} else {
@@ -258,6 +268,8 @@ Than [G]when we'd [D]first be[G]gun
 				.filter(c => !s3Songs.some(s => s.key === c.key))
 				.map(c => c.key)
 
+			// 差分取得中に保存・削除が起きていたら書き込みと一覧反映を破棄
+			if (gen !== fetchGen) return
 			try {
 				await songCache.putCachedSongs(toPersist)
 				await songCache.removeCachedSongs(removedKeys)
@@ -265,13 +277,17 @@ Than [G]when we'd [D]first be[G]gun
 				// キャッシュ書き込み失敗は致命的ではない
 			}
 
+			if (gen !== fetchGen) return
 			songs.value = metaList
 		} finally {
-			loading.value = false
+			// 新しい操作が進行中なら loading を落とさない
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
 	async function fetchSong(id: string, options?: { force?: boolean }) {
+		// 開始時点の世代を記録: 待機中に新しい遷移・保存・削除が起きたら結果を破棄する
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -291,6 +307,7 @@ Than [G]when we'd [D]first be[G]gun
 			}
 
 			if (cached && !options?.force) {
+				if (gen !== fetchGen) return
 				// キャッシュで即表示
 				setCurrentSong(id, cached.content)
 				loading.value = false
@@ -299,8 +316,9 @@ Than [G]when we'd [D]first be[G]gun
 					// 期限切れならバックグラウンドで再検証
 					try {
 						const content = await s3Api.getSongContent(id)
+						if (gen !== fetchGen) return
 						setCurrentSong(id, content)
-						await songCache.putCachedSongs([{ key, content, fetchedAt: Date.now() }])
+						await songCache.putCachedSongs([{ ...cached, content, fetchedAt: Date.now() }])
 					} catch {
 						// キャッシュ表示を維持
 					}
@@ -308,24 +326,37 @@ Than [G]when we'd [D]first be[G]gun
 				return
 			}
 
-			// キャッシュミス or 強制再取得 → S3 から取得して保存
+			// キャッシュミス or 強制再取得 → S3 から取得して保存。
+			// 取得失敗は外側の catch へ: 強制 (編集フロー) は失敗を呼び出し元へ
+			// 伝播させ、空・フォールバック内容で保存する事故を防ぐ
 			const content = await s3Api.getSongContent(id)
+			if (gen !== fetchGen) return
 			setCurrentSong(id, content)
 			try {
-				await songCache.putCachedSongs([{ key, content, fetchedAt: Date.now() }])
+				await songCache.putCachedSongs([{ ...cached, key, content, fetchedAt: Date.now() }])
 			} catch {
 				// キャッシュ保存失敗は致命的ではない
 			}
 		} catch (e) {
+			// 新しい操作が進行中なら error / currentSong を書き換えない
+			if (gen !== fetchGen) {
+				if (options?.force) throw e
+				return
+			}
 			error.value = e instanceof Error ? e.message : '曲の取得に失敗しました'
+			if (options?.force) {
+				throw e
+			}
 			// エラー時はローカルデータを試す
 			currentSong.value = localSongs.value[id] ?? null
 		} finally {
-			loading.value = false
+			// 新しい操作が進行中なら loading を落とさない
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
 	async function saveSong(song: Song) {
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -351,14 +382,17 @@ Than [G]when we'd [D]first be[G]gun
 			currentSong.value = song
 			upsertSongMeta(song)
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
+			if (gen === fetchGen) {
+				error.value = e instanceof Error ? e.message : '曲の保存に失敗しました'
+			}
 			throw e
 		} finally {
-			loading.value = false
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
 	async function removeSong(id: string) {
+		const gen = ++fetchGen
 		loading.value = true
 		error.value = null
 		try {
@@ -380,10 +414,12 @@ Than [G]when we'd [D]first be[G]gun
 				currentSong.value = null
 			}
 		} catch (e) {
-			error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
+			if (gen === fetchGen) {
+				error.value = e instanceof Error ? e.message : '曲の削除に失敗しました'
+			}
 			throw e
 		} finally {
-			loading.value = false
+			if (gen === fetchGen) loading.value = false
 		}
 	}
 
