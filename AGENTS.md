@@ -36,6 +36,7 @@ lambda/
 
 infra/                  # AWS インフラ設定
 scripts/                # ユーティリティスクリプト
+└── import-ufret.mjs    # ufret の URL から .cho をローカル保存する CLI
 chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 (MV3)
 ```
 
@@ -72,9 +73,15 @@ chrome-extention/       # ufret からコード譜を取り込む Chrome 拡張 
 - API 未設定時はサンプルデータにフォールバック
 
 ### ufret インポート (`chrome-extention/`)
-- `content.js` が ufret の DOM から `ExtractedSheet` を抽出
+- `extract.js` が共有パーサー。ページ埋め込みの `ufret_chord_datas` を HTML 文字列 /
+  `document` の両方から解釈する
+- `content.js` は `extract.js` の `extractFromDocument` に委譲し、生データが取れなければ
+  描画済み DOM にフォールバックして `ExtractedSheet` を抽出する
 - `converter.js` が Grid 形式の ChordPro に変換 (純粋関数・`converter.test.js` でテスト)
 - popup から `.cho` ダウンロード / クリップボードコピー
+- `scripts/import-ufret.mjs` は拡張機能を使わないローカル保存 CLI
+  (`--out` / `--name` / `--stdout`)。既定の保存先は `~/Music/myol/`
+- グローバルの `~/.claude/skills/ufret-import` スキルがこの CLI を呼び出す
 - ufret には小節線・セクション見出し・BPM が無いため、小節割りは行内のコード数と
   歌詞文字数から推定する。tempo は 120 固定で myol 側で直す
 - 小節推定・セクション分割・capo の詳細は `docs/chordpro.md` の「Importing from ufret」

@@ -118,14 +118,30 @@ When a song contains only lyrics, the editor's "Auto Assign Measures" feature co
 ## Importing from ufret
 
 The Chrome extension in `chrome-extention/` generates Extended Grid ChordPro
-directly from a ufret page. Since ufret exposes neither bar lines nor section
-headings, measures are inferred: a row with at least `M` chords (`M` being the
-numerator of `{time:}`) becomes one measure per chord. A shorter row with
-lyrics is padded to `M` measures in proportion to the character count of each
-chord's lyrics; a shorter row *without* lyrics is left as-is, one chord per
-measure, since there is no text to distribute. Sections are split where rows
-switch between having lyrics and not, yielding `Intro`, `Verse N`,
-`Interlude N` and `Outro` labels.
+directly from a ufret page. Chords and lyrics come from the page's embedded
+`ufret_chord_datas` raw data, which preserves the exact `[chord]lyric`
+boundaries and the spaces inside each lyric. The shared parser in
+`chrome-extention/extract.js` reads that raw data from an HTML string or a live
+`document`, falling back to the rendered DOM when it is unavailable.
+
+Since ufret exposes neither bar lines nor section headings, measures are
+inferred: a row with at least `M` chords (`M` being the numerator of `{time:}`)
+becomes one measure per chord. A shorter row with lyrics is padded to `M`
+measures in proportion to the raw character count of each chord's lyrics
+(including spaces); a shorter row *without* lyrics is left as-is, one chord per
+measure, since there is no text to distribute. When a chord spans several
+measures this way, its lyric is split across those measures. Sections are
+delimited by blank lines in the ufret data and by rows switching between having
+lyrics and not, yielding `Intro`, `Verse N`, `Interlude N` and `Outro` labels.
+ufret's `　/　` and `N.C.` markers are normalized to no-chord (a chordless cell)
+rather than treated as chord names.
+
+For use outside the extension, `scripts/import-ufret.mjs` fetches the same page
+and writes the ChordPro directly:
+
+```bash
+node scripts/import-ufret.mjs <url> [--out DIR] [--name NAME] [--stdout]
+```
 
 `{tempo:}` is always emitted as 120 and `{time:}` as `4/4`, since ufret
 publishes neither BPM nor a time signature; both are fixed defaults for the
