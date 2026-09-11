@@ -15,9 +15,9 @@ exports[`convertSheetToChordPro > matches the ChordPro snapshot generated from t
 {start_of_grid label="Verse 1"}
 {lyrics_hint: あい | うえお | かきくけ | こ}
 | C | Am | F | G |
-{lyrics_hint: さし | すせ | そたちつ | }
+{lyrics_hint: さし | すせ | そた | ちつ}
 | F | C | G | G |
-{lyrics_hint: てとなに |  | ぬねの | }
+{lyrics_hint: てと | なに | ぬね | の}
 | F | F | G | G |
 {lyrics_hint: はひ | ふへほ | まみ | むめ}
 | Am | Em7 | Am | Em7 |
@@ -35,11 +35,11 @@ exports[`convertSheetToChordPro > matches the ChordPro snapshot generated from t
 {start_of_grid label="Verse 2"}
 {lyrics_hint: かき | くけこ | さしすせ | そ}
 | C | Am | F | G |
-{lyrics_hint: たち | つて | となにぬ | }
+{lyrics_hint: たち | つて | とな | にぬ}
 | F | C | G | G |
 {lyrics_hint: ねの | はひふ | へほま | み}
 | Am | Em7 | F | G |
-{lyrics_hint: むめもや |  | ゆよら | }
+{lyrics_hint: むめ | もや | ゆよ | ら}
 | F | F | G | G |
 {end_of_grid}
 
@@ -50,7 +50,7 @@ exports[`convertSheetToChordPro > matches the ChordPro snapshot generated from t
 {start_of_grid label="Verse 3"}
 {lyrics_hint: りる | れろわ | をんあい | う}
 | C | Am | F | G |
-{lyrics_hint: えお | かき | くけこさ | }
+{lyrics_hint: えお | かき | くけ | こさ}
 | F | C | G | G |
 {lyrics_hint: しす | せそた | ちつ | て}
 | Am | Em7 | Am | Em7 |

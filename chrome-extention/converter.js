@@ -4,7 +4,7 @@
  */
 
 /** @typedef {{ chord: string|null, text: string }} ExtractedCell */
-/** @typedef {{ cells: ExtractedCell[] }} ExtractedRow */
+/** @typedef {{ cells: ExtractedCell[], sectionBreak?: boolean }} ExtractedRow */
 /**
  * @typedef {Object} ExtractedSheet
  * @property {string} title
@@ -56,8 +56,31 @@ export function distribute(weights, total) {
   return counts
 }
 
+/**
+ * 文字列を parts 個に前詰めで分割する。余りは先頭側の要素へ 1 文字ずつ配る。
+ *
+ * @param {string} text
+ * @param {number} parts
+ * @returns {string[]}
+ */
+export function splitText(text, parts) {
+  if (parts <= 1) return [text]
+  const result = Array.from({ length: parts }, () => '')
+  if (text.length === 0) return result
+  const base = Math.floor(text.length / parts)
+  let remainder = text.length % parts
+  let cursor = 0
+  for (let i = 0; i < parts; i++) {
+    const size = base + (remainder > 0 ? 1 : 0)
+    if (remainder > 0) remainder -= 1
+    result[i] = text.slice(cursor, cursor + size)
+    cursor += size
+  }
+  return result
+}
+
 /** @typedef {{ chord: string, hint: string }} ConvertedMeasure */
-/** @typedef {{ measures: ConvertedMeasure[], hasLyrics: boolean }} ConvertedRow */
+/** @typedef {{ measures: ConvertedMeasure[], hasLyrics: boolean, blockStart?: boolean }} ConvertedRow */
 
 /**
  * 行のセルを「コード + それに続くコード無しセルの歌詞」に畳む。
@@ -94,14 +117,22 @@ export function convertRows(rows, measuresPerRow) {
 
   for (const row of rows) {
     const { leading, groups } = groupCellsByChord(row.cells)
-
     const trimmedLeading = leading.trim()
-    if (trimmedLeading && converted.length > 0) {
-      const previous = converted[converted.length - 1]
-      const lastMeasure = previous.measures[previous.measures.length - 1]
-      if (lastMeasure) {
-        lastMeasure.hint += trimmedLeading
-        previous.hasLyrics = true
+
+    if (trimmedLeading) {
+      if (converted.length === 0) {
+        // 先頭行の行頭歌詞はぶら下がるコードが無いので捨てる
+      } else if (row.sectionBreak) {
+        // セクション境界を跨いで前行へ連結すると別セクションに歌詞が付くため、
+        // この行の先頭コードの歌詞へ前置きする
+        if (groups.length > 0) groups[0].text = trimmedLeading + groups[0].text
+      } else {
+        const previous = converted[converted.length - 1]
+        const lastMeasure = previous.measures[previous.measures.length - 1]
+        if (lastMeasure) {
+          lastMeasure.hint += trimmedLeading
+          previous.hasLyrics = true
+        }
       }
     }
 
@@ -111,17 +142,18 @@ export function convertRows(rows, measuresPerRow) {
     const counts =
       groups.length >= measuresPerRow || !hasLyrics
         ? groups.map(() => 1)
-        : distribute(groups.map(group => Math.max(group.text.trim().length, 1)), measuresPerRow)
+        : distribute(groups.map(group => Math.max(group.text.length, 1)), measuresPerRow)
 
     /** @type {ConvertedMeasure[]} */
     const measures = []
     groups.forEach((group, index) => {
+      const chunks = splitText(group.text.trim(), counts[index])
       for (let repeat = 0; repeat < counts[index]; repeat++) {
-        measures.push({ chord: group.chord, hint: repeat === 0 ? group.text.trim() : '' })
+        measures.push({ chord: group.chord, hint: chunks[repeat] })
       }
     })
 
-    converted.push({ measures, hasLyrics })
+    converted.push({ measures, hasLyrics, blockStart: row.sectionBreak === true })
   }
 
   return converted
@@ -141,10 +173,10 @@ export function splitSections(rows) {
   const blocks = []
   for (const row of rows) {
     const last = blocks[blocks.length - 1]
-    if (last && last.hasLyrics === row.hasLyrics) {
-      last.rows.push(row)
-    } else {
+    if (!last || row.blockStart || last.hasLyrics !== row.hasLyrics) {
       blocks.push({ hasLyrics: row.hasLyrics, rows: [row] })
+    } else {
+      last.rows.push(row)
     }
   }
 

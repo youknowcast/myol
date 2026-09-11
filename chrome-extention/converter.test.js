@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { distribute, convertRows, splitSections, convertSheetToChordPro } from './converter.js'
+import { distribute, splitText, convertRows, splitSections, convertSheetToChordPro } from './converter.js'
 import { parseChordPro } from '@/lib/chordpro/parser'
 import sheet from './fixtures/ufret-sample-sheet.json'
 
@@ -37,6 +37,28 @@ describe('distribute', () => {
   })
 })
 
+describe('splitText', () => {
+  it('returns the whole string for a single part', () => {
+    expect(splitText('abc', 1)).toEqual(['abc'])
+  })
+
+  it('splits evenly when the length is divisible', () => {
+    expect(splitText('abcd', 2)).toEqual(['ab', 'cd'])
+  })
+
+  it('hands remainder characters to the earliest parts', () => {
+    expect(splitText('abcde', 2)).toEqual(['abc', 'de'])
+  })
+
+  it('puts one character per part and pads when the text is short', () => {
+    expect(splitText('ab', 4)).toEqual(['a', 'b', '', ''])
+  })
+
+  it('returns empty parts for empty text', () => {
+    expect(splitText('', 3)).toEqual(['', '', ''])
+  })
+})
+
 const row = (...cells) => ({
   cells: cells.map(([chord, text]) => ({ chord, text }))
 })
@@ -47,6 +69,7 @@ describe('convertRows', () => {
     expect(result).toEqual([
       {
         hasLyrics: true,
+        blockStart: false,
         measures: [
           { chord: 'C', hint: 'あい' },
           { chord: 'G', hint: 'うえお' },
@@ -62,8 +85,8 @@ describe('convertRows', () => {
     expect(result[0].measures).toEqual([
       { chord: 'F', hint: 'さし' },
       { chord: 'C', hint: 'すせ' },
-      { chord: 'G', hint: 'そたちつ' },
-      { chord: 'G', hint: '' }
+      { chord: 'G', hint: 'そた' },
+      { chord: 'G', hint: 'ちつ' }
     ])
   })
 
@@ -111,7 +134,7 @@ describe('convertRows', () => {
   it('drops a leading chordless cell when there is no previous row', () => {
     const result = convertRows([row([null, 'め'], ['F', 'もやゆ'], ['G', 'よら'], ['C', 'れろ'])], 4)
     expect(result).toHaveLength(1)
-    expect(result[0].measures[0]).toEqual({ chord: 'F', hint: 'もやゆ' })
+    expect(result[0].measures[0]).toEqual({ chord: 'F', hint: 'もや' })
   })
 
   it('attaches a leading chordless cell to the previous row last measure even when that measure is a padding repeat', () => {
@@ -130,9 +153,33 @@ describe('convertRows', () => {
     expect(result[0].measures).toEqual([
       { chord: 'F', hint: 'さし' },
       { chord: 'C', hint: 'すせ' },
-      { chord: 'G', hint: 'そたちつ' },
-      { chord: 'G', hint: 'な' }
+      { chord: 'G', hint: 'そた' },
+      { chord: 'G', hint: 'ちつな' }
     ])
+  })
+
+  it('uses raw lyric length including spaces for measure distribution', () => {
+    // "1234 " is 5 raw chars (4 after trim); " 1" is 2 raw chars (1 after trim).
+    // Raw weights [5, 2] -> [2, 2]; trimmed weights [4, 1] -> [3, 1].
+    const result = convertRows([row(['C', '1234 '], ['G', ' 1'])], 4)
+    expect(result[0].measures.map((measure) => measure.chord)).toEqual(['C', 'C', 'G', 'G'])
+  })
+
+  it('prepends a leading cell to the current row when a section break starts the row', () => {
+    const result = convertRows(
+      [
+        row(['C', 'あ']),
+        { ...row([null, 'い'], ['G', 'う']), sectionBreak: true }
+      ],
+      4
+    )
+    expect(result[0].measures[0]).toEqual({ chord: 'C', hint: 'あ' })
+    expect(result[1].measures.map((measure) => measure.hint).join('')).toBe('いう')
+  })
+
+  it('marks a row that starts a section', () => {
+    const result = convertRows([{ ...row(['C', 'あ']), sectionBreak: true }], 4)
+    expect(result[0].blockStart).toBe(true)
   })
 })
 
@@ -180,6 +227,14 @@ describe('splitSections', () => {
 
   it('returns no sections for no rows', () => {
     expect(splitSections([])).toEqual([])
+  })
+
+  it('starts a new section where blockStart is set even when the lyric kind is unchanged', () => {
+    const sections = splitSections([
+      { ...lyricRow(), blockStart: false },
+      { ...lyricRow(), blockStart: true }
+    ])
+    expect(sections.map((section) => section.label)).toEqual(['Verse 1', 'Verse 2'])
   })
 })
 
