@@ -37,6 +37,12 @@ describe('buildFileName', () => {
     expect(buildFileName({ artist: 'A', title: 'T' }, 'x.cho')).toBe('x.cho')
   })
 
+  it('sanitizes a provided name so it cannot escape the output directory', () => {
+    const result = buildFileName({ artist: 'A', title: 'T' }, '../../evil')
+    expect(result).toBe('.._.._evil.cho')
+    expect(result).not.toContain('/')
+  })
+
   it('falls back to chordpro when artist and title are empty', () => {
     expect(buildFileName({ artist: '', title: '' })).toBe('chordpro.cho')
   })

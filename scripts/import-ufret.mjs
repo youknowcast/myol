@@ -23,7 +23,7 @@ export function resolveOutputDir({ out, env = process.env } = {}) {
 
 export function buildFileName(sheet, name) {
   const base = name
-    ? name
+    ? sanitize(name)
     : [sanitize(sheet.artist), sanitize(sheet.title)].filter(Boolean).join('_') || 'chordpro'
   return base.endsWith('.cho') ? base : `${base}.cho`
 }
