@@ -12,6 +12,11 @@ describe('parseChordDatas', () => {
     expect(parseChordDatas(source)).toEqual(['[C]\u3000[G]x/y'])
   })
 
+  it('keeps brackets and escaped quotes inside chord-data strings', () => {
+    const source = 'var ufret_chord_datas = ["[C]a]b", "[G]x\\"y"];'
+    expect(parseChordDatas(source)).toEqual(['[C]a]b', '[G]x"y'])
+  })
+
   it('returns null when the variable is absent', () => {
     expect(parseChordDatas('<html></html>')).toBeNull()
   })
