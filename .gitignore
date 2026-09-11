@@ -34,3 +34,7 @@ dist-ssr
 # Lambda build artifacts
 lambda/*/dist
 lambda/*/node_modules
+
+# Superpowers design/plan docs (kept locally, never committed)
+docs/plans/
+docs/specs/
