@@ -57,6 +57,18 @@ describe('splitText', () => {
   it('returns empty parts for empty text', () => {
     expect(splitText('', 3)).toEqual(['', '', ''])
   })
+
+  it('splits by code points so astral characters are never cut in half', () => {
+    expect(splitText('a😀b', 2)).toEqual(['a😀', 'b'])
+  })
+
+  it('preserves the original text when the parts are rejoined', () => {
+    for (const value of ['a😀b', '𠮷野家', '🎸🎶x', '']) {
+      for (const parts of [1, 2, 3, 4]) {
+        expect(splitText(value, parts).join('')).toBe(value)
+      }
+    }
+  })
 })
 
 const row = (...cells) => ({
@@ -146,10 +158,11 @@ describe('convertRows', () => {
       4
     )
     // The first row has 3 chords but measuresPerRow is 4, so distribute([2,2,4], 4) = [1,1,2]
-    // gives measures [F:'さし', C:'すせ', G:'そたちつ', G:''] where the last G is a padding repeat.
-    // The second row's leading chordless cell 'な' should be appended to the LAST measure,
-    // which is the padding repeat G. This is correct because the lyric is still being sung
-    // under that chord, so it belongs at the end of the chord's span.
+    // gives measures [F:'さし', C:'すせ', G:'そた', G:'ちつ']: the lyric of the 2-measure G
+    // chord is split across its two measures. The second row's leading chordless cell 'な'
+    // should be appended to the LAST measure, which is the second G ('ちつ'), yielding
+    // 'ちつな'. This is correct because the lyric is still being sung under that chord,
+    // so it belongs at the end of the chord's span.
     expect(result[0].measures).toEqual([
       { chord: 'F', hint: 'さし' },
       { chord: 'C', hint: 'すせ' },

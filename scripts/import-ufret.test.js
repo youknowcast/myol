@@ -1,7 +1,41 @@
 import { describe, it, expect } from 'vitest'
 import path from 'node:path'
 import { homedir } from 'node:os'
-import { sanitize, resolveOutputDir, buildFileName } from './import-ufret.mjs'
+import { sanitize, resolveOutputDir, buildFileName, parseArgs } from './import-ufret.mjs'
+
+describe('parseArgs', () => {
+  it('collects the url, options, and stdout flag', () => {
+    expect(parseArgs(['https://ufret.jp/song/1', '--out', '/tmp/x', '--name', 'song', '--stdout'])).toEqual({
+      url: 'https://ufret.jp/song/1',
+      out: '/tmp/x',
+      name: 'song',
+      stdout: true
+    })
+  })
+
+  it('defaults the optional fields', () => {
+    expect(parseArgs(['https://ufret.jp/song/1'])).toEqual({
+      url: 'https://ufret.jp/song/1',
+      out: null,
+      name: null,
+      stdout: false
+    })
+  })
+
+  it('throws when --out is missing its value', () => {
+    expect(() => parseArgs(['https://ufret.jp/song/1', '--out'])).toThrow('Missing value for --out')
+  })
+
+  it('throws when --name is missing its value', () => {
+    expect(() => parseArgs(['https://ufret.jp/song/1', '--name', '--stdout'])).toThrow(
+      'Missing value for --name'
+    )
+  })
+
+  it('throws on an unknown flag instead of treating it as the url', () => {
+    expect(() => parseArgs(['--bogus'])).toThrow('Unknown option: --bogus')
+  })
+})
 
 describe('sanitize', () => {
   it('replaces filesystem-hostile characters with underscores', () => {

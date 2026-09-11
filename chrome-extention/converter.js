@@ -66,14 +66,15 @@ export function distribute(weights, total) {
 export function splitText(text, parts) {
   if (parts <= 1) return [text]
   const result = Array.from({ length: parts }, () => '')
-  if (text.length === 0) return result
-  const base = Math.floor(text.length / parts)
-  let remainder = text.length % parts
+  const chars = Array.from(text)
+  if (chars.length === 0) return result
+  const base = Math.floor(chars.length / parts)
+  let remainder = chars.length % parts
   let cursor = 0
   for (let i = 0; i < parts; i++) {
     const size = base + (remainder > 0 ? 1 : 0)
     if (remainder > 0) remainder -= 1
-    result[i] = text.slice(cursor, cursor + size)
+    result[i] = chars.slice(cursor, cursor + size).join('')
     cursor += size
   }
   return result

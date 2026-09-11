@@ -28,14 +28,25 @@ export function buildFileName(sheet, name) {
   return base.endsWith('.cho') ? base : `${base}.cho`
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = { url: null, out: null, name: null, stdout: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
-    if (arg === '--out') args.out = argv[++i]
-    else if (arg === '--name') args.name = argv[++i]
-    else if (arg === '--stdout') args.stdout = true
-    else if (!args.url) args.url = arg
+    if (arg === '--out' || arg === '--name') {
+      const value = argv[i + 1]
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error(`Missing value for ${arg}`)
+      }
+      if (arg === '--out') args.out = value
+      else args.name = value
+      i += 1
+    } else if (arg === '--stdout') {
+      args.stdout = true
+    } else if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`)
+    } else if (!args.url) {
+      args.url = arg
+    }
   }
   return args
 }

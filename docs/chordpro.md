@@ -145,7 +145,10 @@ node scripts/import-ufret.mjs <url> [--out DIR] [--name NAME] [--stdout]
 
 `{tempo:}` is always emitted as 120 and `{time:}` as `4/4`, since ufret
 publishes neither BPM nor a time signature; both are fixed defaults for the
-user to correct in myol. `{capo:}` is derived from ufret's `capo` attribute,
-which is the semitone offset from the song's original key: a negative offset
-becomes a positive `{capo:}` value (`capo="-2"` &#8594; `{capo: 2}`), and a
-missing, zero, or positive offset omits `{capo:}` entirely.
+user to correct in myol. `{capo:}` is emitted only by the extension import
+path, which reads ufret's `capo` attribute from the live DOM; the CLI's
+`extractFromHtml` hardcodes `capoOffset: null`, so it never emits `{capo:}`.
+Where it is emitted, the attribute is the semitone offset from the song's
+original key: a negative offset becomes a positive `{capo:}` value
+(`capo="-2"` &#8594; `{capo: 2}`), and a missing, zero, or positive offset
+omits `{capo:}` entirely.

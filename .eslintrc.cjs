@@ -41,6 +41,13 @@ module.exports = {
       globals: {
         chrome: 'readonly'
       }
+    },
+    {
+      files: ['scripts/**/*.mjs'],
+      env: {
+        node: true,
+        es2022: true
+      }
     }
   ],
   rules: {

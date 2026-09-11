@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --ext .ts,.vue,.js",
+    "lint": "eslint . --ext .ts,.vue,.js,.mjs",
     "import:ufret": "node scripts/import-ufret.mjs"
   },
   "dependencies": {
