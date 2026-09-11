@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { parseChordDatas, parseMeta, buildSheet, findChordDatas } from './extract.js'
+import {
+  parseChordDatas,
+  parseMeta,
+  buildSheet,
+  findChordDatas,
+  extractFromHtml
+} from './extract.js'
 
 describe('parseChordDatas', () => {
   it('reads the embedded ufret chord data array', () => {
@@ -96,5 +102,25 @@ describe('findChordDatas', () => {
 
   it('returns null when no script contains the data', () => {
     expect(findChordDatas(['window.x = 1'])).toBeNull()
+  })
+})
+
+describe('extractFromHtml', () => {
+  const html =
+    '<h1 class="p-detail-head__ttl">サンプル</h1>' +
+    '<a class="p-detail-head__artist">作者</a>' +
+    '<script>var ufret_chord_datas = ["[C]あ", "[G]\u3000"];</script>'
+
+  it('returns an ok result with a sheet built from the raw data', () => {
+    const result = extractFromHtml(html)
+    expect(result.status).toBe('ok')
+    expect(result.sheet.title).toBe('サンプル')
+    expect(result.sheet.artist).toBe('作者')
+    expect(result.sheet.capoOffset).toBeNull()
+    expect(result.sheet.rows[0].cells).toEqual([{ chord: 'C', text: 'あ' }])
+  })
+
+  it('returns unsupported when the page has no chord data', () => {
+    expect(extractFromHtml('<html></html>')).toEqual({ status: 'unsupported' })
   })
 })

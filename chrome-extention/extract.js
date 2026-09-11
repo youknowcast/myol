@@ -138,3 +138,59 @@ export function findChordDatas(scriptTexts) {
   }
   return null
 }
+
+/**
+ * @param {string} html
+ * @returns {{ status: 'unsupported'|'ok', sheet?: ExtractedSheet }}
+ */
+export function extractFromHtml(html) {
+  const chordDatas = parseChordDatas(html)
+  if (!chordDatas) return { status: 'unsupported' }
+  return { status: 'ok', sheet: buildSheet(chordDatas, { ...parseMeta(html), capoOffset: null }) }
+}
+
+/** @param {Document} doc */
+function metaFromDocument(doc) {
+  return {
+    title: normalizeText(doc.querySelector('h1.p-detail-head__ttl')?.textContent ?? ''),
+    artist: normalizeText(doc.querySelector('a.p-detail-head__artist')?.textContent ?? '')
+  }
+}
+
+/** @param {Document} doc @returns {number|null} */
+function capoOffsetFromDocument(doc) {
+  const attr = doc.querySelector('#my-chord-data')?.getAttribute('capo') ?? null
+  if (attr === null || attr.trim() === '' || Number.isNaN(Number(attr))) return null
+  return Number(attr)
+}
+
+/**
+ * @param {Document} doc
+ * @returns {{ status: 'unsupported'|'loading'|'ok', sheet?: ExtractedSheet }}
+ */
+export function extractFromDocument(doc) {
+  const chordDatas = findChordDatas(
+    Array.from(doc.querySelectorAll('script')).map((script) => script.textContent ?? '')
+  )
+  const capoOffset = capoOffsetFromDocument(doc)
+
+  if (chordDatas) {
+    return { status: 'ok', sheet: buildSheet(chordDatas, { ...metaFromDocument(doc), capoOffset }) }
+  }
+
+  const root = doc.querySelector('#my-chord-data')
+  if (!root) return { status: 'unsupported' }
+  const rowEls = root.querySelectorAll('.chord-row')
+  if (rowEls.length === 0) return { status: 'loading' }
+
+  const rows = Array.from(rowEls).map((row) => ({
+    cells: Array.from(row.querySelectorAll('p.chord')).map((cell) => ({
+      chord: (cell.querySelector('rt')?.textContent ?? '').trim() || null,
+      text: Array.from(cell.querySelectorAll('.mejiowvnz .col'))
+        .map((col) => col.textContent ?? '')
+        .join('')
+    }))
+  }))
+
+  return { status: 'ok', sheet: { ...metaFromDocument(doc), capoOffset, rows } }
+}
