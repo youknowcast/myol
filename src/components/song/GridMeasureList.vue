@@ -17,6 +17,7 @@ interface Props {
 
 interface Emits {
   (e: 'select', value: number): void
+  (e: 'edit-cell', measureIndex: number, cellIndex: number): void
   (e: 'add-measure', value: 'end' | 'before' | 'after'): void
   (e: 'copy'): void
   (e: 'swap', value: 'left' | 'right'): void
@@ -98,6 +99,7 @@ onUnmounted(() => {
         :selected="selectedMeasureIndex === measureIndex"
         :beats-per-measure="beatsPerMeasure"
         @select="(index) => emit('select', index)"
+        @edit-cell="(mi, ci) => emit('edit-cell', mi, ci)"
         @add-measure="(position) => emit('add-measure', position)"
         @copy="() => emit('copy')"
         @swap="(direction) => emit('swap', direction)"

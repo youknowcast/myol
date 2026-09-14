@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useChordProEditorStore } from '@/stores/chordproEditor'
 import { useEditableMeasures } from '@/components/song/composables/useEditableMeasures'
+import { buildChordCandidates } from '@/lib/chords/candidates'
 import type { GridSection } from '@/lib/chordpro/types'
 import GridMeasureList from '@/components/song/GridMeasureList.vue'
+import GridChordSheet from '@/components/song/GridChordSheet.vue'
 
 interface Props {
   modelValue: GridSection
@@ -115,6 +117,35 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
   store.setLyricsHint(props.sectionIndex, measureIndex, value)
 }
 
+const editingCell = ref<{ measureIndex: number; cellIndex: number } | null>(null)
+
+const editingValue = computed(() => {
+  if (!editingCell.value) return ''
+  const cell = measures.value[editingCell.value.measureIndex]?.cells[editingCell.value.cellIndex]
+  return cell?.type === 'chord' ? cell.value ?? '' : ''
+})
+
+const chordCandidates = computed(() => buildChordCandidates(store.sections))
+
+function handleEditCell(measureIndex: number, cellIndex: number) {
+  editingCell.value = { measureIndex, cellIndex }
+}
+
+function closeChordSheet() {
+  editingCell.value = null
+}
+
+function applyChord(value: string) {
+  if (!editingCell.value) return
+  store.setCellValue(
+    props.sectionIndex,
+    editingCell.value.measureIndex,
+    editingCell.value.cellIndex,
+    value
+  )
+  editingCell.value = null
+}
+
 </script>
 
 <template>
@@ -132,6 +163,7 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
       :can-move-next-section="nextSectionIndex !== null"
       :beats-per-measure="beatsPerMeasure"
       @select="toggleMeasureSelection"
+      @edit-cell="handleEditCell"
       @add-measure="handleAddMeasure"
       @copy="handleCopyMeasure"
       @swap="handleSwapMeasure"
@@ -146,8 +178,16 @@ function handleUpdateLyrics(measureIndex: number, value: string) {
     />
 
     <div class="editor-help">
-      クリックで小節を選択 ・ ドラッグでコード並び替え
+      コードをタップで変更 ・ 小節をクリックで選択 ・ ドラッグで並び替え
     </div>
+
+    <GridChordSheet
+      :open="editingCell !== null"
+      :value="editingValue"
+      :candidates="chordCandidates"
+      @apply="applyChord"
+      @close="closeChordSheet"
+    />
   </div>
 </template>
 

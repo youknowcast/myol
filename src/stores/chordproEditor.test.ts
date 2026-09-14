@@ -105,6 +105,22 @@ describe('chordproEditor store', () => {
 		expect(store.gridSections.length).toBeGreaterThan(0)
 	})
 
+	it('edits a grid cell value and serializes it', () => {
+		const store = useChordProEditorStore()
+		store.loadDocument(CONTENT)
+		store.setCellValue(0, 0, 0, 'Em')
+		expect(grid(store, 0).measures[0]!.cells[0]).toEqual({ type: 'chord', value: 'Em' })
+		expect(store.serialize()).toContain('|: Em . | C . :|')
+	})
+
+	it('ignores setCellValue on a non-grid section', () => {
+		const store = useChordProEditorStore()
+		store.loadDocument(CONTENT)
+		const before = JSON.parse(JSON.stringify(store.document))
+		store.setCellValue(99, 0, 0, 'Em')
+		expect(JSON.parse(JSON.stringify(store.document))).toEqual(before)
+	})
+
 	it('sets a lyricsHint on a measure and serializes it', () => {
 		const store = useChordProEditorStore()
 		store.loadDocument(CONTENT)

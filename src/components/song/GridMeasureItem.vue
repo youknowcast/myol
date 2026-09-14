@@ -19,6 +19,7 @@ interface Props {
 
 interface Emits {
   (e: 'select', value: number): void
+  (e: 'edit-cell', measureIndex: number, cellIndex: number): void
   (e: 'add-measure', value: 'end' | 'before' | 'after'): void
   (e: 'copy'): void
   (e: 'swap', value: 'left' | 'right'): void
@@ -42,6 +43,23 @@ const toolboxAlign = computed(() => (
 
 function getCellClass(cell: GridCell): string {
   return `cell-${cellKind(cell)}`
+}
+
+function isEditableCell(cell: GridCell): boolean {
+  return cell.type === 'chord' || cell.type === 'noChord'
+}
+
+function handleCellClick(cell: GridCell, cellIndex: number, event: MouseEvent) {
+  if (!isEditableCell(cell)) return
+  event.stopPropagation()
+  emit('edit-cell', props.measureIndex, cellIndex)
+}
+
+function handleCellKeydown(cell: GridCell, cellIndex: number, event: KeyboardEvent) {
+  if (!isEditableCell(cell)) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  emit('edit-cell', props.measureIndex, cellIndex)
 }
 
 function handleHintKeydown(event: KeyboardEvent) {
@@ -92,8 +110,13 @@ function handleHintBlur(event: FocusEvent) {
         :key="cell.id"
         :data-id="cell.id"
         class="editable-cell"
-        :class="getCellClass(cell)"
+        :class="[getCellClass(cell), { editable: isEditableCell(cell) }]"
         :style="{ flexGrow: String(beatLayout.beats[cellIndex] ?? 1) }"
+        :role="isEditableCell(cell) ? 'button' : undefined"
+        :tabindex="isEditableCell(cell) ? 0 : undefined"
+        :title="isEditableCell(cell) ? 'タップでコード変更' : undefined"
+        @click="handleCellClick(cell, cellIndex, $event)"
+        @keydown="handleCellKeydown(cell, cellIndex, $event)"
       >
         {{ cellGlyph(cell) }}
       </div>
