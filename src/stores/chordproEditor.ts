@@ -23,7 +23,8 @@ import {
 	moveCellWithinGrid,
 	moveCellAcrossGrids,
 	moveMeasureAcrossGrids,
-	setLyricsHint as opSetLyricsHint
+	setLyricsHint as opSetLyricsHint,
+	setCellValue as opSetCellValue
 } from '@/lib/chordpro/measureOps'
 import type { ParsedSong, GridSection, Measure } from '@/lib/chordpro/types'
 
@@ -180,6 +181,12 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		setGridMeasures(sectionIndex, opSetLyricsHint(grid.measures, measureIndex, lyricsHint))
 	}
 
+	function setCellValue(sectionIndex: number, measureIndex: number, cellIndex: number, value: string) {
+		const grid = gridAt(sectionIndex)
+		if (!grid) return
+		setGridMeasures(sectionIndex, opSetCellValue(grid.measures, measureIndex, cellIndex, value))
+	}
+
 	function clearChords(sectionIndex: number, measureIndex: number) {
 		const grid = gridAt(sectionIndex)
 		if (!grid) return
@@ -255,6 +262,7 @@ export const useChordProEditorStore = defineStore('chordproEditor', () => {
 		deleteMeasure,
 		clearLyrics,
 		setLyricsHint,
+		setCellValue,
 		clearChords,
 		swapMeasure,
 		mergeLyrics,

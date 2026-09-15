@@ -11,7 +11,8 @@ import {
 	moveCellWithinGrid,
 	moveCellAcrossGrids,
 	moveMeasureAcrossGrids,
-	setLyricsHint
+	setLyricsHint,
+	setCellValue
 } from './measureOps'
 import type { Measure } from './types'
 
@@ -110,6 +111,40 @@ describe('setLyricsHint', () => {
 
 	it('is a no-op clone for invalid index', () => {
 		expect(setLyricsHint(sample(), 99, 'x')).toEqual(sample())
+	})
+})
+
+describe('setCellValue', () => {
+	it('changes a chord value in place, preserving measure and neighbours', () => {
+		const next = setCellValue(sample(), 0, 0, 'Em')
+		expect(next[0]!.cells[0]).toEqual({ type: 'chord', value: 'Em' })
+		expect(next[0]!.cells[1]).toEqual({ type: 'empty' })
+		expect(next[0]!.startBar).toBe('repeatStart')
+	})
+
+	it('trims the value and rejects an empty value', () => {
+		expect(setCellValue(sample(), 0, 0, '  Am  ')[0]!.cells[0]).toEqual({ type: 'chord', value: 'Am' })
+		expect(setCellValue(sample(), 0, 0, '   ')).toEqual(sample())
+	})
+
+	it('converts a chord to noChord for "/" and a noChord to a chord', () => {
+		expect(setCellValue(sample(), 0, 0, '/')[0]!.cells[0]).toEqual({ type: 'noChord' })
+		const fromNoChord = setCellValue([{ cells: [{ type: 'noChord' }] }], 0, 0, 'G')
+		expect(fromNoChord[0]!.cells[0]).toEqual({ type: 'chord', value: 'G' })
+	})
+
+	it('does not edit empty or repeat cells', () => {
+		expect(setCellValue(sample(), 0, 1, 'G')).toEqual(sample())
+		const withRepeat: Measure[] = [{ cells: [{ type: 'repeat' }] }]
+		expect(setCellValue(withRepeat, 0, 0, 'G')).toEqual(withRepeat)
+	})
+
+	it('is a no-op clone for invalid indices and does not mutate input', () => {
+		const input = sample()
+		expect(setCellValue(input, 99, 0, 'G')).toEqual(sample())
+		expect(setCellValue(input, 0, 99, 'G')).toEqual(sample())
+		setCellValue(input, 0, 0, 'Em')
+		expect(input).toEqual(sample())
 	})
 })
 

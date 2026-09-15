@@ -74,6 +74,29 @@ export function setLyricsHint(
 	return next
 }
 
+export function setCellValue(
+	measures: Measure[],
+	measureIndex: number,
+	cellIndex: number,
+	value: string
+): Measure[] {
+	const next = cloneMeasures(measures)
+	const target = next[measureIndex]
+	if (!target) return next
+	const cell = target.cells[cellIndex]
+	if (!cell || (cell.type !== 'chord' && cell.type !== 'noChord')) return next
+	const trimmed = value.trim()
+	if (!trimmed) return next
+	const updated: GridCell = trimmed === '/'
+		? { type: 'noChord' }
+		: { type: 'chord', value: trimmed }
+	next[measureIndex] = {
+		...target,
+		cells: target.cells.map((current, index) => (index === cellIndex ? updated : current))
+	}
+	return next
+}
+
 export function clearChords(measures: Measure[], measureIndex: number): Measure[] {
 	const next = cloneMeasures(measures)
 	const target = next[measureIndex]
